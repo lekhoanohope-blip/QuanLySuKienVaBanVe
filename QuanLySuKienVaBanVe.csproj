@@ -33,8 +33,16 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Guna.UI2, Version=2.0.4.8, Culture=neutral, PublicKeyToken=8b9d14aa5142e261, processorArchitecture=MSIL">
+      <HintPath>packages\Guna.UI2.WinForms.2.0.4.8\lib\net472\Guna.UI2.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Windows.Forms.DataVisualization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -46,14 +54,59 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Form1.cs">
+    <Compile Include="BLL\SuatDienBLL.cs" />
+    <Compile Include="BLL\SuKienBLL.cs" />
+    <Compile Include="DAL\SuatDienDAL.cs" />
+    <Compile Include="DAL\SuKienDAL.cs" />
+    <Compile Include="DTO\SuatDienDTO.cs" />
+    <Compile Include="DTO\SuKienDTO.cs" />
+    <Compile Include="GUI\FrmChiTietSuatDien.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
+    <Compile Include="GUI\FrmChiTietSuatDien.Designer.cs">
+      <DependentUpon>FrmChiTietSuatDien.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmChiTietSuKien.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmChiTietSuKien.Designer.cs">
+      <DependentUpon>FrmChiTietSuKien.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmMain.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmMain.Designer.cs">
+      <DependentUpon>FrmMain.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLySuatDien.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLySuatDien.Designer.cs">
+      <DependentUpon>FrmQuanLySuatDien.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLySuKien.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLySuKien.Designer.cs">
+      <DependentUpon>FrmQuanLySuKien.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="GUI\FrmChiTietSuatDien.resx">
+      <DependentUpon>FrmChiTietSuatDien.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmChiTietSuKien.resx">
+      <DependentUpon>FrmChiTietSuKien.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmMain.resx">
+      <DependentUpon>FrmMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmQuanLySuatDien.resx">
+      <DependentUpon>FrmQuanLySuatDien.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmQuanLySuKien.resx">
+      <DependentUpon>FrmQuanLySuKien.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -63,6 +116,12 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <None Include="BLL\.gitkeep" />
+    <None Include="DAL\.gitkeep" />
+    <None Include="database\.gitkeep" />
+    <None Include="DTO\.gitkeep" />
+    <None Include="GUI\.gitkeep" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -75,6 +134,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="database\create_database.sql" />
+    <Content Include="database\sample_data.sql" />
+    <Content Include="QuanLySuKienVaBanVe.slnx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

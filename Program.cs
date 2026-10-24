@@ -1,8 +1,7 @@
 using System;
 using System.Windows.Forms;
-using QuanLySuKienVaBanVe.GUI; 
 
-namespace QuanLySuKienVaBanVe 
+namespace QuanLySuKienVaBanVe
 {
     internal static class Program
     {
@@ -11,8 +10,7 @@ namespace QuanLySuKienVaBanVe
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-
-            Application.Run(new FrmQuanLySuKien());
+            Application.Run(new GUI.FrmMain());
         }
     }
 }

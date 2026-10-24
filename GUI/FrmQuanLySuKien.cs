@@ -1,128 +1,170 @@
 using System;
+using System.Data;
+using System.Data.SqlClient;
+using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using QuanLySuKienVaBanVe.BLL;
-using QuanLySuKienVaBanVe.DTO;
 
 namespace QuanLySuKienVaBanVe.GUI
 {
     public partial class FrmQuanLySuKien : Form
     {
-        public FrmQuanLySuKien() { InitializeComponent(); }
+        private string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=QuanLySuKienVaBanVe;Integrated Security=True";
 
-        private void FrmQuanLySuKien_Load(object sender, EventArgs e)
-        {
-            LoadData();
-            cboTrangThai.SelectedIndex = 0;
-        }
+        public FrmQuanLySuKien() { InitializeComponent(); this.DoubleBuffered = true; }
+
+        private void FrmQuanLySuKien_Load(object sender, EventArgs e) { LoadData(); }
 
         private void LoadData()
         {
             try
             {
-                dgvSuKien.DataSource = SuKienBLL.LayDanhSach();
+                string query = "SELECT MaSK, TenSK, LoaiSK, MoTa, TrangThai FROM SuKien";
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+
+                    dgvSuKien.Rows.Clear();
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        int idx = dgvSuKien.Rows.Add();
+                        dgvSuKien.Rows[idx].Cells["colMaSK"].Value = row["MaSK"];
+                        dgvSuKien.Rows[idx].Cells["colTenSK"].Value = row["TenSK"];
+                        dgvSuKien.Rows[idx].Cells["colLoaiSK"].Value = row["LoaiSK"];
+                        dgvSuKien.Rows[idx].Cells["colMoTa"].Value = row["MoTa"];
+                        dgvSuKien.Rows[idx].Cells["colTrangThai"].Value = row["TrangThai"];
+                    }
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Lỗi tải dữ liệu: " + ex.Message);
-            }
+            catch (Exception ex) { MessageBox.Show("Lỗi SQL: " + ex.Message); }
         }
 
+        // =================== THÊM / SỬA / XÓA ===================
         private void btnThem_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtTenSK.Text)) { MessageBox.Show("Vui lòng nhập tên sự kiện!"); txtTenSK.Focus(); return; }
-
-            SuKienDTO sk = new SuKienDTO
+            using (FrmChiTietSuKien frm = new FrmChiTietSuKien())
             {
-                TenSK = txtTenSK.Text.Trim(),
-                LoaiSK = txtLoaiSK.Text.Trim(),
-                MoTa = txtMoTa.Text.Trim(),
-                TrangThai = cboTrangThai.Text
-            };
-
-            string ketQua = SuKienBLL.Them(sk);
-            if (ketQua == "Success") { MessageBox.Show("Thêm thành công!"); LoadData(); ClearInput(); }
-            else MessageBox.Show(ketQua, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (frm.ShowDialog() == DialogResult.OK) LoadData();
+            }
         }
 
         private void btnSua_Click(object sender, EventArgs e)
         {
-            if (dgvSuKien.CurrentRow == null) { MessageBox.Show("Vui lòng chọn sự kiện cần sửa!"); return; }
-
-            SuKienDTO sk = new SuKienDTO
+            if (dgvSuKien.CurrentRow == null) { MessageBox.Show("Vui lòng chọn sự kiện trên bảng!"); return; }
+            int maSK = Convert.ToInt32(dgvSuKien.CurrentRow.Cells["colMaSK"].Value);
+            using (FrmChiTietSuKien frm = new FrmChiTietSuKien(maSK))
             {
-                MaSK = Convert.ToInt32(dgvSuKien.CurrentRow.Cells["MaSK"].Value),
-                TenSK = txtTenSK.Text.Trim(),
-                LoaiSK = txtLoaiSK.Text.Trim(),
-                MoTa = txtMoTa.Text.Trim(),
-                TrangThai = cboTrangThai.Text
-            };
-
-            string ketQua = SuKienBLL.Sua(sk);
-            if (ketQua == "Success") { MessageBox.Show("Cập nhật thành công!"); LoadData(); ClearInput(); }
-            else MessageBox.Show(ketQua, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (frm.ShowDialog() == DialogResult.OK) LoadData();
+            }
         }
 
         private void btnXoa_Click(object sender, EventArgs e)
         {
-            if (dgvSuKien.CurrentRow == null) { MessageBox.Show("Vui lòng chọn sự kiện cần xóa!"); return; }
+            if (dgvSuKien.CurrentRow == null) { MessageBox.Show("Vui lòng chọn sự kiện trên bảng!"); return; }
+            int maSK = Convert.ToInt32(dgvSuKien.CurrentRow.Cells["colMaSK"].Value);
 
-            int maSK = Convert.ToInt32(dgvSuKien.CurrentRow.Cells["MaSK"].Value);
-            if (MessageBox.Show("Bạn có chắc muốn xóa sự kiện này?", "Xác nhận", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            if (MessageBox.Show("Bạn có chắc muốn xóa sự kiện này?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
             {
-                string ketQua = SuKienBLL.Xoa(maSK);
-                if (ketQua == "Success") { MessageBox.Show("Xóa thành công!"); LoadData(); ClearInput(); }
-                else MessageBox.Show(ketQua, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void btnLamMoi_Click(object sender, EventArgs e) { ClearInput(); LoadData(); }
-
-        private void dgvSuKien_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0)
-            {
-                DataGridViewRow row = dgvSuKien.Rows[e.RowIndex];
-                txtTenSK.Text = row.Cells["TenSK"].Value?.ToString();
-                txtLoaiSK.Text = row.Cells["LoaiSK"].Value?.ToString();
-                txtMoTa.Text = row.Cells["MoTa"].Value?.ToString();
-                cboTrangThai.Text = row.Cells["TrangThai"].Value?.ToString();
-            }
-        }
-
-        private void ClearInput()
-        {
-            txtTenSK.Text = ""; txtLoaiSK.Text = ""; txtMoTa.Text = "";
-            cboTrangThai.SelectedIndex = 0; txtTenSK.Focus();
-        }
-
-        private void btnChuyenTrang_Click(object sender, EventArgs e)
-        {
-            this.Hide();
-            
-            bool found = false;
-            foreach (Form f in Application.OpenForms)
-            {
-                if (f is FrmQuanLySuatDien)
+                try
                 {
-                    f.Show();
-                    found = true;
-                    break;
+                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    {
+                        SqlCommand cmd = new SqlCommand("DELETE FROM SuKien WHERE MaSK = @MaSK", conn);
+                        cmd.Parameters.AddWithValue("@MaSK", maSK);
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                    LoadData();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Không thể xóa (Sự kiện này đang có Suất diễn liên kết):\n" + ex.Message, "Lỗi");
                 }
             }
-            if (!found)
+        }
+
+        // =================== XỬ LÝ CLICK ICON TRÊN BẢNG ===================
+        private void dgvSuKien_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+            if (dgvSuKien.Columns[e.ColumnIndex].Name == "colThaoTac")
             {
-                FrmQuanLySuatDien frm = new FrmQuanLySuatDien();
-                frm.Show();
+                // Đảm bảo dòng đó được chọn
+                dgvSuKien.CurrentCell = dgvSuKien.Rows[e.RowIndex].Cells[e.ColumnIndex];
+
+                Point p = dgvSuKien.PointToClient(Cursor.Position);
+                Rectangle rect = dgvSuKien.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+                int x = p.X - rect.X;
+
+                // Xác định click vào nút Sửa (bên trái) hay Xóa (bên phải)
+                if (x >= 5 && x <= 40)
+                {
+                    btnSua_Click(null, null);
+                }
+                else if (x > 40 && x <= 80)
+                {
+                    btnXoa_Click(null, null);
+                }
             }
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        // =================== VẼ GIAO DIỆN ===================
+        private void dgvSuKien_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            base.OnFormClosing(e);
-            if (e.CloseReason == CloseReason.UserClosing)
+            if (e.RowIndex < 0) return;
+
+            if (dgvSuKien.Columns[e.ColumnIndex].Name == "colTrangThai")
             {
-                Application.Exit(); // Tắt sập toàn bộ chương trình
+                e.PaintBackground(e.CellBounds, true);
+                string status = e.Value?.ToString() ?? "";
+                Color badgeColor = Color.Gray;
+                Color textColor = Color.White;
+                string displayStatus = status;
+
+                if (status == "DangDien") { badgeColor = Color.FromArgb(209, 250, 229); textColor = Color.FromArgb(6, 95, 70); displayStatus = "Đang diễn ra"; }
+                else if (status == "SapDien") { badgeColor = Color.FromArgb(219, 234, 254); textColor = Color.FromArgb(30, 64, 175); displayStatus = "Sắp diễn ra"; }
+                else if (status == "DaKetThuc") { badgeColor = Color.FromArgb(254, 226, 226); textColor = Color.FromArgb(153, 27, 27); displayStatus = "Đã kết thúc"; }
+                else if (status == "DaHuy") { badgeColor = Color.FromArgb(254, 226, 226); textColor = Color.FromArgb(153, 27, 27); displayStatus = "Đã hủy"; }
+
+                Rectangle rect = new Rectangle(e.CellBounds.X + 5, e.CellBounds.Y + 10, e.CellBounds.Width - 10, e.CellBounds.Height - 20);
+                using (GraphicsPath path = GetRoundedRect(rect, 15))
+                using (SolidBrush brush = new SolidBrush(badgeColor))
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, displayStatus, e.CellStyle.Font, rect, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                e.Handled = true;
             }
+
+            if (dgvSuKien.Columns[e.ColumnIndex].Name == "colThaoTac")
+            {
+                e.PaintBackground(e.CellBounds, true);
+                // Vẽ nút Sửa
+                Rectangle btnSua = new Rectangle(e.CellBounds.X + 5, e.CellBounds.Y + 10, 30, 30);
+                using (SolidBrush brush = new SolidBrush(Color.FromArgb(219, 234, 254))) e.Graphics.FillRectangle(brush, btnSua);
+                TextRenderer.DrawText(e.Graphics, "✏️", e.CellStyle.Font, btnSua, Color.FromArgb(30, 64, 175), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                // Vẽ nút Xóa
+                Rectangle btnXoa = new Rectangle(e.CellBounds.X + 45, e.CellBounds.Y + 10, 30, 30);
+                using (SolidBrush brush = new SolidBrush(Color.FromArgb(254, 226, 226))) e.Graphics.FillRectangle(brush, btnXoa);
+                TextRenderer.DrawText(e.Graphics, "🗑️", e.CellStyle.Font, btnXoa, Color.FromArgb(153, 27, 27), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                e.Handled = true;
+            }
+        }
+
+        private GraphicsPath GetRoundedRect(Rectangle bounds, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            int diameter = radius * 2;
+            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
         }
     }
 }
