@@ -293,7 +293,6 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             txtPass.HasError = true;
             txtPass.FocusInput();
-            StartAnim(Anim.Shake);
         }
 
         private void DoRegister()
@@ -328,7 +327,6 @@ namespace QuanLySuKienVaBanVe.GUI
                     // Khong lo thong tin loi noi bo he thong ra UI
                     break;
             }
-            StartAnim(Anim.Shake);
         }
 
         private void ShowMode(Mode m, bool animate)
@@ -339,7 +337,7 @@ namespace QuanLySuKienVaBanVe.GUI
             lblLoginMsg.Text = ""; lblRegMsg.Text = "";
             txtPass.HasError = false;
             UpdateButtons();
-            if (animate) StartAnim(Anim.Drop, 70);
+            CenterCard();
             if (m == Mode.Login) txtUser.FocusInput(); else txtRegUser.FocusInput();
         }
 
@@ -429,7 +427,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             baseX = (ClientSize.Width - card.Width) / 2;
             baseY = Math.Max(10, (ClientSize.Height - card.Height) / 2);
-            if (anim == Anim.None) card.Location = new Point(baseX, baseY);
+            card.Location = new Point(baseX, baseY);
         }
 
         protected override void OnResize(EventArgs e)
@@ -446,7 +444,6 @@ namespace QuanLySuKienVaBanVe.GUI
             base.OnLoad(e);
             BuildBackground();
             CenterCard();
-            StartAnim(Anim.Drop, 170);      // thẻ rơi xuống và nảy khi mở form
         }
 
         protected override void OnShown(EventArgs e)
