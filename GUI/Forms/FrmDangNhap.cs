@@ -73,11 +73,6 @@ namespace QuanLySuKienVaBanVe.GUI
             LoadRemembered();
         }
 
-        // Giảm nhấp nháy khi control trong suốt di chuyển (WS_EX_COMPOSITED)
-        protected override CreateParams CreateParams
-        {
-            get { CreateParams cp = base.CreateParams; cp.ExStyle |= 0x02000000; return cp; }
-        }
 
         // =================================================================
         //  1. DỰNG GIAO DIỆN
@@ -96,7 +91,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private Panel MakeLayer()
         {
-            Panel p = new Panel { BackColor = Color.Transparent, Location = new Point(CardPanel.Pad, CardPanel.Pad), Size = new Size(W, H) };
+            Panel p = new Panel { BackColor = Color.White, Location = new Point(CardPanel.Pad, CardPanel.Pad), Size = new Size(W, H) };
             card.Controls.Add(p);
             return p;
         }

@@ -38,13 +38,23 @@ namespace QuanLySuKienVaBanVe.GUI
 
         protected void Kick() { if (!timer.Enabled) timer.Start(); }
 
-        protected void SetHover(bool value) { hovering = value; Kick(); }
+        protected void SetHover(bool value)
+        {
+            if (hovering != value)
+            {
+                hovering = value;
+                Kick();
+            }
+        }
 
         /// <summary>Kiểm tra lại chuột còn nằm trong control không (cần khi control có control con).</summary>
         protected void ReevaluateHover()
         {
-            hovering = ClientRectangle.Contains(PointToClient(Cursor.Position));
-            Kick();
+            bool inClient = ClientRectangle.Contains(PointToClient(Cursor.Position));
+            if (hovering != inClient)
+            {
+                SetHover(inClient);
+            }
         }
 
         /// <summary>Mỗi 15ms: trả true nếu còn animation cần chạy tiếp.</summary>
@@ -356,6 +366,14 @@ namespace QuanLySuKienVaBanVe.GUI
             tb.Top = (Height - tb.Height) / 2;
         }
 
+        protected override bool OnTick()
+        {
+            bool again = base.OnTick();
+            Color fill = Hover > 0.01f ? Fx.Lerp(Fx.Field, Fx.FieldHover, Hover) : Fx.Field;
+            if (tb.BackColor != fill) tb.BackColor = fill;
+            return again;
+        }
+
         protected override void OnResize(EventArgs e) { base.OnResize(e); LayoutInner(); }
         protected override void OnFontChanged(EventArgs e) { base.OnFontChanged(e); tb.Font = Font; LayoutInner(); }
 
@@ -379,7 +397,6 @@ namespace QuanLySuKienVaBanVe.GUI
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
             Color fill = Fx.Lerp(Fx.Field, Fx.FieldHover, Hover);
-            if (tb.BackColor != fill) tb.BackColor = fill;
 
             using (GraphicsPath path = Fx.RoundRect(new RectangleF(1, 1, Width - 2, Height - 2), 14f))
             using (SolidBrush b = new SolidBrush(fill))
