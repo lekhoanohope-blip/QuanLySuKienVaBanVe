@@ -11,6 +11,7 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -56,8 +57,11 @@
   <ItemGroup>
     <Compile Include="BLL\SuatDienBLL.cs" />
     <Compile Include="BLL\SuKienBLL.cs" />
+    <Compile Include="BLL\ThongKeBLL.cs" />
+    <Compile Include="DAL\DatabaseHelper.cs" />
     <Compile Include="DAL\SuatDienDAL.cs" />
     <Compile Include="DAL\SuKienDAL.cs" />
+    <Compile Include="DAL\ThongKeDAL.cs" />
     <Compile Include="DTO\SuatDienDTO.cs" />
     <Compile Include="DTO\SuKienDTO.cs" />
     <Compile Include="GUI\FrmChiTietSuatDien.cs">
@@ -78,6 +82,8 @@
     <Compile Include="GUI\FrmMain.Designer.cs">
       <DependentUpon>FrmMain.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUI\ManagementGridRenderer.cs" />
+    <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\FrmQuanLySuatDien.cs">
       <SubType>Form</SubType>
     </Compile>

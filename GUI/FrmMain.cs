@@ -1,29 +1,242 @@
-﻿using System;
+using System;
 using System.Data;
-using System.Data.SqlClient;
 using System.Drawing;
-using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
+using QuanLySuKienVaBanVe.BLL;
 
 namespace QuanLySuKienVaBanVe.GUI
 {
     public partial class FrmMain : Form
     {
-        // SỬA LẠI CHUỖI KẾT NỐI CHO ĐÚNG VỚI MÁY CỦA BẠN
-        private string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=QuanLySuKienVaBanVe;Integrated Security=True";
         private Form currentFormChild;
         private System.Windows.Forms.Timer timerClock; // Khai báo Timer
+        private Panel dashboardCanvas;
+        private bool adjustingWindow;
+        private bool layingOutDashboard;
+        private bool compactLogo;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        public static extern bool ReleaseCapture();
+
+        private void DragWindow_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                SendMessage(Handle, 0xA1, 0x2, 0);
+            }
+        }
 
         public FrmMain()
         {
             InitializeComponent();
             this.DoubleBuffered = true;
+            resizeBox.BringToFront();
+
+            Shown += FrmMain_Shown;
+            SizeChanged += (s, e) => { LayoutMainHeader(); LayoutSidebar(); LayoutDashboard(); };
+            LocationChanged += (s, e) =>
+            {
+                if (!adjustingWindow && WindowState == FormWindowState.Normal)
+                {
+                    Rectangle workingArea = Screen.FromControl(this).WorkingArea;
+                    if (MaximizedBounds != workingArea)
+                    {
+                        MaximizedBounds = workingArea;
+                        MaximumSize = workingArea.Size;
+                    }
+                }
+            };
+            DpiChanged += (s, e) =>
+            {
+                FitToWorkingArea();
+                LayoutMainHeader();
+                LayoutSidebar();
+                LayoutDashboard();
+            };
+            pnlDashboard.SizeChanged += (s, e) => LayoutDashboard();
+
+            // Hỗ trợ kéo di chuyển cửa sổ
+            pnlHeader.MouseDown += DragWindow_MouseDown;
+            pnlLogo.MouseDown += DragWindow_MouseDown;
+            lblLogo.MouseDown += DragWindow_MouseDown;
+
+            // Nháy đúp vào thanh tiêu đề để phóng to / thu nhỏ
+            pnlHeader.DoubleClick += (s, e) =>
+            {
+                this.WindowState = (this.WindowState == FormWindowState.Maximized) ? FormWindowState.Normal : FormWindowState.Maximized;
+            };
+
+            // Nút đóng thoát hẳn app
+            controlBoxClose.Click += (s, e) => Application.Exit();
 
             // Khởi tạo Timer chạy mỗi 1 giây
             timerClock = new System.Windows.Forms.Timer();
             timerClock.Interval = 1000;
             timerClock.Tick += TimerClock_Tick;
+        }
+
+        private int Px(int logicalPixels)
+        {
+            return (int)Math.Round(logicalPixels * DeviceDpi / 96f);
+        }
+
+        private void FrmMain_Shown(object sender, EventArgs e)
+        {
+            InitializeDashboardCanvas();
+            FitToWorkingArea();
+            LayoutMainHeader();
+            LayoutSidebar();
+            LayoutDashboard();
+            BeginInvoke(new MethodInvoker(ClearDashboardSelection));
+        }
+
+        private void FitToWorkingArea()
+        {
+            if (adjustingWindow) return;
+            adjustingWindow = true;
+            try
+            {
+                Rectangle workingArea = Screen.FromControl(this).WorkingArea;
+                MaximizedBounds = workingArea;
+                MinimumSize = new Size(Math.Min(Px(900), workingArea.Width),
+                    Math.Min(Px(620), workingArea.Height));
+                MaximumSize = workingArea.Size;
+
+                if (WindowState == FormWindowState.Normal)
+                {
+                    int width = Math.Min(Width, workingArea.Width);
+                    int height = Math.Min(Height, workingArea.Height);
+                    SetBounds(workingArea.Left + (workingArea.Width - width) / 2,
+                        workingArea.Top + (workingArea.Height - height) / 2, width, height);
+                }
+            }
+            finally { adjustingWindow = false; }
+        }
+
+        private void LayoutMainHeader()
+        {
+            if (pnlHeader == null || txtTimKiem == null) return;
+            int gap = Px(16);
+            bool showUser = pnlHeader.ClientSize.Width >= Px(540);
+            lblUser.Visible = showUser;
+            ptbAvatar.Visible = showUser;
+            btnThongBao.Visible = showUser;
+
+            int rightEdge = showUser ? btnThongBao.Left : controlBoxMinimize.Left;
+            int searchWidth = Math.Min(Px(450), rightEdge - txtTimKiem.Left - gap);
+            txtTimKiem.Visible = searchWidth >= Px(160);
+            if (txtTimKiem.Visible) txtTimKiem.Width = searchWidth;
+        }
+
+        private void LayoutSidebar()
+        {
+            if (pnlSidebar == null) return;
+            int sidebarWidth = Width < Px(1050) ? Px(200) : Px(250);
+            if (pnlSidebar.Width != sidebarWidth) pnlSidebar.Width = sidebarWidth;
+
+            // Short screens scroll the last two links instead of letting them cover navigation.
+            pnlSidebar.AutoScroll = true;
+            btnDangXuat.Dock = DockStyle.None;
+            btnCaiDat.Dock = DockStyle.None;
+            int linkTop = Math.Max(Px(520), pnlSidebar.ClientSize.Height - Px(140));
+            pnlSidebar.AutoScrollMinSize = new Size(0, linkTop + Px(140));
+            int viewportWidth = sidebarWidth -
+                (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
+            foreach (Control link in new Control[] { btnTrangChu, btnSuKien, btnSuatDien,
+                btnKhachHang, btnKhuVuc, btnBanVe, btnDangXuat, btnCaiDat })
+                link.Width = viewportWidth;
+            btnDangXuat.SetBounds(0, linkTop, viewportWidth, Px(70));
+            btnCaiDat.SetBounds(0, linkTop + Px(70), viewportWidth, Px(70));
+
+            bool compact = sidebarWidth < Px(220);
+            if (compact != compactLogo)
+            {
+                compactLogo = compact;
+                lblLogo.Font = new Font("Segoe UI", compact ? 14f : 18f, FontStyle.Bold);
+                lblLogo.Location = new Point(Px(compact ? 18 : 45), Px(45));
+            }
+        }
+
+        private void InitializeDashboardCanvas()
+        {
+            if (dashboardCanvas != null) return;
+            dashboardCanvas = new Panel { BackColor = pnlContent.BackColor, Location = Point.Empty };
+            Control[] items = pnlDashboard.Controls.Cast<Control>().ToArray();
+            pnlDashboard.SuspendLayout();
+            foreach (Control item in items) dashboardCanvas.Controls.Add(item);
+            pnlDashboard.Controls.Add(dashboardCanvas);
+            pnlDashboard.ResumeLayout();
+        }
+
+        private void LayoutDashboard()
+        {
+            if (dashboardCanvas == null || dashboardCanvas.IsDisposed ||
+                currentFormChild != null || layingOutDashboard) return;
+
+            layingOutDashboard = true;
+            int margin = Px(20);
+            int gap = Px(20);
+            int canvasWidth = Math.Max(Px(340),
+                pnlDashboard.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 1);
+            int contentWidth = canvasWidth - 2 * margin;
+            pnlDashboard.SuspendLayout();
+            dashboardCanvas.SuspendLayout();
+            try
+            {
+                dashboardCanvas.Width = canvasWidth;
+                pnlGreeting.SetBounds(margin, margin,
+                    Math.Min(contentWidth, Px(650)), Px(60));
+
+                lblTime.AutoSize = false;
+                lblTime.Dock = DockStyle.Fill;
+                lblTime.TextAlign = ContentAlignment.MiddleCenter;
+                int timeWidth = Math.Min(contentWidth,
+                    Math.Max(Px(280), TextRenderer.MeasureText(lblTime.Text, lblTime.Font).Width + Px(20)));
+                bool splitIntro = contentWidth >= pnlGreeting.Width + timeWidth + gap;
+                pnlTime.SetBounds(splitIntro ? canvasWidth - margin - timeWidth : margin,
+                    splitIntro ? margin : margin + Px(70), timeWidth, Px(45));
+
+                int y = splitIntro ? margin + Px(80) : margin + Px(135);
+                Control[] cards = { pnlCard1, pnlCard2, pnlCard3, pnlCard4 };
+                int cardColumns = contentWidth >= Px(1030) ? 4 : contentWidth >= Px(490) ? 2 : 1;
+                int cardWidth = (contentWidth - gap * (cardColumns - 1)) / cardColumns;
+                for (int i = 0; i < cards.Length; i++)
+                    cards[i].SetBounds(margin + (i % cardColumns) * (cardWidth + gap),
+                        y + (i / cardColumns) * (Px(140) + gap), cardWidth, Px(140));
+                y += ((cards.Length + cardColumns - 1) / cardColumns) * (Px(140) + gap) + Px(10);
+
+                bool splitPanels = contentWidth >= Px(760);
+                int leftWidth = splitPanels ? (int)Math.Round((contentWidth - gap) * 0.6) : contentWidth;
+                int rightWidth = contentWidth - leftWidth - gap;
+                pnlChart1.SetBounds(margin, y, leftWidth, Px(250));
+                pnlChart2.SetBounds(splitPanels ? margin + leftWidth + gap : margin,
+                    splitPanels ? y : y + Px(250) + gap,
+                    splitPanels ? rightWidth : contentWidth, Px(250));
+                y += splitPanels ? Px(250) + gap : 2 * (Px(250) + gap);
+                int tableHeight = Px(360);
+                bool splitTables = contentWidth >= Px(1030);
+                pnlTable1.SetBounds(margin, y, splitTables ? leftWidth : contentWidth, tableHeight);
+                pnlTable2.SetBounds(splitTables ? margin + leftWidth + gap : margin,
+                    splitTables ? y : y + tableHeight + gap,
+                    splitTables ? rightWidth : contentWidth, tableHeight);
+                y += splitTables ? tableHeight + gap : 2 * (tableHeight + gap);
+                dashboardCanvas.Height = y + margin;
+                // AutoScroll keeps the previous virtual bounds after controls shrink.
+                // Recreate its scroll range when the window changes size.
+                pnlDashboard.AutoScroll = false;
+                pnlDashboard.AutoScroll = true;
+            }
+            finally
+            {
+                dashboardCanvas.ResumeLayout();
+                pnlDashboard.ResumeLayout();
+                layingOutDashboard = false;
+            }
         }
 
         private void FrmMain_Load(object sender, EventArgs e)
@@ -40,184 +253,115 @@ namespace QuanLySuKienVaBanVe.GUI
             lblTime.Text = "📅 " + DateTime.Now.ToString("dddd, dd/MM/yyyy") + " | 🕒 " + DateTime.Now.ToString("HH:mm:ss");
         }
 
-        // =================== LOAD DASHBOARD DATA TỪ SQL ===================
+        // =================== LOAD DASHBOARD DATA TỪ BLL ===================
         private void LoadDashboardData()
         {
-            // 1. LOAD THẺ THỐNG KÊ
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                // 1. LOAD THẺ THỐNG KÊ
+                var cards = ThongKeBLL.LayThongKeCards();
+                lblCard1Value.Text = cards.DoanhThu;
+                lblCard2Value.Text = cards.SoVe;
+                lblCard3Value.Text = cards.SoSuKien;
+                lblCard4Value.Text = cards.SoDonHuy;
+
+                // 2. LOAD BIỂU ĐỒ DOANH THU
+                chartDoanhThu.Series[0].Points.Clear();
+                DataTable dtDoanhThu = ThongKeBLL.LayDoanhThu7Ngay();
+                foreach (DataRow row in dtDoanhThu.Rows)
                 {
-                    conn.Open();
-                    string sqlDoanhThu = "SELECT SUM(TongTien) FROM DonVe WHERE TrangThai = N'DaThanhToan'";
-                    lblCard1Value.Text = ExecuteScalar(conn, sqlDoanhThu) + " đ";
-
-                    string sqlSoVe = "SELECT COUNT(*) FROM ChiTietVe WHERE TrangThai = N'HopLe'";
-                    lblCard2Value.Text = ExecuteScalar(conn, sqlSoVe) + " vé";
-
-                    string sqlSuKien = "SELECT COUNT(*) FROM SuKien WHERE TrangThai = N'DangDien'";
-                    lblCard3Value.Text = ExecuteScalar(conn, sqlSuKien) + " sự kiện";
-
-                    string sqlDonHuy = "SELECT COUNT(*) FROM DonVe WHERE TrangThai = N'DaHuy'";
-                    lblCard4Value.Text = ExecuteScalar(conn, sqlDonHuy) + " đơn";
+                    DateTime ngay = Convert.ToDateTime(row["Ngay"]);
+                    double doanhThu = Convert.ToDouble(row["DoanhThu"]);
+                    chartDoanhThu.Series[0].Points.AddXY(ngay.ToString("dd/MM"), doanhThu);
                 }
+
+                // 3. LOAD BIỂU ĐỒ TỶ LỆ
+                chartTyLe.Series[0].Points.Clear();
+                DataTable dtTyLe = ThongKeBLL.LayTyLeGhe();
+                foreach (DataRow row in dtTyLe.Rows)
+                {
+                    string trangThai = row["TrangThai"]?.ToString() ?? "";
+                    int soLuong = Convert.ToInt32(row["SoLuong"]);
+                    int index = chartTyLe.Series[0].Points.AddXY(trangThai, soLuong);
+                    chartTyLe.Series[0].Points[index].LegendText = trangThai;
+                }
+
+                // 4. LOAD BẢNG SỰ KIỆN SẮP DIỄN RA
+                dgvSuKienSapDien.DataSource = ThongKeBLL.LaySuKienSapDien(5);
+                if (dgvSuKienSapDien.Columns["Thời gian"] != null)
+                    dgvSuKienSapDien.Columns["Thời gian"].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
+
+                // 5. LOAD BẢNG TOP SỰ KIỆN
+                dgvTopSuKien.DataSource = ThongKeBLL.LayTopSuKienDoanhThu(5);
+                if (dgvTopSuKien.Columns["Doanh thu"] != null)
+                    dgvTopSuKien.Columns["Doanh thu"].DefaultCellStyle.Format = "N0";
+                ConfigureDashboardColumns();
             }
             catch { /* Bỏ qua lỗi nếu chưa có data */ }
-
-            // 2. LOAD BIỂU ĐỒ DOANH THU
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    chartDoanhThu.Series[0].Points.Clear();
-                    string query = @"
-                        SELECT CAST(NgayDat AS DATE) as Ngay, SUM(TongTien) as DoanhThu 
-                        FROM DonVe 
-                        WHERE TrangThai = N'DaThanhToan' AND NgayDat >= DATEADD(day, -7, GETDATE())
-                        GROUP BY CAST(NgayDat AS DATE) ORDER BY Ngay ASC";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            DateTime ngay = Convert.ToDateTime(reader["Ngay"]);
-                            double doanhThu = Convert.ToDouble(reader["DoanhThu"]);
-                            chartDoanhThu.Series[0].Points.AddXY(ngay.ToString("dd/MM"), doanhThu);
-                        }
-                    }
-                }
-            }
-            catch { /* Bỏ qua lỗi nếu chưa có data */ }
-
-            // 3. LOAD BIỂU ĐỒ TỶ LỆ
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    chartTyLe.Series[0].Points.Clear();
-                    string query = "SELECT TrangThai, COUNT(*) as SoLuong FROM Ghe GROUP BY TrangThai";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            string trangThai = reader["TrangThai"].ToString();
-                            int soLuong = Convert.ToInt32(reader["SoLuong"]);
-                            int index = chartTyLe.Series[0].Points.AddXY(trangThai, soLuong);
-                            chartTyLe.Series[0].Points[index].LegendText = trangThai;
-                        }
-                    }
-                }
-            }
-            catch { /* Bỏ qua lỗi nếu chưa có data */ }
-
-            // 4. LOAD BẢNG SỰ KIỆN SẮP DIỄN RA
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    string query = @"
-                        SELECT TOP 5 sk.TenSK AS [Tên sự kiện], sd.ThoiGianBatDau AS [Thời gian], sd.DiaDiem AS [Địa điểm], 
-                               CASE 
-                                   WHEN sd.TrangThai = N'DaKetThuc' THEN N'Hết vé'
-                                   WHEN sd.ThoiGianBatDau <= GETDATE() THEN N'Đang diễn ra'
-                                   ELSE N'Còn vé'
-                               END AS [Tình trạng]
-                        FROM SuatDien sd
-                        JOIN SuKien sk ON sd.MaSK = sk.MaSK
-                        WHERE sd.ThoiGianBatDau > DATEADD(day, -1, GETDATE())
-                        ORDER BY sd.ThoiGianBatDau ASC";
-                    using (SqlDataAdapter adapter = new SqlDataAdapter(query, conn))
-                    {
-                        DataTable dt = new DataTable();
-                        adapter.Fill(dt);
-                        dgvSuKienSapDien.DataSource = dt;
-                        if (dgvSuKienSapDien.Columns["Thời gian"] != null)
-                            dgvSuKienSapDien.Columns["Thời gian"].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
-                    }
-                }
-            }
-            catch { /* Bỏ qua lỗi nếu chưa có data */ }
-
-            // 5. LOAD BẢNG TOP SỰ KIỆN
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    string query = @"
-                        SELECT TOP 5 sk.TenSK AS [Tên sự kiện], SUM(dv.TongTien) AS [Doanh thu]
-                        FROM DonVe dv
-                        JOIN SuatDien sd ON dv.MaSuat = sd.MaSuat
-                        JOIN SuKien sk ON sd.MaSK = sk.MaSK
-                        WHERE dv.TrangThai = N'DaThanhToan'
-                        GROUP BY sk.TenSK
-                        ORDER BY [Doanh thu] DESC";
-                    using (SqlDataAdapter adapter = new SqlDataAdapter(query, conn))
-                    {
-                        DataTable dt = new DataTable();
-                        adapter.Fill(dt);
-                        dgvTopSuKien.DataSource = dt;
-                        if (dgvTopSuKien.Columns["Doanh thu"] != null)
-                            dgvTopSuKien.Columns["Doanh thu"].DefaultCellStyle.Format = "N0";
-                    }
-                }
-            }
-            catch { /* Bỏ qua lỗi nếu chưa có data */ }
-        }
-
-        private string ExecuteScalar(SqlConnection conn, string query)
-        {
-            using (SqlCommand cmd = new SqlCommand(query, conn))
-            {
-                object result = cmd.ExecuteScalar();
-                if (result != DBNull.Value && result != null)
-                {
-                    if (result is int || result is long) return result.ToString();
-                    return Convert.ToDouble(result).ToString("N0");
-                }
-                return "0";
-            }
         }
 
         private void Dgv_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            if (e.RowIndex >= 0 && dgvSuKienSapDien.Columns[e.ColumnIndex].HeaderText == "Tình trạng")
+            DataGridView grid = sender as DataGridView;
+            if (grid == null || e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (grid.Columns[e.ColumnIndex].Name == "Tình trạng")
             {
-                e.PaintBackground(e.CellBounds, true);
                 string status = e.Value?.ToString() ?? "";
-                Color badgeColor = Color.Gray;
-                Color textColor = Color.White;
+                Color badgeColor = Color.FromArgb(241, 245, 249);
+                Color textColor = Color.FromArgb(71, 85, 105);
 
                 if (status == "Còn vé") { badgeColor = Color.FromArgb(209, 250, 229); textColor = Color.FromArgb(6, 95, 70); }
                 else if (status == "Sắp diễn ra" || status == "Đang diễn ra") { badgeColor = Color.FromArgb(219, 234, 254); textColor = Color.FromArgb(30, 64, 175); }
                 else if (status == "Hết vé") { badgeColor = Color.FromArgb(254, 226, 226); textColor = Color.FromArgb(153, 27, 27); }
 
-                Rectangle rect = new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y + 10, e.CellBounds.Width - 20, e.CellBounds.Height - 20);
-                using (GraphicsPath path = GetRoundedRect(rect, 15))
-                using (SolidBrush brush = new SolidBrush(badgeColor))
-                {
-                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                    e.Graphics.FillPath(brush, path);
-                }
-                TextRenderer.DrawText(e.Graphics, status, e.CellStyle.Font, rect, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                e.Handled = true;
+                ManagementGridRenderer.PaintStatus(grid, e, status, badgeColor, textColor);
             }
         }
 
-        private GraphicsPath GetRoundedRect(Rectangle bounds, int radius)
+        private void ConfigureDashboardColumns()
         {
-            GraphicsPath path = new GraphicsPath();
-            int diameter = radius * 2;
-            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
-            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-            return path;
+            SetDashboardColumn(dgvSuKienSapDien, "Tên sự kiện", 150, 55);
+            SetDashboardColumn(dgvSuKienSapDien, "Thời gian", 150, 0);
+            SetDashboardColumn(dgvSuKienSapDien, "Địa điểm", 140, 45);
+            SetDashboardColumn(dgvSuKienSapDien, "Tình trạng", 130, 0);
+            DataGridViewColumn status = dgvSuKienSapDien.Columns["Tình trạng"];
+            if (status != null)
+            {
+                status.DefaultCellStyle.Padding = Padding.Empty;
+                status.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                status.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            }
+
+            SetDashboardColumn(dgvTopSuKien, "Tên sự kiện", 160, 100);
+            SetDashboardColumn(dgvTopSuKien, "Doanh thu", 140, 0);
+            DataGridViewColumn revenue = dgvTopSuKien.Columns["Doanh thu"];
+            if (revenue != null)
+            {
+                revenue.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                revenue.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+            }
+
+            ClearDashboardSelection();
+        }
+
+        private void ClearDashboardSelection()
+        {
+            // Run once after the form receives focus so binding does not select the first row again.
+            foreach (DataGridView grid in new DataGridView[] { dgvSuKienSapDien, dgvTopSuKien })
+            {
+                grid.ClearSelection();
+                grid.CurrentCell = null;
+            }
+        }
+
+        private void SetDashboardColumn(DataGridView grid, string name, int minimumWidth, int fillWeight)
+        {
+            DataGridViewColumn column = grid.Columns[name];
+            if (column == null) return;
+            column.MinimumWidth = Px(minimumWidth);
+            column.AutoSizeMode = fillWeight > 0 ? DataGridViewAutoSizeColumnMode.Fill : DataGridViewAutoSizeColumnMode.None;
+            if (fillWeight > 0) column.FillWeight = fillWeight;
+            else column.Width = Px(minimumWidth);
         }
 
         public void OpenChildForm(Form childForm, Guna.UI2.WinForms.Guna2Button btnActive)
@@ -230,6 +374,7 @@ namespace QuanLySuKienVaBanVe.GUI
             pnlContent.Controls.Add(childForm);
             childForm.BringToFront();
             childForm.Show();
+            resizeBox.BringToFront();
 
             ResetButtonColors();
             if (btnActive != null) { btnActive.FillColor = Color.FromArgb(16, 185, 129); btnActive.ForeColor = Color.White; }
@@ -251,6 +396,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (currentFormChild != null) { currentFormChild.Close(); currentFormChild = null; }
             if (pnlDashboard != null) { pnlDashboard.Visible = true; pnlDashboard.BringToFront(); }
+            LayoutDashboard();
             ResetButtonColors();
             if (btnTrangChu != null) { btnTrangChu.FillColor = Color.FromArgb(16, 185, 129); btnTrangChu.ForeColor = Color.White; }
             LoadDashboardData();
@@ -271,6 +417,11 @@ namespace QuanLySuKienVaBanVe.GUI
         private void btnKhuVuc_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Tính năng Quản lý Khu vực & Giá vé đang được phát triển!", "Thông báo");
+        }
+
+        private void chartDoanhThu_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
