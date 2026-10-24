@@ -10,6 +10,7 @@ namespace QuanLySuKienVaBanVe.GUI
 {
     public partial class FrmMain : Form
     {
+        public bool DangXuat { get; private set; }
         private Form currentFormChild;
         private System.Windows.Forms.Timer timerClock; // Khai báo Timer
         private Panel dashboardCanvas;
@@ -36,6 +37,8 @@ namespace QuanLySuKienVaBanVe.GUI
             InitializeComponent();
             this.DoubleBuffered = true;
             resizeBox.BringToFront();
+            if (btnDangXuat != null) btnDangXuat.Click += btnDangXuat_Click;
+            ApplyPhanQuyen();
 
             Shown += FrmMain_Shown;
             SizeChanged += (s, e) => { LayoutMainHeader(); LayoutSidebar(); LayoutDashboard(); };
@@ -147,11 +150,31 @@ namespace QuanLySuKienVaBanVe.GUI
             pnlSidebar.AutoScrollMinSize = new Size(0, linkTop + Px(140));
             int viewportWidth = sidebarWidth -
                 (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
-            foreach (Control link in new Control[] { btnTrangChu, btnSuKien, btnSuatDien,
-                btnKhachHang, btnKhuVuc, btnBanVe, btnDangXuat, btnCaiDat })
-                link.Width = viewportWidth;
-            btnDangXuat.SetBounds(0, linkTop, viewportWidth, Px(70));
-            btnCaiDat.SetBounds(0, linkTop + Px(70), viewportWidth, Px(70));
+            int currentY = Px(140);
+            Control[] navButtons = new Control[] { btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnKhuVuc, btnBanVe };
+            foreach (Control btn in navButtons)
+            {
+                if (btn != null)
+                {
+                    btn.Width = viewportWidth;
+                    if (btn.Visible)
+                    {
+                        btn.SetBounds(0, currentY, viewportWidth, Px(50));
+                        currentY += Px(60);
+                    }
+                }
+            }
+            btnDangXuat.Width = viewportWidth;
+            btnCaiDat.Width = viewportWidth;
+            if (btnCaiDat.Visible)
+            {
+                btnDangXuat.SetBounds(0, linkTop, viewportWidth, Px(70));
+                btnCaiDat.SetBounds(0, linkTop + Px(70), viewportWidth, Px(70));
+            }
+            else
+            {
+                btnDangXuat.SetBounds(0, linkTop + Px(70), viewportWidth, Px(70));
+            }
 
             bool compact = sidebarWidth < Px(220);
             if (compact != compactLogo)
@@ -404,24 +427,72 @@ namespace QuanLySuKienVaBanVe.GUI
 
         public void btnSuKien_Click(object sender, EventArgs e)
         {
+            if (!PhienDangNhap.LaQuanLy)
+            {
+                MessageBox.Show("Bạn không có quyền truy cập chức năng Quản lý Sự kiện!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
             OpenChildForm(new FrmQuanLySuKien(), btnSuKien);
         }
 
         public void btnSuatDien_Click(object sender, EventArgs e)
         {
+            if (!PhienDangNhap.LaQuanLy)
+            {
+                MessageBox.Show("Bạn không có quyền truy cập chức năng Quản lý Suất diễn!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
             OpenChildForm(new FrmQuanLySuatDien(), btnSuatDien);
         }
 
         private void btnKhuVuc_Click(object sender, EventArgs e)
         {
+            if (!PhienDangNhap.LaQuanLy)
+            {
+                MessageBox.Show("Bạn không có quyền truy cập chức năng Quản lý Khu vực & Giá vé!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             MessageBox.Show("Tính năng Quản lý Khu vực & Giá vé đang được phát triển!", "Thông báo");
         }
 
         private void chartDoanhThu_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void ApplyPhanQuyen()
+        {
+            if (PhienDangNhap.DaDangNhap)
+            {
+                var tk = PhienDangNhap.TaiKhoan;
+                if (lblUser != null)
+                {
+                    lblUser.Text = $"{tk.TenDangNhap} ({tk.VaiTro})";
+                }
+                bool laQuanLy = PhienDangNhap.LaQuanLy;
+
+                // Nhân viên chỉ được xem Bán vé, Khách hàng, Trang chủ
+                // Ẩn toàn bộ phân hệ Quản trị khỏi thanh điều hướng
+                if (btnSuKien != null) btnSuKien.Visible = laQuanLy;
+                if (btnSuatDien != null) btnSuatDien.Visible = laQuanLy;
+                if (btnKhuVuc != null) btnKhuVuc.Visible = laQuanLy;
+                if (btnCaiDat != null) btnCaiDat.Visible = laQuanLy;
+
+                LayoutSidebar();
+            }
+        }
+
+        private void btnDangXuat_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận đăng xuất",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                DangXuat = true;
+                PhienDangNhap.KetThuc();
+                Close();
+            }
         }
     }
 }
