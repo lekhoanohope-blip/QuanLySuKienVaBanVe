@@ -1,4 +1,4 @@
-﻿-- ==============================================================
+-- ==============================================================
 -- DE TAI 20: QUAN LY SU KIEN VA BAN VE
 -- Script 02: Du lieu mau khoi tao va Tai khoan demo
 -- ==============================================================
@@ -10,13 +10,13 @@ GO
 IF NOT EXISTS (SELECT 1 FROM TaiKhoan WHERE TenDangNhap = N'admin')
 BEGIN
     INSERT INTO TaiKhoan (TenDangNhap, MatKhau, VaiTro, TrangThai)
-    VALUES (N'admin', N'123456', N'QuanLy', 1);
+    VALUES (N'admin', N'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', N'QuanLy', 1);
 END
 
 IF NOT EXISTS (SELECT 1 FROM TaiKhoan WHERE TenDangNhap = N'staff')
 BEGIN
     INSERT INTO TaiKhoan (TenDangNhap, MatKhau, VaiTro, TrangThai)
-    VALUES (N'staff', N'123456', N'NhanVien', 1);
+    VALUES (N'staff', N'8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', N'NhanVien', 1);
 END
 GO
 

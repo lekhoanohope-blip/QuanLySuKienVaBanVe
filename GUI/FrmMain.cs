@@ -10,6 +10,7 @@ namespace QuanLySuKienVaBanVe.GUI
 {
     public partial class FrmMain : Form
     {
+        public bool DangXuat { get; private set; }
         private Form currentFormChild;
         private System.Windows.Forms.Timer timerClock; // Khai báo Timer
         private Panel dashboardCanvas;
@@ -36,6 +37,8 @@ namespace QuanLySuKienVaBanVe.GUI
             InitializeComponent();
             this.DoubleBuffered = true;
             resizeBox.BringToFront();
+            if (btnDangXuat != null) btnDangXuat.Click += btnDangXuat_Click;
+            ApplyPhanQuyen();
 
             Shown += FrmMain_Shown;
             SizeChanged += (s, e) => { LayoutMainHeader(); LayoutSidebar(); LayoutDashboard(); };
@@ -422,6 +425,31 @@ namespace QuanLySuKienVaBanVe.GUI
         private void chartDoanhThu_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void ApplyPhanQuyen()
+        {
+            if (PhienDangNhap.DaDangNhap)
+            {
+                var tk = PhienDangNhap.TaiKhoan;
+                if (lblUser != null)
+                {
+                    lblUser.Text = $"{tk.TenDangNhap} ({tk.VaiTro})";
+                }
+                bool laQuanLy = PhienDangNhap.LaQuanLy;
+                if (btnCaiDat != null) btnCaiDat.Visible = laQuanLy;
+            }
+        }
+
+        private void btnDangXuat_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận đăng xuất",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                DangXuat = true;
+                PhienDangNhap.KetThuc();
+                Close();
+            }
         }
     }
 }
