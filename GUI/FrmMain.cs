@@ -389,7 +389,16 @@ namespace QuanLySuKienVaBanVe.GUI
 
         public void OpenChildForm(Form childForm, Guna.UI2.WinForms.Guna2Button btnActive)
         {
-            if (currentFormChild != null) currentFormChild.Close();
+            if (currentFormChild != null)
+            {
+                currentFormChild.Close();
+                if (!currentFormChild.IsDisposed)
+                {
+                    childForm.Dispose();
+                    return;
+                }
+            }
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
             currentFormChild = childForm;
             childForm.TopLevel = false;
             childForm.FormBorderStyle = FormBorderStyle.None;
@@ -417,7 +426,12 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void btnTrangChu_Click(object sender, EventArgs e)
         {
-            if (currentFormChild != null) { currentFormChild.Close(); currentFormChild = null; }
+            if (currentFormChild != null)
+            {
+                currentFormChild.Close();
+                if (!currentFormChild.IsDisposed) return;
+                currentFormChild = null;
+            }
             if (pnlDashboard != null) { pnlDashboard.Visible = true; pnlDashboard.BringToFront(); }
             LayoutDashboard();
             ResetButtonColors();
@@ -445,6 +459,12 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
             OpenChildForm(new FrmQuanLySuatDien(), btnSuatDien);
+        }
+
+        private void btnKhachHang_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmKhachHang(), btnKhachHang);
         }
 
         private void btnKhuVuc_Click(object sender, EventArgs e)
@@ -484,11 +504,29 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (currentFormChild != null)
+            {
+                currentFormChild.Close();
+                if (!currentFormChild.IsDisposed)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+            }
+            base.OnFormClosing(e);
+        }
         private void btnDangXuat_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận đăng xuất",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
+                if (currentFormChild != null)
+                {
+                    currentFormChild.Close();
+                    if (!currentFormChild.IsDisposed) return;
+                }
                 DangXuat = true;
                 PhienDangNhap.KetThuc();
                 Close();

@@ -186,6 +186,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnKhachHang.TabIndex = 4;
             this.btnKhachHang.Text = "Khách hàng";
             this.btnKhachHang.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnKhachHang.Click += new System.EventHandler(this.btnKhachHang_Click);
             // 
             // btnSuatDien
             // 
