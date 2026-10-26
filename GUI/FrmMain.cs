@@ -151,7 +151,7 @@ namespace QuanLySuKienVaBanVe.GUI
             int viewportWidth = sidebarWidth -
                 (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
             int currentY = Px(140);
-            Control[] navButtons = new Control[] { btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnKhuVuc, btnBanVe };
+            Control[] navButtons = new Control[] { btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnKhuVuc, btnBanVe, btnDonVe };
             foreach (Control btn in navButtons)
             {
                 if (btn != null)
@@ -422,6 +422,7 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnKhuVuc != null) { btnKhuVuc.FillColor = defaultColor; btnKhuVuc.ForeColor = defaultTextColor; }
             if (btnKhachHang != null) { btnKhachHang.FillColor = defaultColor; btnKhachHang.ForeColor = defaultTextColor; }
             if (btnBanVe != null) { btnBanVe.FillColor = defaultColor; btnBanVe.ForeColor = defaultTextColor; }
+            if (btnDonVe != null) { btnDonVe.FillColor = defaultColor; btnDonVe.ForeColor = defaultTextColor; }
         }
 
         private void btnTrangChu_Click(object sender, EventArgs e)
@@ -477,6 +478,12 @@ namespace QuanLySuKienVaBanVe.GUI
             MessageBox.Show("Tính năng Quản lý Khu vực & Giá vé đang được phát triển!", "Thông báo");
         }
 
+        private void btnDonVe_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmQuanLyDonVe(), btnDonVe);
+        }
+
         private void chartDoanhThu_Click(object sender, EventArgs e)
         {
 
@@ -499,6 +506,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (btnSuatDien != null) btnSuatDien.Visible = laQuanLy;
                 if (btnKhuVuc != null) btnKhuVuc.Visible = laQuanLy;
                 if (btnCaiDat != null) btnCaiDat.Visible = laQuanLy;
+                if (btnDonVe != null) btnDonVe.Visible = true;
 
                 LayoutSidebar();
             }

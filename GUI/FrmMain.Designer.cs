@@ -28,6 +28,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnCaiDat = new Guna.UI2.WinForms.Guna2Button();
             this.btnKhuVuc = new Guna.UI2.WinForms.Guna2Button();
             this.btnBanVe = new Guna.UI2.WinForms.Guna2Button();
+            this.btnDonVe = new Guna.UI2.WinForms.Guna2Button();
             this.btnKhachHang = new Guna.UI2.WinForms.Guna2Button();
             this.btnSuatDien = new Guna.UI2.WinForms.Guna2Button();
             this.btnSuKien = new Guna.UI2.WinForms.Guna2Button();
@@ -108,6 +109,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlSidebar.Controls.Add(this.btnCaiDat);
             this.pnlSidebar.Controls.Add(this.btnKhuVuc);
             this.pnlSidebar.Controls.Add(this.btnBanVe);
+            this.pnlSidebar.Controls.Add(this.btnDonVe);
             this.pnlSidebar.Controls.Add(this.btnKhachHang);
             this.pnlSidebar.Controls.Add(this.btnSuatDien);
             this.pnlSidebar.Controls.Add(this.btnSuKien);
@@ -173,6 +175,20 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnBanVe.TabIndex = 5;
             this.btnBanVe.Text = "Bán vé";
             this.btnBanVe.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            // 
+            // btnDonVe
+            // 
+            this.btnDonVe.FillColor = System.Drawing.Color.Transparent;
+            this.btnDonVe.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnDonVe.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnDonVe.Location = new System.Drawing.Point(0, 500);
+            this.btnDonVe.Name = "btnDonVe";
+            this.btnDonVe.Padding = new System.Windows.Forms.Padding(20, 0, 0, 0);
+            this.btnDonVe.Size = new System.Drawing.Size(250, 50);
+            this.btnDonVe.TabIndex = 9;
+            this.btnDonVe.Text = "Đơn vé";
+            this.btnDonVe.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnDonVe.Click += new System.EventHandler(this.btnDonVe_Click);
             // 
             // btnKhachHang
             // 
@@ -949,6 +965,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private Guna.UI2.WinForms.Guna2Button btnKhachHang;
         private Guna.UI2.WinForms.Guna2Button btnKhuVuc;
         private Guna.UI2.WinForms.Guna2Button btnBanVe;
+        private Guna.UI2.WinForms.Guna2Button btnDonVe;
         private Guna.UI2.WinForms.Guna2Button btnCaiDat;
         private Guna.UI2.WinForms.Guna2Button btnDangXuat;
         private Guna.UI2.WinForms.Guna2Panel pnlHeader;
