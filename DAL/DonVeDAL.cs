@@ -54,6 +54,7 @@ namespace QuanLySuKienVaBanVe.DAL
                 INNER JOIN SuKien sk ON sd.MaSK = sk.MaSK
                 INNER JOIN TaiKhoan tk ON dv.MaTK = tk.MaTK
                 WHERE (@MaDon > 0 AND dv.MaDon = @MaDon)
+                   OR (kh.TenKH LIKE '%' + @TuKhoa + '%')
                    OR (kh.SDT LIKE @TienTo + '%')
                    OR (sk.TenSK LIKE '%' + @TuKhoa + '%')
                 ORDER BY dv.NgayDat DESC, dv.MaDon DESC;";
