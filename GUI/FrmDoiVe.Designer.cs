@@ -45,6 +45,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlChenhLech = new Guna.UI2.WinForms.Guna2Panel();
             this.lblPhuongThuc = new System.Windows.Forms.Label();
             this.cboPhuongThuc = new Guna.UI2.WinForms.Guna2ComboBox();
+            this.lblGiaCuHienThi = new System.Windows.Forms.Label();
             this.lblGiaMoiHienThi = new System.Windows.Forms.Label();
             this.lblKetQuaChenhLech = new System.Windows.Forms.Label();
             this.pnlActions = new System.Windows.Forms.FlowLayoutPanel();
@@ -86,7 +87,7 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             this.lblSubtitle.AutoSize = true;
             this.lblSubtitle.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblSubtitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
+            this.lblSubtitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
             this.lblSubtitle.Location = new System.Drawing.Point(2, 34);
             this.lblSubtitle.Name = "lblSubtitle";
             this.lblSubtitle.Size = new System.Drawing.Size(515, 15);
@@ -157,7 +158,7 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             this.lblVeCu.AutoSize = true;
             this.lblVeCu.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblVeCu.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(38)))), ((int)(((byte)(38)))));
+            this.lblVeCu.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(185)))), ((int)(((byte)(28)))), ((int)(((byte)(28)))));
             this.lblVeCu.Location = new System.Drawing.Point(260, 80);
             this.lblVeCu.Name = "lblVeCu";
             this.lblVeCu.Size = new System.Drawing.Size(63, 15);
@@ -278,10 +279,10 @@ namespace QuanLySuKienVaBanVe.GUI
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(244)))), ((int)(((byte)(246)))));
             dataGridViewCellStyle2.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            dataGridViewCellStyle2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(107)))), ((int)(((byte)(114)))), ((int)(((byte)(128)))));
+            dataGridViewCellStyle2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(65)))), ((int)(((byte)(81)))));
             dataGridViewCellStyle2.Padding = new System.Windows.Forms.Padding(12, 0, 12, 0);
             dataGridViewCellStyle2.SelectionBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(244)))), ((int)(((byte)(246)))));
-            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(107)))), ((int)(((byte)(114)))), ((int)(((byte)(128)))));
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(55)))), ((int)(((byte)(65)))), ((int)(((byte)(81)))));
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
             this.dgvGheTrong.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle2;
             this.dgvGheTrong.ColumnHeadersHeight = 36;
@@ -316,6 +317,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.dgvGheTrong.TabIndex = 0;
             this.dgvGheTrong.SelectionChanged += new System.EventHandler(this.dgvGheTrong_SelectionChanged);
             this.dgvGheTrong.CurrentCellChanged += new System.EventHandler(this.dgvGheTrong_CurrentCellChanged);
+            this.dgvGheTrong.MouseDown += new System.Windows.Forms.MouseEventHandler(this.dgvGheTrong_MouseDown);
             // 
             // colMaGhe
             // 
@@ -369,9 +371,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblPlaceholderNote.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblPlaceholderNote.Location = new System.Drawing.Point(16, 286);
             this.lblPlaceholderNote.Name = "lblPlaceholderNote";
-            this.lblPlaceholderNote.Size = new System.Drawing.Size(434, 13);
+            this.lblPlaceholderNote.Size = new System.Drawing.Size(0, 13);
             this.lblPlaceholderNote.TabIndex = 5;
-            this.lblPlaceholderNote.Text = "Chọn 1 ghế trống từ danh sách trên để xem tiền chênh lệch (Sẵn sàng tích hợp UcSoDoGhe TV1).";
+            this.lblPlaceholderNote.Text = "";
+            this.lblPlaceholderNote.Visible = false;
             // 
             // pnlChenhLech
             // 
@@ -381,20 +384,21 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlChenhLech.BorderThickness = 1;
             this.pnlChenhLech.Controls.Add(this.lblPhuongThuc);
             this.pnlChenhLech.Controls.Add(this.cboPhuongThuc);
+            this.pnlChenhLech.Controls.Add(this.lblGiaCuHienThi);
             this.pnlChenhLech.Controls.Add(this.lblGiaMoiHienThi);
             this.pnlChenhLech.Controls.Add(this.lblKetQuaChenhLech);
             this.pnlChenhLech.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlChenhLech.Location = new System.Drawing.Point(20, 506);
+            this.pnlChenhLech.Location = new System.Drawing.Point(20, 494);
             this.pnlChenhLech.Margin = new System.Windows.Forms.Padding(0, 8, 0, 0);
             this.pnlChenhLech.Name = "pnlChenhLech";
-            this.pnlChenhLech.Size = new System.Drawing.Size(684, 84);
+            this.pnlChenhLech.Size = new System.Drawing.Size(684, 96);
             this.pnlChenhLech.TabIndex = 3;
             // 
             // lblPhuongThuc
             // 
             this.lblPhuongThuc.AutoSize = true;
             this.lblPhuongThuc.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblPhuongThuc.Location = new System.Drawing.Point(16, 16);
+            this.lblPhuongThuc.Location = new System.Drawing.Point(16, 18);
             this.lblPhuongThuc.Name = "lblPhuongThuc";
             this.lblPhuongThuc.Size = new System.Drawing.Size(82, 15);
             this.lblPhuongThuc.TabIndex = 0;
@@ -410,31 +414,42 @@ namespace QuanLySuKienVaBanVe.GUI
             this.cboPhuongThuc.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.cboPhuongThuc.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(41)))), ((int)(((byte)(59)))));
             this.cboPhuongThuc.ItemHeight = 26;
-            this.cboPhuongThuc.Location = new System.Drawing.Point(16, 38);
+            this.cboPhuongThuc.Location = new System.Drawing.Point(16, 42);
             this.cboPhuongThuc.Name = "cboPhuongThuc";
             this.cboPhuongThuc.Size = new System.Drawing.Size(180, 32);
             this.cboPhuongThuc.TabIndex = 1;
+            // 
+            // lblGiaCuHienThi
+            // 
+            this.lblGiaCuHienThi.AutoSize = true;
+            this.lblGiaCuHienThi.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lblGiaCuHienThi.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(51)))), ((int)(((byte)(65)))), ((int)(((byte)(85)))));
+            this.lblGiaCuHienThi.Location = new System.Drawing.Point(220, 14);
+            this.lblGiaCuHienThi.Name = "lblGiaCuHienThi";
+            this.lblGiaCuHienThi.Size = new System.Drawing.Size(110, 17);
+            this.lblGiaCuHienThi.TabIndex = 2;
+            this.lblGiaCuHienThi.Text = "Giá vé cũ: 0 VNĐ";
             // 
             // lblGiaMoiHienThi
             // 
             this.lblGiaMoiHienThi.AutoSize = true;
             this.lblGiaMoiHienThi.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblGiaMoiHienThi.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
-            this.lblGiaMoiHienThi.Location = new System.Drawing.Point(230, 16);
+            this.lblGiaMoiHienThi.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(51)))), ((int)(((byte)(65)))), ((int)(((byte)(85)))));
+            this.lblGiaMoiHienThi.Location = new System.Drawing.Point(220, 38);
             this.lblGiaMoiHienThi.Name = "lblGiaMoiHienThi";
-            this.lblGiaMoiHienThi.Size = new System.Drawing.Size(147, 17);
-            this.lblGiaMoiHienThi.TabIndex = 2;
-            this.lblGiaMoiHienThi.Text = "Giá vé mới: Chưa chọn";
+            this.lblGiaMoiHienThi.Size = new System.Drawing.Size(160, 17);
+            this.lblGiaMoiHienThi.TabIndex = 3;
+            this.lblGiaMoiHienThi.Text = "Giá vé mới: Chưa chọn ghế";
             // 
             // lblKetQuaChenhLech
             // 
             this.lblKetQuaChenhLech.AutoSize = true;
-            this.lblKetQuaChenhLech.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.lblKetQuaChenhLech.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
-            this.lblKetQuaChenhLech.Location = new System.Drawing.Point(230, 42);
+            this.lblKetQuaChenhLech.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.lblKetQuaChenhLech.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
+            this.lblKetQuaChenhLech.Location = new System.Drawing.Point(220, 64);
             this.lblKetQuaChenhLech.Name = "lblKetQuaChenhLech";
-            this.lblKetQuaChenhLech.Size = new System.Drawing.Size(262, 21);
-            this.lblKetQuaChenhLech.TabIndex = 3;
+            this.lblKetQuaChenhLech.Size = new System.Drawing.Size(262, 20);
+            this.lblKetQuaChenhLech.TabIndex = 4;
             this.lblKetQuaChenhLech.Text = "Chênh lệch: Vui lòng chọn ghế mới";
             // 
             // pnlActions
@@ -452,10 +467,11 @@ namespace QuanLySuKienVaBanVe.GUI
             // btnXacNhan
             // 
             this.btnXacNhan.BorderRadius = 6;
-            this.btnXacNhan.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.btnXacNhan.Enabled = false;
+            this.btnXacNhan.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(21)))), ((int)(((byte)(128)))), ((int)(((byte)(61)))));
             this.btnXacNhan.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnXacNhan.ForeColor = System.Drawing.Color.White;
-            this.btnXacNhan.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(5)))), ((int)(((byte)(150)))), ((int)(((byte)(105)))));
+            this.btnXacNhan.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(22)))), ((int)(((byte)(101)))), ((int)(((byte)(52)))));
             this.btnXacNhan.Location = new System.Drawing.Point(524, 13);
             this.btnXacNhan.Name = "btnXacNhan";
             this.btnXacNhan.Size = new System.Drawing.Size(160, 38);
@@ -488,7 +504,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(724, 662);
+            this.ClientSize = new System.Drawing.Size(724, 674);
             this.Controls.Add(this.grpChonMoi);
             this.Controls.Add(this.pnlChenhLech);
             this.Controls.Add(this.pnlActions);
@@ -545,6 +561,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private Guna.UI2.WinForms.Guna2Panel pnlChenhLech;
         private System.Windows.Forms.Label lblPhuongThuc;
         private Guna.UI2.WinForms.Guna2ComboBox cboPhuongThuc;
+        private System.Windows.Forms.Label lblGiaCuHienThi;
         private System.Windows.Forms.Label lblGiaMoiHienThi;
         private System.Windows.Forms.Label lblKetQuaChenhLech;
         private System.Windows.Forms.FlowLayoutPanel pnlActions;

@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using QuanLySuKienVaBanVe.BLL;
 using QuanLySuKienVaBanVe.DTO;
@@ -15,6 +16,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private int? maGheMoiDuocChon;
         private decimal giaVeMoiDuocChon;
         private string maGheHienThiMoi;
+        private bool dangDoiVe = false;
 
         public int MaDonMoiDaTao { get; private set; }
 
@@ -54,6 +56,7 @@ namespace QuanLySuKienVaBanVe.GUI
             lblSuatCu.Text = $"Suất diễn: {tgBatDau:dd/MM/yyyy HH:mm}";
             lblVeCu.Text = $"Ghế cũ: {veCu.MaGheHienThi} - {veCu.TenKV} ({veCu.HangVe})";
             lblGiaCu.Text = $"Giá vé cũ: {veCu.GiaVe:N0} VNĐ";
+            lblGiaCuHienThi.Text = $"Giá vé cũ: {veCu.GiaVe:N0} VNĐ";
         }
 
         private void KhoiTaoPhuongThucThanhToan()
@@ -161,6 +164,7 @@ namespace QuanLySuKienVaBanVe.GUI
             }
 
             dgvGheTrong.ClearSelection();
+            dgvGheTrong.CurrentCell = null;
             CapNhatThongTinGheMoi(null, 0, string.Empty);
         }
 
@@ -205,43 +209,59 @@ namespace QuanLySuKienVaBanVe.GUI
             DongBoGheDangChon();
         }
 
+        private void dgvGheTrong_MouseDown(object sender, MouseEventArgs e)
+        {
+            var hit = dgvGheTrong.HitTest(e.X, e.Y);
+            if (hit.Type == DataGridViewHitTestType.None)
+            {
+                dgvGheTrong.ClearSelection();
+                dgvGheTrong.CurrentCell = null;
+                DongBoGheDangChon();
+            }
+        }
+
         private void CapNhatThongTinGheMoi(int? maGhe, decimal giaVe, string tenHienThi)
         {
             maGheMoiDuocChon = maGhe;
             giaVeMoiDuocChon = giaVe;
             maGheHienThiMoi = tenHienThi;
 
+            btnXacNhan.Enabled = !dangDoiVe && maGhe.HasValue;
+
             if (maGhe.HasValue)
             {
-                lblGiaMoiHienThi.Text = string.Format("Vị trí mới: {0} | Giá: {1:N0} VNĐ", tenHienThi, giaVe);
-                decimal delta = DonVeBLL.TinhChenhLech(veCu.GiaVe, giaVe);
+                lblGiaMoiHienThi.Text = string.Format("Giá vé mới: {0:N0} VNĐ ({1})", giaVe, tenHienThi);
+                decimal giaVeCu = veCu != null ? veCu.GiaVe : 0;
+                decimal delta = DonVeBLL.TinhChenhLech(giaVeCu, giaVe);
 
                 if (delta > 0)
                 {
-                    lblKetQuaChenhLech.ForeColor = Color.FromArgb(220, 38, 38);
+                    lblKetQuaChenhLech.ForeColor = Color.FromArgb(185, 28, 28);
                     lblKetQuaChenhLech.Text = string.Format("Chênh lệch: +{0:N0} VNĐ (Khách thanh toán thêm)", delta);
                 }
                 else if (delta == 0)
                 {
-                    lblKetQuaChenhLech.ForeColor = Color.FromArgb(16, 185, 129);
+                    lblKetQuaChenhLech.ForeColor = Color.FromArgb(22, 101, 52);
                     lblKetQuaChenhLech.Text = "Chênh lệch: 0 VNĐ (Đổi ngang giá, không thu thêm)";
                 }
                 else
                 {
-                    lblKetQuaChenhLech.ForeColor = Color.FromArgb(37, 99, 235);
+                    lblKetQuaChenhLech.ForeColor = Color.FromArgb(30, 64, 175);
                     lblKetQuaChenhLech.Text = string.Format("Chênh lệch: {0:N0} VNĐ (Hoàn lại tiền cho khách)", delta);
                 }
             }
             else
             {
                 lblGiaMoiHienThi.Text = "Giá vé mới: Chưa chọn ghế";
-                lblKetQuaChenhLech.ForeColor = Color.FromArgb(100, 116, 139);
-                lblKetQuaChenhLech.Text = "Chênh lệch: Vui lòng chọn ghế mới từ danh sách";
+                lblKetQuaChenhLech.ForeColor = Color.FromArgb(71, 85, 105);
+                lblKetQuaChenhLech.Text = "Chênh lệch: Vui lòng chọn ghế mới";
             }
         }
 
-        private void btnXacNhan_Click(object sender, EventArgs e)
+        private async void btnXacNhan_Click(object sender, EventArgs e)
         {
+            if (dangDoiVe) return;
+
             DongBoGheDangChon();
             errorProvider.Clear();
 
@@ -255,12 +275,18 @@ namespace QuanLySuKienVaBanVe.GUI
             int maDonCu = Convert.ToInt32(donVeRow["MaDon"]);
             int maGheMoi = maGheMoiDuocChon.Value;
             string phuongThuc = ((ComboBoxItem)cboPhuongThuc.SelectedItem)?.Value?.ToString() ?? PhuongThucThanhToan.TienMat;
-            decimal delta = DonVeBLL.TinhChenhLech(veCu.GiaVe, giaVeMoiDuocChon);
+            decimal giaVeCu = veCu != null ? veCu.GiaVe : 0;
+            decimal delta = DonVeBLL.TinhChenhLech(giaVeCu, giaVeMoiDuocChon);
+            int maCTCu = veCu != null ? veCu.MaCT : 0;
+            string maGheCuHienThi = veCu != null ? veCu.MaGheHienThi : "";
+            decimal giaCu = giaVeCu;
+            string tenGheMoi = maGheHienThiMoi;
+            decimal giaMoi = giaVeMoiDuocChon;
 
             string loiNhan = string.Format(
                 "Xác nhận đổi vé #{0} ({1} - {2:N0} VNĐ)\nsang ghế mới: {3} ({4:N0} VNĐ)?\n\nChênh lệch: {5:N0} VNĐ ({6})",
-                veCu.MaCT, veCu.MaGheHienThi, veCu.GiaVe,
-                maGheHienThiMoi, giaVeMoiDuocChon,
+                maCTCu, maGheCuHienThi, giaCu,
+                tenGheMoi, giaMoi,
                 delta,
                 delta > 0 ? "Khách thanh toán thêm" : delta < 0 ? "Hoàn lại cho khách" : "Đổi ngang");
 
@@ -269,22 +295,34 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
+            dangDoiVe = true;
+            string originalText = btnXacNhan.Text;
             try
             {
                 UseWaitCursor = true;
                 btnXacNhan.Enabled = false;
+                btnXacNhan.Text = "Đang đổi vé...";
+                btnDong.Enabled = false;
+                dgvGheTrong.Enabled = false;
+                cboSuatMoi.Enabled = false;
+                cboKhuVucMoi.Enabled = false;
+                cboPhuongThuc.Enabled = false;
 
-                DonVeResult result = DonVeBLL.DoiVe(maDonCu, veCu.MaCT, maGheMoi, 0, phuongThuc);
+                int maTK = PhienDangNhap.DaDangNhap ? PhienDangNhap.TaiKhoan.MaTK : 0;
+                DonVeResult result = await Task.Run(() => DonVeBLL.DoiVe(maDonCu, maCTCu, maGheMoi, maTK, phuongThuc));
                 if (result.Success)
                 {
                     MaDonMoiDaTao = result.MaDonMoi ?? 0;
                     MessageBox.Show(this, result.Message, "Đổi vé thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    dangDoiVe = false;
                     DialogResult = DialogResult.OK;
                     Close();
+                    return;
                 }
                 else
                 {
                     MessageBox.Show(this, result.Message, "Không thể đổi vé", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    LoadGheTrongTheoSuat();
                 }
             }
             catch (Exception ex)
@@ -293,9 +331,29 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             finally
             {
-                UseWaitCursor = false;
-                btnXacNhan.Enabled = true;
+                dangDoiVe = false;
+                if (!IsDisposed)
+                {
+                    UseWaitCursor = false;
+                    btnXacNhan.Text = originalText;
+                    btnXacNhan.Enabled = maGheMoiDuocChon.HasValue;
+                    btnDong.Enabled = true;
+                    dgvGheTrong.Enabled = true;
+                    cboSuatMoi.Enabled = true;
+                    cboKhuVucMoi.Enabled = true;
+                    cboPhuongThuc.Enabled = true;
+                }
             }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (dangDoiVe)
+            {
+                e.Cancel = true;
+                return;
+            }
+            base.OnFormClosing(e);
         }
 
         private void btnDong_Click(object sender, EventArgs e)
