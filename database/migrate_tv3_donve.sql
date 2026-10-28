@@ -88,27 +88,6 @@ ELSE
     WHERE TenSK LIKE '%TV3-Test%';
 GO
 
--- Don dep cac suat test vo tinh tao nham duoi su kien khac (neu co)
-DECLARE @MaSK_Chuan INT = (SELECT TOP 1 MaSK FROM SuKien WHERE TenSK LIKE '%TV3-Test%');
-IF @MaSK_Chuan IS NOT NULL
-BEGIN
-    DECLARE @SuatNham TABLE (MaSuat INT);
-    INSERT INTO @SuatNham (MaSuat)
-    SELECT MaSuat FROM SuatDien 
-    WHERE MaSK != @MaSK_Chuan AND (DiaDiem LIKE '%72h%' OR DiaDiem LIKE '%18h%' OR DiaDiem LIKE '%6h%');
-
-    IF EXISTS (SELECT 1 FROM @SuatNham)
-    BEGIN
-        DELETE FROM ThanhToan WHERE MaDon IN (SELECT MaDon FROM DonVe WHERE MaSuat IN (SELECT MaSuat FROM @SuatNham));
-        DELETE FROM ChiTietVe WHERE MaDon IN (SELECT MaDon FROM DonVe WHERE MaSuat IN (SELECT MaSuat FROM @SuatNham));
-        DELETE FROM DonVe WHERE MaDonGoc IS NOT NULL AND MaSuat IN (SELECT MaSuat FROM @SuatNham);
-        DELETE FROM DonVe WHERE MaSuat IN (SELECT MaSuat FROM @SuatNham);
-        DELETE FROM Ghe WHERE MaKV IN (SELECT MaKV FROM KhuVuc WHERE MaSuat IN (SELECT MaSuat FROM @SuatNham));
-        DELETE FROM KhuVuc WHERE MaSuat IN (SELECT MaSuat FROM @SuatNham);
-        DELETE FROM SuatDien WHERE MaSuat IN (SELECT MaSuat FROM @SuatNham);
-    END
-END
-GO
 
 DECLARE @MaSK_Test INT = (SELECT TOP 1 MaSK FROM SuKien WHERE TenSK LIKE '%TV3-Test%');
 

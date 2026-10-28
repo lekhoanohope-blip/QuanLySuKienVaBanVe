@@ -121,6 +121,7 @@ namespace QuanLySuKienVaBanVe.DAL
                 INNER JOIN SuKien sk ON sd.MaSK = sk.MaSK
                 WHERE sd.MaSK = @MaSK
                   AND sd.ThoiGianBatDau > GETDATE()
+                  AND sd.TrangThai = N'MoCuaBanVe'
                 ORDER BY sd.ThoiGianBatDau ASC;";
 
             SqlParameter[] parameters = {
@@ -230,7 +231,8 @@ namespace QuanLySuKienVaBanVe.DAL
         }
 
         /// <summary>
-        /// Cập nhật trạng thái tất cả ghế trong đơn về 'Trong' hoặc trạng thái chỉ định.
+        /// Cập nhật trạng thái các ghế thuộc vé hợp lệ (HopLe) trong đơn về 'Trong' hoặc trạng thái chỉ định.
+        /// Chỉ giải phóng các ghế của vé còn HopLe và chưa bị đơn khác bán lại (ngăn ngừa giải phóng nhầm ghế đã đổi và bán lại).
         /// TODO [Tích hợp TV1]: Sau này có thể thay bằng GheDAL.CapNhatTrangThai khi TV1 bàn giao GheDAL.
         /// </summary>
         public static int CapNhatTrangThaiGheTheoDon(int maDon, string trangThaiGhe, SqlConnection conn, SqlTransaction tran)
@@ -238,7 +240,16 @@ namespace QuanLySuKienVaBanVe.DAL
             string query = @"
                 UPDATE Ghe
                 SET TrangThai = @TrangThaiGhe, ThoiGianGiu = NULL
-                WHERE MaGhe IN (SELECT MaGhe FROM ChiTietVe WHERE MaDon = @MaDon);";
+                WHERE MaGhe IN (
+                    SELECT MaGhe FROM ChiTietVe 
+                    WHERE MaDon = @MaDon AND TrangThai = N'HopLe'
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM ChiTietVe ct2 
+                    WHERE ct2.MaGhe = Ghe.MaGhe 
+                      AND ct2.TrangThai = N'HopLe' 
+                      AND ct2.MaDon != @MaDon
+                );";
 
             SqlParameter[] parameters = {
                 new SqlParameter("@TrangThaiGhe", SqlDbType.NVarChar, 30) { Value = trangThaiGhe },

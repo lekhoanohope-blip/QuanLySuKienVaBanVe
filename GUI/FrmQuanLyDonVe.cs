@@ -160,7 +160,26 @@ namespace QuanLySuKienVaBanVe.GUI
             CapNhatTrangThaiNutThaoTac();
         }
 
+        private DataGridViewRow LayDongDonVeDangChon()
+        {
+            if (dgvDonVe.SelectedRows.Count > 0)
+            {
+                return dgvDonVe.SelectedRows[0];
+            }
+            if (dgvDonVe.CurrentRow != null && dgvDonVe.CurrentRow.Selected)
+            {
+                return dgvDonVe.CurrentRow;
+            }
+            return dgvDonVe.CurrentRow;
+        }
+
         private async void dgvDonVe_SelectionChanged(object sender, EventArgs e)
+        {
+            if (loading) return;
+            await LoadChiTietVeAsync();
+        }
+
+        private async void dgvDonVe_CurrentCellChanged(object sender, EventArgs e)
         {
             if (loading) return;
             await LoadChiTietVeAsync();
@@ -168,9 +187,14 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private async Task LoadChiTietVeAsync()
         {
-            if (dgvDonVe.CurrentRow == null || dgvDonVe.CurrentRow.Index < 0 || loading)
+            var row = LayDongDonVeDangChon();
+            if (row == null || row.Index < 0 || loading)
             {
+                detailRequestVersion++;
                 dgvChiTietVe.DataSource = null;
+                lblDetailTitle.Text = "CHI TIẾT VÉ TRONG ĐƠN: (Trống)";
+                lblRuleBadge.Text = "Vui lòng chọn một đơn vé trong danh sách để xem chi tiết.";
+                lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
                 CapNhatTrangThaiNutThaoTac();
                 return;
             }
@@ -180,7 +204,6 @@ namespace QuanLySuKienVaBanVe.GUI
             dgvChiTietVe.DataSource = null;
             CapNhatTrangThaiNutThaoTac();
 
-            var row = dgvDonVe.CurrentRow;
             int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
             string trangThai = row.Cells["colTrangThai"].Value?.ToString() ?? "";
             DateTime thoiGianBatDau = Convert.ToDateTime(row.Cells["colThoiGianBatDau"].Value);
@@ -228,9 +251,12 @@ namespace QuanLySuKienVaBanVe.GUI
                 DataTable dtCT = await Task.Run(() => DonVeBLL.LayChiTietVeTheoDon(maDon));
                 if (IsDisposed || version != detailRequestVersion) return;
 
-                // Kiểm tra xem dgvDonVe vẫn đang trỏ đúng maDon này
-                if (dgvDonVe.CurrentRow == null || Convert.ToInt32(dgvDonVe.CurrentRow.Cells["colMaDon"].Value) != maDon)
+                // Kiểm tra xem dòng đang chọn hiện tại có còn là maDon này không
+                var currentRow = LayDongDonVeDangChon();
+                if (currentRow == null || currentRow.Index < 0 || Convert.ToInt32(currentRow.Cells["colMaDon"].Value) != maDon)
                 {
+                    // Dòng hiện tại đã đổi trong khi đang tải -> Kích hoạt tải đơn mới ngay
+                    _ = LoadChiTietVeAsync();
                     return;
                 }
 
@@ -266,7 +292,8 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void CapNhatTrangThaiNutThaoTac()
         {
-            bool coDonChon = !loading && !loadingDetail && dgvDonVe.CurrentRow != null && dgvDonVe.CurrentRow.Index >= 0;
+            var row = LayDongDonVeDangChon();
+            bool coDonChon = !loading && !loadingDetail && row != null && row.Index >= 0;
             if (!coDonChon)
             {
                 btnHuyVe.Enabled = false;
@@ -274,7 +301,6 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
-            var row = dgvDonVe.CurrentRow;
             int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
             string trangThai = row.Cells["colTrangThai"].Value?.ToString() ?? "";
             DateTime thoiGianBatDau = Convert.ToDateTime(row.Cells["colThoiGianBatDau"].Value);
@@ -307,9 +333,9 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private async void btnHuyVe_Click(object sender, EventArgs e)
         {
-            if (dgvDonVe.CurrentRow == null) return;
+            var row = LayDongDonVeDangChon();
+            if (row == null || row.Index < 0) return;
 
-            var row = dgvDonVe.CurrentRow;
             int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
             string tenKH = row.Cells["colTenKH"].Value?.ToString() ?? "";
             string sdt = row.Cells["colSDT"].Value?.ToString() ?? "";
@@ -360,8 +386,8 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private async void btnDoiVe_Click(object sender, EventArgs e)
         {
-            if (dgvDonVe.CurrentRow == null) return;
-            var row = dgvDonVe.CurrentRow;
+            var row = LayDongDonVeDangChon();
+            if (row == null || row.Index < 0) return;
             int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
 
             DonVeResult check = DonVeBLL.KiemTraDieuKienDoi(maDon);

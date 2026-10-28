@@ -315,6 +315,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.dgvGheTrong.Size = new System.Drawing.Size(652, 192);
             this.dgvGheTrong.TabIndex = 0;
             this.dgvGheTrong.SelectionChanged += new System.EventHandler(this.dgvGheTrong_SelectionChanged);
+            this.dgvGheTrong.CurrentCellChanged += new System.EventHandler(this.dgvGheTrong_CurrentCellChanged);
             // 
             // colMaGhe
             // 

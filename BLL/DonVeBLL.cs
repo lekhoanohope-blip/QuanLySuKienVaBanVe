@@ -276,11 +276,12 @@ namespace QuanLySuKienVaBanVe.BLL
                         // 2. Chuyển trạng thái đơn vé sang 'DaHuy'
                         DonVeDAL.CapNhatTrangThai(maDon, TrangThaiDonVe.DaHuy, conn, tran);
 
-                        // 3. Chuyển trạng thái tất cả vé trong đơn sang 'DaHuy'
-                        ChiTietVeDAL.CapNhatTrangThaiTheoDon(maDon, TrangThaiChiTietVe.DaHuy, conn, tran);
-
-                        // 4. Giải phóng ghế về trạng thái 'Trong'
+                        // 3. Giải phóng ghế của các vé đang 'HopLe' trong đơn về trạng thái 'Trong'
+                        // (Thực hiện trước khi đổi trạng thái ChiTietVe sang 'DaHuy' để chỉ giải phóng đúng ghế còn hiệu lực, tránh giải phóng ghế đã đổi và bán lại)
                         DonVeDAL.CapNhatTrangThaiGheTheoDon(maDon, "Trong", conn, tran);
+
+                        // 4. Chuyển trạng thái tất cả vé trong đơn sang 'DaHuy'
+                        ChiTietVeDAL.CapNhatTrangThaiTheoDon(maDon, TrangThaiChiTietVe.DaHuy, conn, tran);
 
                         // 5. Ghi nhật ký kiểm toán hệ thống
                         if (maTK > 0)
@@ -418,6 +419,13 @@ namespace QuanLySuKienVaBanVe.BLL
                         {
                             tran.Rollback();
                             return DonVeResult.Fail("Suất diễn của vị trí ghế mới đã bắt đầu hoặc kết thúc.", maDonCu);
+                        }
+
+                        string trangThaiSuatMoi = rowGheMoi["TrangThaiSuat"]?.ToString() ?? string.Empty;
+                        if (trangThaiSuatMoi != "MoCuaBanVe")
+                        {
+                            tran.Rollback();
+                            return DonVeResult.Fail("Suất diễn của vị trí ghế mới đã đóng bán hoặc không trong trạng thái mở bán vé.", maDonCu);
                         }
 
                         // 4. Tính chênh lệch

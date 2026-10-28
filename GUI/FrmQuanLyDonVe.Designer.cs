@@ -263,6 +263,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.dgvDonVe.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.dgvDonVe_CellPainting);
             this.dgvDonVe.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dgvDonVe_CellFormatting);
             this.dgvDonVe.SelectionChanged += new System.EventHandler(this.dgvDonVe_SelectionChanged);
+            this.dgvDonVe.CurrentCellChanged += new System.EventHandler(this.dgvDonVe_CurrentCellChanged);
             // 
             // colMaDon
             // 

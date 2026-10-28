@@ -164,11 +164,24 @@ namespace QuanLySuKienVaBanVe.GUI
             CapNhatThongTinGheMoi(null, 0, string.Empty);
         }
 
-        private void dgvGheTrong_SelectionChanged(object sender, EventArgs e)
+        private DataGridViewRow LayDongGheDangChon()
         {
-            if (dgvGheTrong.CurrentRow != null && dgvGheTrong.CurrentRow.Index >= 0)
+            if (dgvGheTrong.SelectedRows.Count > 0)
             {
-                var row = dgvGheTrong.CurrentRow;
+                return dgvGheTrong.SelectedRows[0];
+            }
+            if (dgvGheTrong.CurrentRow != null && dgvGheTrong.CurrentRow.Selected)
+            {
+                return dgvGheTrong.CurrentRow;
+            }
+            return null;
+        }
+
+        private void DongBoGheDangChon()
+        {
+            var row = LayDongGheDangChon();
+            if (row != null && row.Index >= 0 && row.Cells["colMaGhe"].Value != null && row.Cells["colMaGhe"].Value != DBNull.Value)
+            {
                 int maGhe = Convert.ToInt32(row.Cells["colMaGhe"].Value);
                 decimal giaVe = Convert.ToDecimal(row.Cells["colGiaVe"].Value);
                 string hienThi = row.Cells["colMaGheHienThi"].Value?.ToString() ?? "";
@@ -180,6 +193,16 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 CapNhatThongTinGheMoi(null, 0, string.Empty);
             }
+        }
+
+        private void dgvGheTrong_SelectionChanged(object sender, EventArgs e)
+        {
+            DongBoGheDangChon();
+        }
+
+        private void dgvGheTrong_CurrentCellChanged(object sender, EventArgs e)
+        {
+            DongBoGheDangChon();
         }
 
         private void CapNhatThongTinGheMoi(int? maGhe, decimal giaVe, string tenHienThi)
@@ -219,6 +242,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void btnXacNhan_Click(object sender, EventArgs e)
         {
+            DongBoGheDangChon();
             errorProvider.Clear();
 
             if (!maGheMoiDuocChon.HasValue || maGheMoiDuocChon.Value <= 0)
