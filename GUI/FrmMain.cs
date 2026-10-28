@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using QuanLySuKienVaBanVe.BLL;
+using QuanLySuKienVaBanVe.DTO;
 
 namespace QuanLySuKienVaBanVe.GUI
 {
@@ -124,6 +125,11 @@ namespace QuanLySuKienVaBanVe.GUI
         private void LayoutMainHeader()
         {
             if (pnlHeader == null || txtTimKiem == null) return;
+            if (currentFormChild is FrmQuanLyDonVe)
+            {
+                txtTimKiem.Visible = false;
+                return;
+            }
             int gap = Px(16);
             bool showUser = pnlHeader.ClientSize.Width >= Px(540);
             lblUser.Visible = showUser;
@@ -410,6 +416,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
             ResetButtonColors();
             if (btnActive != null) { btnActive.FillColor = Color.FromArgb(16, 185, 129); btnActive.ForeColor = Color.White; }
+            LayoutMainHeader();
         }
 
         private void ResetButtonColors()
@@ -435,6 +442,7 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             if (pnlDashboard != null) { pnlDashboard.Visible = true; pnlDashboard.BringToFront(); }
             LayoutDashboard();
+            LayoutMainHeader();
             ResetButtonColors();
             if (btnTrangChu != null) { btnTrangChu.FillColor = Color.FromArgb(16, 185, 129); btnTrangChu.ForeColor = Color.White; }
             LoadDashboardData();
@@ -496,7 +504,8 @@ namespace QuanLySuKienVaBanVe.GUI
                 var tk = PhienDangNhap.TaiKhoan;
                 if (lblUser != null)
                 {
-                    lblUser.Text = $"{tk.TenDangNhap} ({tk.VaiTro})";
+                    string vaiTroHienThi = tk.VaiTro == VaiTro.QuanLy ? "Quản lý" : (tk.VaiTro == VaiTro.NhanVien ? "Nhân viên" : tk.VaiTro);
+                    lblUser.Text = $"{tk.TenDangNhap} ({vaiTroHienThi})";
                 }
                 bool laQuanLy = PhienDangNhap.LaQuanLy;
 

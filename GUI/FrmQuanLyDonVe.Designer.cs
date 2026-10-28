@@ -23,8 +23,11 @@ namespace QuanLySuKienVaBanVe.GUI
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
             this.pnlTitle = new System.Windows.Forms.Panel();
+            this.pnlPageContent = new System.Windows.Forms.Panel();
             this.lblTitle = new System.Windows.Forms.Label();
             this.pnlHeader = new Guna.UI2.WinForms.Guna2Panel();
+            this.lblTimKiem = new System.Windows.Forms.Label();
+            this.lblLocTrangThai = new System.Windows.Forms.Label();
             this.txtTimKiem = new Guna.UI2.WinForms.Guna2TextBox();
             this.cboLocTrangThai = new Guna.UI2.WinForms.Guna2ComboBox();
             this.btnDoiVe = new Guna.UI2.WinForms.Guna2Button();
@@ -43,6 +46,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.colTrangThai = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.pnlMasterHeader = new System.Windows.Forms.Panel();
             this.lblMasterTitle = new System.Windows.Forms.Label();
+            this.lblDonVeTomTat = new System.Windows.Forms.Label();
             this.pnlDetailCard = new Guna.UI2.WinForms.Guna2Panel();
             this.dgvChiTietVe = new Guna.UI2.WinForms.Guna2DataGridView();
             this.colMaCT = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -53,14 +57,16 @@ namespace QuanLySuKienVaBanVe.GUI
             this.colGiaVe = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colTrangThaiVe = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.pnlDetailHeader = new System.Windows.Forms.Panel();
-            this.lblRuleBadge = new System.Windows.Forms.Label();
             this.lblDetailTitle = new System.Windows.Forms.Label();
+            this.pnlRuleBanner = new System.Windows.Forms.Panel();
+            this.lblRuleBadge = new System.Windows.Forms.Label();
             this.pnlFooter = new System.Windows.Forms.TableLayoutPanel();
             this.lblCount = new System.Windows.Forms.Label();
             this.btnLamMoi = new Guna.UI2.WinForms.Guna2Button();
             this.lblSearchHint = new System.Windows.Forms.Label();
             this.searchTimer = new System.Windows.Forms.Timer(this.components);
             this.pnlTitle.SuspendLayout();
+            this.pnlPageContent.SuspendLayout();
             this.pnlHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).BeginInit();
             this.splitContainer.Panel1.SuspendLayout();
@@ -72,20 +78,21 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlDetailCard.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvChiTietVe)).BeginInit();
             this.pnlDetailHeader.SuspendLayout();
+            this.pnlRuleBanner.SuspendLayout();
             this.pnlFooter.SuspendLayout();
             this.SuspendLayout();
-            // 
+            //
             // pnlTitle
-            // 
+            //
             this.pnlTitle.Controls.Add(this.lblTitle);
             this.pnlTitle.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlTitle.Location = new System.Drawing.Point(24, 16);
             this.pnlTitle.Name = "pnlTitle";
             this.pnlTitle.Size = new System.Drawing.Size(952, 44);
             this.pnlTitle.TabIndex = 0;
-            // 
+            //
             // lblTitle
-            // 
+            //
             this.lblTitle.AutoSize = true;
             this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
             this.lblTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(41)))), ((int)(((byte)(59)))));
@@ -94,21 +101,33 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblTitle.Size = new System.Drawing.Size(325, 32);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "Quản lý Đơn vé & Hủy / Đổi";
-            // 
+            //
             // pnlHeader
-            // 
+            //
             this.pnlHeader.Controls.Add(this.txtTimKiem);
+            this.pnlHeader.Controls.Add(this.lblTimKiem);
+            this.pnlHeader.Controls.Add(this.lblLocTrangThai);
             this.pnlHeader.Controls.Add(this.cboLocTrangThai);
-            this.pnlHeader.Controls.Add(this.btnDoiVe);
             this.pnlHeader.Controls.Add(this.btnHuyVe);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Location = new System.Drawing.Point(24, 60);
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Size = new System.Drawing.Size(952, 64);
             this.pnlHeader.TabIndex = 1;
-            // 
+            //
+            // Persistent labels remain visible when a search value is entered.
+            //
+            this.lblTimKiem.Name = "lblTimKiem";
+            this.lblTimKiem.Text = "Tìm đơn vé";
+            this.lblTimKiem.ForeColor = System.Drawing.Color.FromArgb(51, 65, 85);
+            this.lblTimKiem.TabStop = false;
+            this.lblLocTrangThai.Name = "lblLocTrangThai";
+            this.lblLocTrangThai.Text = "Trạng thái";
+            this.lblLocTrangThai.ForeColor = System.Drawing.Color.FromArgb(51, 65, 85);
+            this.lblLocTrangThai.TabStop = false;
+            //
             // txtTimKiem
-            // 
+            //
             this.txtTimKiem.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(209)))), ((int)(((byte)(213)))), ((int)(((byte)(219)))));
             this.txtTimKiem.BorderRadius = 8;
             this.txtTimKiem.Cursor = System.Windows.Forms.Cursors.IBeam;
@@ -119,13 +138,13 @@ namespace QuanLySuKienVaBanVe.GUI
             this.txtTimKiem.Location = new System.Drawing.Point(0, 14);
             this.txtTimKiem.Name = "txtTimKiem";
             this.txtTimKiem.PlaceholderForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
-            this.txtTimKiem.PlaceholderText = "Tìm theo mã đơn (#10) hoặc số điện thoại…";
-            this.txtTimKiem.Size = new System.Drawing.Size(320, 36);
+            this.txtTimKiem.PlaceholderText = "Tìm theo mã đơn, tên khách, SĐT, sự kiện...";
+            this.txtTimKiem.Size = new System.Drawing.Size(350, 36);
             this.txtTimKiem.TabIndex = 0;
             this.txtTimKiem.TextChanged += new System.EventHandler(this.txtTimKiem_TextChanged);
-            // 
+            //
             // cboLocTrangThai
-            // 
+            //
             this.cboLocTrangThai.BackColor = System.Drawing.Color.Transparent;
             this.cboLocTrangThai.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(209)))), ((int)(((byte)(213)))), ((int)(((byte)(219)))));
             this.cboLocTrangThai.BorderRadius = 6;
@@ -134,65 +153,49 @@ namespace QuanLySuKienVaBanVe.GUI
             this.cboLocTrangThai.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.cboLocTrangThai.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(41)))), ((int)(((byte)(59)))));
             this.cboLocTrangThai.ItemHeight = 30;
-            this.cboLocTrangThai.Location = new System.Drawing.Point(330, 14);
+            this.cboLocTrangThai.Location = new System.Drawing.Point(360, 14);
             this.cboLocTrangThai.Name = "cboLocTrangThai";
             this.cboLocTrangThai.Size = new System.Drawing.Size(180, 36);
             this.cboLocTrangThai.TabIndex = 1;
             this.cboLocTrangThai.SelectedIndexChanged += new System.EventHandler(this.cboLocTrangThai_SelectedIndexChanged);
-            // 
-            // btnDoiVe
-            // 
-            this.btnDoiVe.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnDoiVe.BorderRadius = 6;
-            this.btnDoiVe.Enabled = false;
-            this.btnDoiVe.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(219)))), ((int)(((byte)(234)))), ((int)(((byte)(254)))));
-            this.btnDoiVe.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.btnDoiVe.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
-            this.btnDoiVe.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(191)))), ((int)(((byte)(219)))), ((int)(((byte)(254)))));
-            this.btnDoiVe.Location = new System.Drawing.Point(672, 14);
-            this.btnDoiVe.Name = "btnDoiVe";
-            this.btnDoiVe.Size = new System.Drawing.Size(130, 36);
-            this.btnDoiVe.TabIndex = 2;
-            this.btnDoiVe.Text = "Đổi vé (≥12h)";
-            this.btnDoiVe.Click += new System.EventHandler(this.btnDoiVe_Click);
-            // 
+            //
             // btnHuyVe
-            // 
+            //
             this.btnHuyVe.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnHuyVe.BorderRadius = 6;
             this.btnHuyVe.Enabled = false;
             this.btnHuyVe.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(254)))), ((int)(((byte)(226)))), ((int)(((byte)(226)))));
             this.btnHuyVe.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.btnHuyVe.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(239)))), ((int)(((byte)(68)))), ((int)(((byte)(68)))));
+            this.btnHuyVe.ForeColor = System.Drawing.Color.FromArgb(185, 28, 28);
             this.btnHuyVe.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(254)))), ((int)(((byte)(202)))), ((int)(((byte)(202)))));
-            this.btnHuyVe.Location = new System.Drawing.Point(812, 14);
+            this.btnHuyVe.Location = new System.Drawing.Point(802, 14);
             this.btnHuyVe.Name = "btnHuyVe";
-            this.btnHuyVe.Size = new System.Drawing.Size(140, 36);
-            this.btnHuyVe.TabIndex = 3;
+            this.btnHuyVe.Size = new System.Drawing.Size(150, 36);
+            this.btnHuyVe.TabIndex = 2;
             this.btnHuyVe.Text = "Hủy đơn (≥24h)";
             this.btnHuyVe.Click += new System.EventHandler(this.btnHuyVe_Click);
-            // 
+            //
             // splitContainer
-            // 
+            //
             this.splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitContainer.Location = new System.Drawing.Point(24, 124);
             this.splitContainer.Name = "splitContainer";
             this.splitContainer.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            // 
+            //
             // splitContainer.Panel1
-            // 
+            //
             this.splitContainer.Panel1.Controls.Add(this.pnlMasterCard);
-            // 
+            //
             // splitContainer.Panel2
-            // 
+            //
             this.splitContainer.Panel2.Controls.Add(this.pnlDetailCard);
             this.splitContainer.Size = new System.Drawing.Size(952, 470);
-            this.splitContainer.SplitterDistance = 270;
+            this.splitContainer.SplitterDistance = 329;
             this.splitContainer.SplitterWidth = 6;
             this.splitContainer.TabIndex = 2;
-            // 
+            //
             // pnlMasterCard
-            // 
+            //
             this.pnlMasterCard.BackColor = System.Drawing.Color.White;
             this.pnlMasterCard.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(226)))), ((int)(((byte)(232)))), ((int)(((byte)(240)))));
             this.pnlMasterCard.BorderRadius = 8;
@@ -202,11 +205,11 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlMasterCard.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlMasterCard.Location = new System.Drawing.Point(0, 0);
             this.pnlMasterCard.Name = "pnlMasterCard";
-            this.pnlMasterCard.Size = new System.Drawing.Size(952, 270);
+            this.pnlMasterCard.Size = new System.Drawing.Size(952, 329);
             this.pnlMasterCard.TabIndex = 0;
-            // 
+            //
             // dgvDonVe
-            // 
+            //
             this.dgvDonVe.AllowUserToAddRows = false;
             this.dgvDonVe.AllowUserToDeleteRows = false;
             this.dgvDonVe.AllowUserToResizeRows = false;
@@ -258,106 +261,107 @@ namespace QuanLySuKienVaBanVe.GUI
             this.dgvDonVe.RowHeadersVisible = false;
             this.dgvDonVe.RowTemplate.Height = 44;
             this.dgvDonVe.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvDonVe.Size = new System.Drawing.Size(952, 230);
+            this.dgvDonVe.Size = new System.Drawing.Size(952, 289);
             this.dgvDonVe.TabIndex = 1;
             this.dgvDonVe.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.dgvDonVe_CellPainting);
             this.dgvDonVe.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dgvDonVe_CellFormatting);
             this.dgvDonVe.SelectionChanged += new System.EventHandler(this.dgvDonVe_SelectionChanged);
             this.dgvDonVe.CurrentCellChanged += new System.EventHandler(this.dgvDonVe_CurrentCellChanged);
-            // 
+            //
             // colMaDon
-            // 
+            //
             this.colMaDon.DataPropertyName = "MaDon";
-            this.colMaDon.FillWeight = 45F;
+            this.colMaDon.FillWeight = 32F;
             this.colMaDon.HeaderText = "Mã đơn";
-            this.colMaDon.MinimumWidth = 75;
+            this.colMaDon.MinimumWidth = 60;
             this.colMaDon.Name = "colMaDon";
             this.colMaDon.ReadOnly = true;
-            // 
+            //
             // colMaDonGoc
-            // 
+            //
             this.colMaDonGoc.DataPropertyName = "MaDonGoc";
-            this.colMaDonGoc.FillWeight = 45F;
+            this.colMaDonGoc.FillWeight = 32F;
             this.colMaDonGoc.HeaderText = "Đơn gốc";
-            this.colMaDonGoc.MinimumWidth = 75;
+            this.colMaDonGoc.MinimumWidth = 60;
             this.colMaDonGoc.Name = "colMaDonGoc";
             this.colMaDonGoc.ReadOnly = true;
-            // 
+            //
             // colTenKH
-            // 
+            //
             this.colTenKH.DataPropertyName = "TenKH";
-            this.colTenKH.FillWeight = 85F;
+            this.colTenKH.FillWeight = 115F;
             this.colTenKH.HeaderText = "Khách hàng";
-            this.colTenKH.MinimumWidth = 140;
+            this.colTenKH.MinimumWidth = 160;
             this.colTenKH.Name = "colTenKH";
             this.colTenKH.ReadOnly = true;
-            // 
+            //
             // colSDT
-            // 
+            //
             this.colSDT.DataPropertyName = "SDT";
-            this.colSDT.FillWeight = 60F;
+            this.colSDT.FillWeight = 50F;
             this.colSDT.HeaderText = "Số ĐT";
-            this.colSDT.MinimumWidth = 100;
+            this.colSDT.MinimumWidth = 95;
             this.colSDT.Name = "colSDT";
             this.colSDT.ReadOnly = true;
-            // 
+            //
             // colTenSK
-            // 
+            //
             this.colTenSK.DataPropertyName = "TenSK";
-            this.colTenSK.FillWeight = 95F;
+            this.colTenSK.FillWeight = 135F;
             this.colTenSK.HeaderText = "Sự kiện";
-            this.colTenSK.MinimumWidth = 160;
+            this.colTenSK.MinimumWidth = 180;
             this.colTenSK.Name = "colTenSK";
             this.colTenSK.ReadOnly = true;
-            // 
+            //
             // colThoiGianBatDau
-            // 
+            //
             this.colThoiGianBatDau.DataPropertyName = "ThoiGianBatDau";
-            this.colThoiGianBatDau.FillWeight = 80F;
+            this.colThoiGianBatDau.FillWeight = 62F;
             this.colThoiGianBatDau.HeaderText = "Giờ diễn";
-            this.colThoiGianBatDau.MinimumWidth = 135;
+            this.colThoiGianBatDau.MinimumWidth = 115;
             this.colThoiGianBatDau.Name = "colThoiGianBatDau";
             this.colThoiGianBatDau.ReadOnly = true;
-            // 
+            //
             // colNgayDat
-            // 
+            //
             this.colNgayDat.DataPropertyName = "NgayDat";
-            this.colNgayDat.FillWeight = 80F;
+            this.colNgayDat.FillWeight = 62F;
             this.colNgayDat.HeaderText = "Ngày đặt";
-            this.colNgayDat.MinimumWidth = 135;
+            this.colNgayDat.MinimumWidth = 115;
             this.colNgayDat.Name = "colNgayDat";
             this.colNgayDat.ReadOnly = true;
-            // 
+            //
             // colTongTien
-            // 
+            //
             this.colTongTien.DataPropertyName = "TongTien";
-            this.colTongTien.FillWeight = 60F;
+            this.colTongTien.FillWeight = 52F;
             this.colTongTien.HeaderText = "Tổng tiền";
-            this.colTongTien.MinimumWidth = 100;
+            this.colTongTien.MinimumWidth = 95;
             this.colTongTien.Name = "colTongTien";
             this.colTongTien.ReadOnly = true;
-            // 
+            //
             // colTrangThai
-            // 
+            //
             this.colTrangThai.DataPropertyName = "TrangThai";
-            this.colTrangThai.FillWeight = 65F;
+            this.colTrangThai.FillWeight = 80F;
             this.colTrangThai.HeaderText = "Trạng thái";
-            this.colTrangThai.MinimumWidth = 110;
+            this.colTrangThai.MinimumWidth = 135;
             this.colTrangThai.Name = "colTrangThai";
             this.colTrangThai.ReadOnly = true;
-            // 
+            //
             // pnlMasterHeader
-            // 
+            //
             this.pnlMasterHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(250)))), ((int)(((byte)(252)))));
+            this.pnlMasterHeader.Controls.Add(this.lblDonVeTomTat);
             this.pnlMasterHeader.Controls.Add(this.lblMasterTitle);
             this.pnlMasterHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlMasterHeader.Location = new System.Drawing.Point(0, 0);
             this.pnlMasterHeader.Name = "pnlMasterHeader";
             this.pnlMasterHeader.Size = new System.Drawing.Size(952, 40);
             this.pnlMasterHeader.TabIndex = 0;
-            // 
+            //
             // lblMasterTitle
-            // 
+            //
             this.lblMasterTitle.AutoSize = true;
             this.lblMasterTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.lblMasterTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(41)))), ((int)(((byte)(59)))));
@@ -366,23 +370,38 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblMasterTitle.Size = new System.Drawing.Size(155, 19);
             this.lblMasterTitle.TabIndex = 0;
             this.lblMasterTitle.Text = "DANH SÁCH ĐƠN VÉ";
-            // 
+            //
+            // lblDonVeTomTat
+            //
+            this.lblDonVeTomTat.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblDonVeTomTat.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lblDonVeTomTat.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
+            this.lblDonVeTomTat.Location = new System.Drawing.Point(185, 11);
+            this.lblDonVeTomTat.Name = "lblDonVeTomTat";
+            this.lblDonVeTomTat.Size = new System.Drawing.Size(750, 20);
+            this.lblDonVeTomTat.TabIndex = 1;
+            this.lblDonVeTomTat.Text = "Chọn 1 đơn vé để xem chi tiết";
+            this.lblDonVeTomTat.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblDonVeTomTat.UseMnemonic = false;
+            //
             // pnlDetailCard
-            // 
+            //
             this.pnlDetailCard.BackColor = System.Drawing.Color.White;
             this.pnlDetailCard.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(226)))), ((int)(((byte)(232)))), ((int)(((byte)(240)))));
             this.pnlDetailCard.BorderRadius = 8;
             this.pnlDetailCard.BorderThickness = 1;
             this.pnlDetailCard.Controls.Add(this.dgvChiTietVe);
+            this.pnlDetailCard.Controls.Add(this.pnlRuleBanner);
             this.pnlDetailCard.Controls.Add(this.pnlDetailHeader);
             this.pnlDetailCard.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlDetailCard.Location = new System.Drawing.Point(0, 0);
             this.pnlDetailCard.Name = "pnlDetailCard";
-            this.pnlDetailCard.Size = new System.Drawing.Size(952, 194);
+            this.pnlDetailCard.Size = new System.Drawing.Size(952, 135);
             this.pnlDetailCard.TabIndex = 0;
-            // 
+            //
             // dgvChiTietVe
-            // 
+            //
             this.dgvChiTietVe.AllowUserToAddRows = false;
             this.dgvChiTietVe.AllowUserToDeleteRows = false;
             this.dgvChiTietVe.AllowUserToResizeRows = false;
@@ -425,109 +444,112 @@ namespace QuanLySuKienVaBanVe.GUI
             this.dgvChiTietVe.AutoGenerateColumns = false;
             this.dgvChiTietVe.EnableHeadersVisualStyles = false;
             this.dgvChiTietVe.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(244)))), ((int)(((byte)(246)))));
-            this.dgvChiTietVe.Location = new System.Drawing.Point(0, 42);
+            this.dgvChiTietVe.Location = new System.Drawing.Point(0, 74);
             this.dgvChiTietVe.MultiSelect = false;
             this.dgvChiTietVe.Name = "dgvChiTietVe";
             this.dgvChiTietVe.ReadOnly = true;
             this.dgvChiTietVe.RowHeadersVisible = false;
             this.dgvChiTietVe.RowTemplate.Height = 40;
             this.dgvChiTietVe.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvChiTietVe.Size = new System.Drawing.Size(952, 152);
+            this.dgvChiTietVe.Size = new System.Drawing.Size(952, 61);
             this.dgvChiTietVe.TabIndex = 1;
             this.dgvChiTietVe.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.dgvChiTietVe_CellPainting);
             this.dgvChiTietVe.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.dgvChiTietVe_CellFormatting);
             this.dgvChiTietVe.SelectionChanged += new System.EventHandler(this.dgvChiTietVe_SelectionChanged);
-            // 
+            //
             // colMaCT
-            // 
+            //
             this.colMaCT.DataPropertyName = "MaCT";
             this.colMaCT.FillWeight = 40F;
             this.colMaCT.HeaderText = "Mã vé";
             this.colMaCT.MinimumWidth = 70;
             this.colMaCT.Name = "colMaCT";
             this.colMaCT.ReadOnly = true;
-            // 
+            //
             // colMaVeCode
-            // 
+            //
             this.colMaVeCode.DataPropertyName = "MaVeCode";
             this.colMaVeCode.FillWeight = 90F;
-            this.colMaVeCode.HeaderText = "Mã code vé";
+            this.colMaVeCode.HeaderText = "Mã tra cứu vé";
             this.colMaVeCode.MinimumWidth = 140;
             this.colMaVeCode.Name = "colMaVeCode";
             this.colMaVeCode.ReadOnly = true;
-            // 
+            //
             // colTenKV
-            // 
+            //
             this.colTenKV.DataPropertyName = "TenKV";
             this.colTenKV.FillWeight = 75F;
             this.colTenKV.HeaderText = "Khu vực";
             this.colTenKV.MinimumWidth = 130;
             this.colTenKV.Name = "colTenKV";
             this.colTenKV.ReadOnly = true;
-            // 
+            //
             // colHangVe
-            // 
+            //
             this.colHangVe.DataPropertyName = "HangVe";
             this.colHangVe.FillWeight = 50F;
             this.colHangVe.HeaderText = "Hạng vé";
             this.colHangVe.MinimumWidth = 90;
             this.colHangVe.Name = "colHangVe";
             this.colHangVe.ReadOnly = true;
-            // 
+            //
             // colMaGheHienThi
-            // 
+            //
             this.colMaGheHienThi.DataPropertyName = "MaGheHienThi";
             this.colMaGheHienThi.FillWeight = 45F;
             this.colMaGheHienThi.HeaderText = "Ghế ngồi";
             this.colMaGheHienThi.MinimumWidth = 80;
             this.colMaGheHienThi.Name = "colMaGheHienThi";
             this.colMaGheHienThi.ReadOnly = true;
-            // 
+            //
             // colGiaVe
-            // 
+            //
             this.colGiaVe.DataPropertyName = "GiaVe";
             this.colGiaVe.FillWeight = 55F;
             this.colGiaVe.HeaderText = "Giá vé";
             this.colGiaVe.MinimumWidth = 100;
             this.colGiaVe.Name = "colGiaVe";
             this.colGiaVe.ReadOnly = true;
-            // 
+            //
             // colTrangThaiVe
-            // 
+            //
             this.colTrangThaiVe.DataPropertyName = "TrangThai";
             this.colTrangThaiVe.FillWeight = 55F;
             this.colTrangThaiVe.HeaderText = "Trạng thái vé";
             this.colTrangThaiVe.MinimumWidth = 100;
             this.colTrangThaiVe.Name = "colTrangThaiVe";
             this.colTrangThaiVe.ReadOnly = true;
-            this.colTrangThaiVe.ReadOnly = true;
-            // 
+            //
             // pnlDetailHeader
-            // 
+            //
             this.pnlDetailHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(250)))), ((int)(((byte)(252)))));
-            this.pnlDetailHeader.Controls.Add(this.lblRuleBadge);
+            this.pnlDetailHeader.Controls.Add(this.btnDoiVe);
             this.pnlDetailHeader.Controls.Add(this.lblDetailTitle);
             this.pnlDetailHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlDetailHeader.Location = new System.Drawing.Point(0, 0);
             this.pnlDetailHeader.Name = "pnlDetailHeader";
             this.pnlDetailHeader.Size = new System.Drawing.Size(952, 42);
             this.pnlDetailHeader.TabIndex = 0;
-            // 
-            // lblRuleBadge
-            // 
-            this.lblRuleBadge.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblRuleBadge.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.lblRuleBadge.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
-            this.lblRuleBadge.Location = new System.Drawing.Point(420, 11);
-            this.lblRuleBadge.Name = "lblRuleBadge";
-            this.lblRuleBadge.Size = new System.Drawing.Size(518, 20);
-            this.lblRuleBadge.TabIndex = 1;
-            this.lblRuleBadge.Text = "Chọn 1 đơn vé để xem quy định hủy (≥24h) và đổi (≥12h)";
-            this.lblRuleBadge.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            // 
+            //
+            // btnDoiVe
+            //
+            this.btnDoiVe.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnDoiVe.BorderRadius = 6;
+            this.btnDoiVe.Enabled = false;
+            this.btnDoiVe.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(219)))), ((int)(((byte)(234)))), ((int)(((byte)(254)))));
+            this.btnDoiVe.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnDoiVe.ForeColor = System.Drawing.Color.FromArgb(30, 64, 175);
+            this.btnDoiVe.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(191)))), ((int)(((byte)(219)))), ((int)(((byte)(254)))));
+            this.btnDoiVe.Location = new System.Drawing.Point(796, 5);
+            this.btnDoiVe.Name = "btnDoiVe";
+            this.btnDoiVe.Size = new System.Drawing.Size(146, 32);
+            this.btnDoiVe.TabIndex = 1;
+            this.btnDoiVe.Text = "Đổi vé đã chọn";
+            this.btnDoiVe.Click += new System.EventHandler(this.btnDoiVe_Click);
+            //
             // lblDetailTitle
-            // 
-            this.lblDetailTitle.AutoSize = true;
+            //
+            this.lblDetailTitle.AutoSize = false;
             this.lblDetailTitle.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.lblDetailTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(41)))), ((int)(((byte)(59)))));
             this.lblDetailTitle.Location = new System.Drawing.Point(14, 11);
@@ -535,9 +557,33 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblDetailTitle.Size = new System.Drawing.Size(206, 19);
             this.lblDetailTitle.TabIndex = 0;
             this.lblDetailTitle.Text = "CHI TIẾT VÉ TRONG ĐƠN: —";
-            // 
+            //
+            // pnlRuleBanner
+            //
+            this.pnlRuleBanner.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(250)))), ((int)(((byte)(252)))));
+            this.pnlRuleBanner.Controls.Add(this.lblRuleBadge);
+            this.pnlRuleBanner.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlRuleBanner.Location = new System.Drawing.Point(0, 42);
+            this.pnlRuleBanner.Name = "pnlRuleBanner";
+            this.pnlRuleBanner.Size = new System.Drawing.Size(952, 32);
+            this.pnlRuleBanner.TabIndex = 2;
+            //
+            // lblRuleBadge
+            //
+            this.lblRuleBadge.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblRuleBadge.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblRuleBadge.ForeColor = System.Drawing.Color.FromArgb(22, 101, 52);
+            this.lblRuleBadge.Location = new System.Drawing.Point(0, 0);
+            this.lblRuleBadge.Name = "lblRuleBadge";
+            this.lblRuleBadge.Padding = new System.Windows.Forms.Padding(14, 0, 14, 0);
+            this.lblRuleBadge.Size = new System.Drawing.Size(952, 32);
+            this.lblRuleBadge.TabIndex = 0;
+            this.lblRuleBadge.Text = "Chọn 1 đơn vé để xem quy định hủy (≥24h) và đổi (≥12h)";
+            this.lblRuleBadge.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblRuleBadge.UseMnemonic = false;
+            //
             // pnlFooter
-            // 
+            //
             this.pnlFooter.ColumnCount = 2;
             this.pnlFooter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.pnlFooter.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 130F));
@@ -550,9 +596,9 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlFooter.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.pnlFooter.Size = new System.Drawing.Size(952, 52);
             this.pnlFooter.TabIndex = 3;
-            // 
+            //
             // lblCount
-            // 
+            //
             this.lblCount.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblCount.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblCount.Location = new System.Drawing.Point(3, 0);
@@ -561,9 +607,9 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblCount.TabIndex = 0;
             this.lblCount.Text = "Đang tải dữ liệu…";
             this.lblCount.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
+            //
             // btnLamMoi
-            // 
+            //
             this.btnLamMoi.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.btnLamMoi.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(209)))), ((int)(((byte)(213)))), ((int)(((byte)(219)))));
             this.btnLamMoi.BorderRadius = 6;
@@ -577,35 +623,39 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnLamMoi.TabIndex = 1;
             this.btnLamMoi.Text = "Làm mới (F5)";
             this.btnLamMoi.Click += new System.EventHandler(this.btnLamMoi_Click);
-            // 
+            //
             // lblSearchHint
-            // 
+            //
             this.lblSearchHint.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.lblSearchHint.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblSearchHint.Location = new System.Drawing.Point(24, 594);
             this.lblSearchHint.Name = "lblSearchHint";
             this.lblSearchHint.Size = new System.Drawing.Size(952, 30);
             this.lblSearchHint.TabIndex = 4;
-            this.lblSearchHint.Text = "Tra cứu nhanh bằng Mã đơn (#10) hoặc Số điện thoại · Phím tắt: F5 làm mới · Hủy v" +
-    "é cần trước ≥ 24h, Đổi vé cần trước ≥ 12h.";
+            this.lblSearchHint.Text = "Tra cứu nhanh bằng Mã đơn (#10), Tên khách, SĐT hoặc Sự kiện · Phím tắt: F5 làm" +
+    " mới · Hủy đơn cần trước ≥ 24h, Đổi vé cần trước ≥ 12h.";
             this.lblSearchHint.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
+            //
             // searchTimer
-            // 
+            //
             this.searchTimer.Interval = 300;
             this.searchTimer.Tick += new System.EventHandler(this.searchTimer_Tick);
-            // 
+            //
             // FrmQuanLyDonVe
-            // 
+            //
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(243)))), ((int)(((byte)(246)))), ((int)(((byte)(249)))));
             this.ClientSize = new System.Drawing.Size(1000, 692);
-            this.Controls.Add(this.splitContainer);
-            this.Controls.Add(this.lblSearchHint);
-            this.Controls.Add(this.pnlFooter);
-            this.Controls.Add(this.pnlHeader);
-            this.Controls.Add(this.pnlTitle);
+            this.pnlPageContent.Controls.Add(this.splitContainer);
+            this.pnlPageContent.Controls.Add(this.lblSearchHint);
+            this.pnlPageContent.Controls.Add(this.pnlFooter);
+            this.pnlPageContent.Controls.Add(this.pnlHeader);
+            this.pnlPageContent.Controls.Add(this.pnlTitle);
+            this.pnlPageContent.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlPageContent.Name = "pnlPageContent";
+            this.pnlPageContent.Size = new System.Drawing.Size(952, 660);
+            this.Controls.Add(this.pnlPageContent);
             this.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.KeyPreview = true;
             this.MinimumSize = new System.Drawing.Size(800, 500);
@@ -616,6 +666,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.Load += new System.EventHandler(this.FrmQuanLyDonVe_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.FrmQuanLyDonVe_KeyDown);
             this.pnlTitle.ResumeLayout(false);
+            this.pnlPageContent.ResumeLayout(false);
             this.pnlTitle.PerformLayout();
             this.pnlHeader.ResumeLayout(false);
             this.splitContainer.Panel1.ResumeLayout(false);
@@ -630,6 +681,7 @@ namespace QuanLySuKienVaBanVe.GUI
             ((System.ComponentModel.ISupportInitialize)(this.dgvChiTietVe)).EndInit();
             this.pnlDetailHeader.ResumeLayout(false);
             this.pnlDetailHeader.PerformLayout();
+            this.pnlRuleBanner.ResumeLayout(false);
             this.pnlFooter.ResumeLayout(false);
             this.ResumeLayout(false);
 
@@ -656,6 +708,10 @@ namespace QuanLySuKienVaBanVe.GUI
         private System.Windows.Forms.DataGridViewTextBoxColumn colTrangThai;
         private System.Windows.Forms.Panel pnlMasterHeader;
         private System.Windows.Forms.Label lblMasterTitle;
+        private System.Windows.Forms.Label lblDonVeTomTat;
+        private System.Windows.Forms.Panel pnlPageContent;
+        private System.Windows.Forms.Label lblTimKiem;
+        private System.Windows.Forms.Label lblLocTrangThai;
         private Guna.UI2.WinForms.Guna2Panel pnlDetailCard;
         private Guna.UI2.WinForms.Guna2DataGridView dgvChiTietVe;
         private System.Windows.Forms.DataGridViewTextBoxColumn colMaCT;
@@ -667,6 +723,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private System.Windows.Forms.DataGridViewTextBoxColumn colTrangThaiVe;
         private System.Windows.Forms.Panel pnlDetailHeader;
         private System.Windows.Forms.Label lblDetailTitle;
+        private System.Windows.Forms.Panel pnlRuleBanner;
         private System.Windows.Forms.Label lblRuleBadge;
         private System.Windows.Forms.TableLayoutPanel pnlFooter;
         private System.Windows.Forms.Label lblCount;

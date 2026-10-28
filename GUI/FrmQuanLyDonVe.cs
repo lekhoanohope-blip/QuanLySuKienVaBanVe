@@ -15,6 +15,9 @@ namespace QuanLySuKienVaBanVe.GUI
         private bool loading;
         private bool loadingDetail;
         private DataTable dtDonVeGoc;
+        private bool updatingLayout;
+        private bool cancellingOrder;
+        private static double preferredMasterRatio = 0.70;
 
         public FrmQuanLyDonVe()
         {
@@ -22,6 +25,146 @@ namespace QuanLySuKienVaBanVe.GUI
             DoubleBuffered = true;
             dgvDonVe.AutoGenerateColumns = false;
             dgvChiTietVe.AutoGenerateColumns = false;
+
+            pnlHeader.SizeChanged += PnlHeader_SizeChanged;
+            ClientSizeChanged += PnlHeader_SizeChanged;
+            Shown += PnlHeader_SizeChanged;
+            splitContainer.SizeChanged += PnlHeader_SizeChanged;
+            pnlMasterHeader.SizeChanged += PnlHeader_SizeChanged;
+            lblDonVeTomTat.TextChanged += PnlHeader_SizeChanged;
+            lblDetailTitle.TextChanged += PnlHeader_SizeChanged;
+            lblRuleBadge.TextChanged += PnlHeader_SizeChanged;
+            splitContainer.SplitterMoved += (sender, args) =>
+            {
+                int available = splitContainer.Height - splitContainer.SplitterWidth;
+                if (!updatingLayout && available > 0)
+                    preferredMasterRatio = (double)splitContainer.SplitterDistance / available;
+            };
+            AutoScroll = true;
+            txtTimKiem.AccessibleName = "Tìm đơn vé";
+            cboLocTrangThai.AccessibleName = "Lọc trạng thái đơn vé";
+            PnlHeader_SizeChanged(this, EventArgs.Empty);
+        }
+
+        private void PnlHeader_SizeChanged(object sender, EventArgs e)
+        {
+            ApplyResponsiveLayout(DeviceDpi / 96f);
+        }
+
+        private static int ScalePixels(int pixels, float scale)
+        {
+            return (int)Math.Round(pixels * scale);
+        }
+
+        private static int WrappedHeight(Label label, int width)
+        {
+            return TextRenderer.MeasureText(label.Text, label.Font,
+                new Size(Math.Max(1, width), int.MaxValue),
+                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl |
+                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Height;
+        }
+
+        private void ApplyResponsiveLayout(float scale)
+        {
+            if (updatingLayout || IsDisposed) return;
+            updatingLayout = true;
+            try
+            {
+                // A vertical scrollbar can change the available width; settle both layouts.
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    LayoutToolbar(scale);
+                    int padding = ScalePixels(14, scale);
+                    int gap = ScalePixels(8, scale);
+                    int summaryWidth = Math.Max(1, pnlMasterHeader.ClientSize.Width - padding * 2);
+                    lblMasterTitle.Location = new Point(padding, gap);
+                    lblDonVeTomTat.SetBounds(padding, lblMasterTitle.Bottom + gap,
+                        summaryWidth, WrappedHeight(lblDonVeTomTat, summaryWidth));
+                    pnlMasterHeader.Height = lblDonVeTomTat.Bottom + gap;
+
+                    int detailWidth = pnlDetailHeader.ClientSize.Width;
+                    int actionWidth = ScalePixels(146, scale);
+                    int actionHeight = ScalePixels(36, scale);
+                    int titleWidth = Math.Max(1, detailWidth - padding * 2 - actionWidth - gap);
+                    bool stacked = TextRenderer.MeasureText(lblDetailTitle.Text,
+                        lblDetailTitle.Font).Width > titleWidth;
+                    if (stacked) titleWidth = Math.Max(1, detailWidth - padding * 2);
+                    lblDetailTitle.SetBounds(padding, gap, titleWidth,
+                        WrappedHeight(lblDetailTitle, titleWidth));
+                    btnDoiVe.SetBounds(Math.Max(0, detailWidth - padding - actionWidth),
+                        stacked ? lblDetailTitle.Bottom + gap : gap, actionWidth, actionHeight);
+                    pnlDetailHeader.Height = Math.Max(lblDetailTitle.Bottom, btnDoiVe.Bottom) + gap;
+
+                    int ruleWidth = Math.Max(1, pnlRuleBanner.ClientSize.Width - padding * 2);
+                    lblRuleBadge.Padding = new Padding(padding, gap, padding, gap);
+                    pnlRuleBanner.Height = WrappedHeight(lblRuleBadge, ruleWidth) + gap * 2;
+                    lblSearchHint.Height = WrappedHeight(lblSearchHint,
+                        Math.Max(1, lblSearchHint.Width)) + gap * 2;
+
+                    int scrollHeight = SystemInformation.HorizontalScrollBarHeight;
+                    int masterMinimum = pnlMasterHeader.Height + dgvDonVe.ColumnHeadersHeight +
+                        dgvDonVe.RowTemplate.Height * 2 + scrollHeight + ScalePixels(4, scale);
+                    int detailMinimum = pnlDetailHeader.Height + pnlRuleBanner.Height +
+                        dgvChiTietVe.ColumnHeadersHeight + dgvChiTietVe.RowTemplate.Height +
+                        scrollHeight + ScalePixels(4, scale);
+
+                    // Keep full rows visible, including when long text needs extra lines.
+                    splitContainer.Panel1MinSize = 0;
+                    splitContainer.Panel2MinSize = 0;
+                    int minimumContentHeight =
+                        (pnlTitle.Visible ? pnlTitle.Height : 0) + pnlHeader.Height +
+                        pnlFooter.Height + lblSearchHint.Height + masterMinimum +
+                        detailMinimum + splitContainer.SplitterWidth;
+                    pnlPageContent.Height = Math.Max(minimumContentHeight,
+                        ClientSize.Height - Padding.Vertical);
+                    PerformLayout();
+                    pnlPageContent.PerformLayout();
+                    int available = splitContainer.Height - splitContainer.SplitterWidth;
+                    if (available >= masterMinimum + detailMinimum)
+                    {
+                        int desired = (int)Math.Round(available * preferredMasterRatio);
+                        splitContainer.SplitterDistance = Math.Max(masterMinimum,
+                            Math.Min(desired, available - detailMinimum));
+                        splitContainer.Panel1MinSize = masterMinimum;
+                        splitContainer.Panel2MinSize = detailMinimum;
+                    }
+                }
+            }
+            finally
+            {
+                updatingLayout = false;
+            }
+        }
+
+        private void LayoutToolbar(float scale)
+        {
+            int width = pnlHeader.ClientSize.Width;
+            int gap = ScalePixels(12, scale);
+            int top = ScalePixels(8, scale);
+            int labelHeight = Math.Max(lblTimKiem.PreferredHeight, lblLocTrangThai.PreferredHeight);
+            int fieldTop = top + labelHeight + ScalePixels(6, scale);
+            int height = Math.Max(ScalePixels(36, scale), txtTimKiem.Font.Height + gap);
+            int actionWidth = ScalePixels(150, scale);
+            int filterWidth = ScalePixels(180, scale);
+            int searchMinimum = ScalePixels(220, scale);
+            bool oneRow = width >= searchMinimum + filterWidth + actionWidth + gap * 2;
+            bool fieldsTogether = width >= searchMinimum + filterWidth + gap;
+            int searchWidth = oneRow
+                ? Math.Min(ScalePixels(350, scale), width - filterWidth - actionWidth - gap * 2)
+                : fieldsTogether ? width - filterWidth - gap : width;
+            txtTimKiem.SetBounds(0, fieldTop, Math.Max(1, searchWidth), height);
+            lblTimKiem.SetBounds(0, top, txtTimKiem.Width, labelHeight);
+            int filterX = fieldsTogether ? txtTimKiem.Right + gap : 0;
+            int filterTop = fieldsTogether ? fieldTop : txtTimKiem.Bottom + gap + labelHeight + ScalePixels(6, scale);
+            cboLocTrangThai.ItemHeight = Math.Max(1, height - 6);
+            cboLocTrangThai.SetBounds(filterX, filterTop,
+                Math.Min(filterWidth, Math.Max(1, width)), height);
+            lblLocTrangThai.SetBounds(filterX, filterTop - labelHeight - ScalePixels(6, scale),
+                cboLocTrangThai.Width, labelHeight);
+            int actionTop = oneRow ? fieldTop : Math.Max(txtTimKiem.Bottom, cboLocTrangThai.Bottom) + gap;
+            btnHuyVe.SetBounds(Math.Max(0, width - actionWidth), actionTop,
+                Math.Min(actionWidth, Math.Max(1, width)), height);
+            pnlHeader.Height = Math.Max(cboLocTrangThai.Bottom, btnHuyVe.Bottom) + gap;
         }
 
         private async void FrmQuanLyDonVe_Load(object sender, EventArgs e)
@@ -34,6 +177,7 @@ namespace QuanLySuKienVaBanVe.GUI
             }
 
             KhoiTaoLocTrangThai();
+            PnlHeader_SizeChanged(this, EventArgs.Empty);
             await LoadDanhSachDonVeAsync();
         }
 
@@ -153,6 +297,7 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 dgvChiTietVe.DataSource = null;
                 lblDetailTitle.Text = "CHI TIẾT VÉ TRONG ĐƠN: (Trống)";
+                lblDonVeTomTat.Text = "Không có đơn vé nào phù hợp";
                 lblRuleBadge.Text = "Không có đơn vé nào phù hợp điều kiện tìm kiếm.";
                 lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
             }
@@ -193,6 +338,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 detailRequestVersion++;
                 dgvChiTietVe.DataSource = null;
                 lblDetailTitle.Text = "CHI TIẾT VÉ TRONG ĐƠN: (Trống)";
+                lblDonVeTomTat.Text = "Chưa chọn đơn vé nào";
                 lblRuleBadge.Text = "Vui lòng chọn một đơn vé trong danh sách để xem chi tiết.";
                 lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
                 CapNhatTrangThaiNutThaoTac();
@@ -206,43 +352,58 @@ namespace QuanLySuKienVaBanVe.GUI
 
             int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
             string trangThai = row.Cells["colTrangThai"].Value?.ToString() ?? "";
+            string tenKH = row.Cells["colTenKH"].Value?.ToString() ?? "";
+            string sdt = row.Cells["colSDT"].Value?.ToString() ?? "";
+            string tenSK = row.Cells["colTenSK"].Value?.ToString() ?? "";
             DateTime thoiGianBatDau = Convert.ToDateTime(row.Cells["colThoiGianBatDau"].Value);
-            double gioConLai = (thoiGianBatDau - DateTime.Now).TotalHours;
+            TimeSpan timeSpan = thoiGianBatDau - DateTime.Now;
 
-            lblDetailTitle.Text = string.Format("CHI TIẾT VÉ TRONG ĐƠN: #{0} ({1})", maDon, trangThai);
+            string trangThaiVN = trangThai == TrangThaiDonVe.DaThanhToan ? "Đã thanh toán"
+                : (trangThai == TrangThaiDonVe.DaHuy ? "Đã hủy"
+                : (trangThai == TrangThaiDonVe.DaDoi ? "Đã đổi" : trangThai));
+
+            lblDetailTitle.Text = string.Format("CHI TIẾT VÉ TRONG ĐƠN: #{0} ({1})", maDon, trangThaiVN);
+            lblDonVeTomTat.Text = string.Format("Khách hàng: {0} ({1})\nSự kiện: {2}", tenKH, sdt, tenSK);
 
             // Cập nhật banner trạng thái quy định
             if (trangThai == TrangThaiDonVe.DaHuy)
             {
-                lblRuleBadge.ForeColor = Color.FromArgb(239, 68, 68);
-                lblRuleBadge.Text = "❌ Đơn vé này đã bị hủy toàn bộ.";
+                lblRuleBadge.ForeColor = Color.FromArgb(185, 28, 28);
+                lblRuleBadge.Text = "Đơn vé này đã bị hủy toàn bộ.";
             }
             else if (trangThai == TrangThaiDonVe.DaDoi)
             {
-                lblRuleBadge.ForeColor = Color.FromArgb(37, 99, 235);
-                lblRuleBadge.Text = "🔄 Đơn vé này đã được đổi sang đơn mới.";
+                lblRuleBadge.ForeColor = Color.FromArgb(30, 64, 175);
+                lblRuleBadge.Text = "Đơn vé này đã được đổi sang đơn mới.";
             }
             else
             {
-                if (gioConLai <= 0)
+                if (timeSpan.TotalMinutes <= 0)
                 {
                     lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
-                    lblRuleBadge.Text = string.Format("⏰ Suất diễn đã diễn ra lúc {0:dd/MM/yyyy HH:mm}. Không thể hủy hoặc đổi vé.", thoiGianBatDau);
-                }
-                else if (gioConLai >= 24.0)
-                {
-                    lblRuleBadge.ForeColor = Color.FromArgb(16, 185, 129);
-                    lblRuleBadge.Text = string.Format("⏰ Giờ diễn: {0:dd/MM/yyyy HH:mm} (còn {1:F1}h) — ĐỦ điều kiện Hủy (≥24h) và Đổi (≥12h).", thoiGianBatDau, gioConLai);
-                }
-                else if (gioConLai >= 12.0)
-                {
-                    lblRuleBadge.ForeColor = Color.FromArgb(217, 119, 6);
-                    lblRuleBadge.Text = string.Format("⏰ Giờ diễn: {0:dd/MM/yyyy HH:mm} (còn {1:F1}h) — CHẶN hủy (<24h), ĐỦ điều kiện Đổi vé (≥12h).", thoiGianBatDau, gioConLai);
+                    lblRuleBadge.Text = string.Format("Suất diễn đã diễn ra lúc {0:dd/MM/yyyy HH:mm} · Không thể đổi vé · Không thể hủy đơn", thoiGianBatDau);
                 }
                 else
                 {
-                    lblRuleBadge.ForeColor = Color.FromArgb(239, 68, 68);
-                    lblRuleBadge.Text = string.Format("⏰ Giờ diễn: {0:dd/MM/yyyy HH:mm} (còn {1:F1}h) — CHẶN cả Hủy và Đổi (<12h).", thoiGianBatDau, gioConLai);
+                    string thoiGianStr = timeSpan.Days > 0
+                        ? string.Format("Còn {0} ngày {1} giờ {2} phút", timeSpan.Days, timeSpan.Hours, timeSpan.Minutes)
+                        : string.Format("Còn {0} giờ {1} phút", (int)Math.Floor(timeSpan.TotalHours), timeSpan.Minutes);
+
+                    if (timeSpan.TotalHours >= 24.0)
+                    {
+                        lblRuleBadge.ForeColor = Color.FromArgb(22, 101, 52);
+                        lblRuleBadge.Text = string.Format("{0} · Có thể hủy đơn · Có thể đổi vé", thoiGianStr);
+                    }
+                    else if (timeSpan.TotalHours >= 12.0)
+                    {
+                        lblRuleBadge.ForeColor = Color.FromArgb(146, 64, 14);
+                        lblRuleBadge.Text = string.Format("{0} · Có thể đổi vé · Không thể hủy đơn", thoiGianStr);
+                    }
+                    else
+                    {
+                        lblRuleBadge.ForeColor = Color.FromArgb(185, 28, 28);
+                        lblRuleBadge.Text = string.Format("{0} · Không thể đổi vé · Không thể hủy đơn", thoiGianStr);
+                    }
                 }
             }
 
@@ -293,7 +454,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private void CapNhatTrangThaiNutThaoTac()
         {
             var row = LayDongDonVeDangChon();
-            bool coDonChon = !loading && !loadingDetail && row != null && row.Index >= 0;
+            bool coDonChon = !loading && !loadingDetail && !cancellingOrder && row != null && row.Index >= 0;
             if (!coDonChon)
             {
                 btnHuyVe.Enabled = false;
@@ -333,36 +494,43 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private async void btnHuyVe_Click(object sender, EventArgs e)
         {
+            if (cancellingOrder) return;
             var row = LayDongDonVeDangChon();
             if (row == null || row.Index < 0) return;
 
             int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
             string tenKH = row.Cells["colTenKH"].Value?.ToString() ?? "";
             string sdt = row.Cells["colSDT"].Value?.ToString() ?? "";
-            decimal tongTien = Convert.ToDecimal(row.Cells["colTongTien"].Value);
-
-            DonVeResult check = DonVeBLL.KiemTraDieuKienHuy(maDon);
-            if (!check.Success)
-            {
-                MessageBox.Show(this, check.Message, "Không đủ điều kiện hủy vé", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string loiNhan = string.Format(
-                "Xác nhận hủy đơn vé #{0}?\n\n• Khách hàng: {1} (SĐT: {2})\n• Tổng tiền: {3:N0} VNĐ\n• Quy tắc: Toàn bộ ghế trong đơn sẽ được trả về trạng thái Trống.",
-                maDon, tenKH, sdt, tongTien);
-
-            if (MessageBox.Show(this, loiNhan, "Xác nhận hủy đơn vé", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
-            {
-                return;
-            }
-
+            string tenSK = row.Cells["colTenSK"].Value?.ToString() ?? "";
             try
             {
+                cancellingOrder = true;
                 UseWaitCursor = true;
-                btnHuyVe.Enabled = false;
+                CapNhatTrangThaiNutThaoTac();
+                DonVeResult check = await Task.Run(() => DonVeBLL.KiemTraDieuKienHuy(maDon));
+                if (IsDisposed) return;
+                if (!check.Success)
+                {
+                    MessageBox.Show(this, check.Message, "Không đủ điều kiện hủy vé", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
 
+                DataTable chiTiet = await Task.Run(() => DonVeBLL.LayChiTietVeTheoDon(maDon));
+                if (IsDisposed) return;
+                string loiNhan = TaoNoiDungXacNhanHuy(maDon, tenKH, sdt, tenSK, chiTiet);
+                if (string.IsNullOrEmpty(loiNhan))
+                {
+                    MessageBox.Show(this, "Đơn vé không còn vé hiệu lực để hủy. Vui lòng làm mới danh sách.",
+                        "Dữ liệu đã thay đổi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                UseWaitCursor = false;
+                if (MessageBox.Show(this, loiNhan, "Xác nhận hủy đơn vé", MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+
+                UseWaitCursor = true;
                 DonVeResult result = await Task.Run(() => DonVeBLL.HuyVe(maDon));
+                if (IsDisposed) return;
                 if (result.Success)
                 {
                     MessageBox.Show(this, result.Message, "Hủy đơn vé thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -375,13 +543,42 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Lỗi trong quá trình hủy đơn vé: " + ex.Message, "Lỗi hệ thống", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!IsDisposed)
+                    MessageBox.Show(this, "Lỗi trong quá trình hủy đơn vé: " + ex.Message, "Lỗi hệ thống", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                UseWaitCursor = false;
-                CapNhatTrangThaiNutThaoTac();
+                cancellingOrder = false;
+                if (!IsDisposed)
+                {
+                    UseWaitCursor = false;
+                    CapNhatTrangThaiNutThaoTac();
+                }
             }
+        }
+
+        private static string TaoNoiDungXacNhanHuy(int maDon, string tenKH, string sdt,
+            string tenSK, DataTable chiTiet)
+        {
+            int soVeHieuLuc = 0;
+            decimal giaTriVe = 0m;
+            foreach (DataRow ve in chiTiet.Rows)
+            {
+                if (Convert.ToInt32(ve["MaDon"]) != maDon ||
+                    ve["TrangThai"].ToString() != TrangThaiChiTietVe.HopLe) continue;
+                soVeHieuLuc++;
+                giaTriVe += Convert.ToDecimal(ve["GiaVe"]);
+            }
+            if (soVeHieuLuc == 0) return string.Empty;
+            return string.Format(
+                "Xác nhận hủy đơn vé #{0}?\n\n" +
+                "• Khách hàng: {1} (SĐT: {2})\n" +
+                "• Sự kiện: {3}\n" +
+                "• Số vé hiệu lực sẽ hủy: {4} vé\n" +
+                "• Giá trị vé bị hủy: {5:N0} VNĐ\n\n" +
+                "{4} ghế tương ứng sẽ được trả về trạng thái Trống.\n" +
+                "Việc hoàn tiền (nếu có) do nhân viên xử lý riêng theo chính sách sự kiện.",
+                maDon, tenKH, sdt, tenSK, soVeHieuLuc, giaTriVe);
         }
 
         private async void btnDoiVe_Click(object sender, EventArgs e)
@@ -533,7 +730,18 @@ namespace QuanLySuKienVaBanVe.GUI
                 else
                 {
                     e.Value = "#" + e.Value.ToString();
-                    e.CellStyle.ForeColor = Color.FromArgb(37, 99, 235);
+                    e.CellStyle.ForeColor = Color.FromArgb(71, 85, 105);
+                    e.FormattingApplied = true;
+                }
+            }
+            else if (colName == "colTrangThai")
+            {
+                if (e.Value != null)
+                {
+                    string s = e.Value.ToString();
+                    if (s == TrangThaiDonVe.DaThanhToan) e.Value = "Đã thanh toán";
+                    else if (s == TrangThaiDonVe.DaHuy) e.Value = "Đã hủy";
+                    else if (s == TrangThaiDonVe.DaDoi) e.Value = "Đã đổi";
                     e.FormattingApplied = true;
                 }
             }
@@ -577,6 +785,16 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 e.Value = "#" + e.Value.ToString();
                 e.FormattingApplied = true;
+            }
+            else if (colName == "colTrangThaiVe")
+            {
+                if (e.Value != null)
+                {
+                    string s = e.Value.ToString();
+                    if (s == TrangThaiChiTietVe.HopLe) e.Value = "Hợp lệ";
+                    else if (s == TrangThaiChiTietVe.DaHuy) e.Value = "Đã hủy";
+                    e.FormattingApplied = true;
+                }
             }
         }
 

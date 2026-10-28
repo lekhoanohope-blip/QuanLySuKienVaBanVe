@@ -25,10 +25,12 @@ namespace QuanLySuKienVaBanVe.GUI
             try
             {
                 PaintBackground(e);
-                int width = Math.Min(e.CellBounds.Width - Scale(grid, 24),
-                    TextRenderer.MeasureText(e.Graphics, text, e.CellStyle.Font, Size.Empty,
-                        TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width + Scale(grid, 24));
-                int height = Math.Min(Scale(grid, 28), e.CellBounds.Height - Scale(grid, 16));
+                int textPadding = Scale(grid, 16);
+                int textWidth = TextRenderer.MeasureText(e.Graphics, text, e.CellStyle.Font, Size.Empty,
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+                int maxBadgeWidth = Math.Max(0, e.CellBounds.Width - Scale(grid, 8));
+                int width = Math.Min(maxBadgeWidth, textWidth + textPadding);
+                int height = Math.Min(Scale(grid, 28), Math.Max(0, e.CellBounds.Height - Scale(grid, 10)));
                 if (width <= 0 || height <= 0) return;
 
                 Rectangle badge = new Rectangle(e.CellBounds.Left + (e.CellBounds.Width - width) / 2,
@@ -36,7 +38,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 FillRoundedRectangle(e.Graphics, badge, height / 2, background);
                 TextRenderer.DrawText(e.Graphics, text, e.CellStyle.Font, badge, foreground,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine |
-                    TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping);
+                    TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding | TextFormatFlags.PreserveGraphicsClipping);
             }
             finally
             {
