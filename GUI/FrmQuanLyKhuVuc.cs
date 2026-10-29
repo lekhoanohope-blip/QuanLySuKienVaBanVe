@@ -1,12 +1,11 @@
-﻿using QuanLySuKienVaBanVe.BLL;
-using QuanLySuKienVaBanVe.DAL;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using QuanLySuKienVaBanVe.BLL;
+using QuanLySuKienVaBanVe.DTO;
 
 namespace QuanLySuKienVaBanVe.GUI
 {
@@ -50,21 +49,19 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             try
             {
-                using (SqlConnection conn = DatabaseHelper.GetConnection())
-                {
-                    SqlDataAdapter da = new SqlDataAdapter("SELECT MaSK, TenSK FROM SuKien", conn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
+                DataTable dt = SuKienBLL.LayDanhSach();
 
-                    cboSuKien.DisplayMember = "TenSK";
-                    cboSuKien.ValueMember = "MaSK";
-                    cboSuKien.DataSource = dt;
+                cboSuKien.DisplayMember = "TenSK";
+                cboSuKien.ValueMember = "MaSK";
+                cboSuKien.DataSource = dt;
 
-                    cboSuKien.SelectedIndexChanged -= cboSuKien_SelectedIndexChanged;
-                    cboSuKien.SelectedIndexChanged += cboSuKien_SelectedIndexChanged;
-                }
+                cboSuKien.SelectedIndexChanged -= cboSuKien_SelectedIndexChanged;
+                cboSuKien.SelectedIndexChanged += cboSuKien_SelectedIndexChanged;
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi tải Sự kiện: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải Sự kiện: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void cboSuKien_SelectedIndexChanged(object sender, EventArgs e)
@@ -73,24 +70,20 @@ namespace QuanLySuKienVaBanVe.GUI
             try
             {
                 int maSK = Convert.ToInt32(cboSuKien.SelectedValue);
-                using (SqlConnection conn = DatabaseHelper.GetConnection())
-                {
-                    SqlDataAdapter da = new SqlDataAdapter(
-                        "SELECT MaSuat, ThoiGianBatDau FROM SuatDien WHERE MaSK = @MaSK", conn);
-                    da.SelectCommand.Parameters.AddWithValue("@MaSK", maSK);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
+                DataTable dt = SuatDienBLL.LayDanhSachTheoSuKien(maSK);
 
-                    cboSuatDien.DataSource = null;
-                    cboSuatDien.DisplayMember = "ThoiGianBatDau";
-                    cboSuatDien.ValueMember = "MaSuat";
-                    cboSuatDien.DataSource = dt;
+                cboSuatDien.DataSource = null;
+                cboSuatDien.DisplayMember = "ThoiGianBatDau";
+                cboSuatDien.ValueMember = "MaSuat";
+                cboSuatDien.DataSource = dt;
 
-                    cboSuatDien.SelectedIndexChanged -= cboSuatDien_SelectedIndexChanged;
-                    cboSuatDien.SelectedIndexChanged += cboSuatDien_SelectedIndexChanged;
-                }
+                cboSuatDien.SelectedIndexChanged -= cboSuatDien_SelectedIndexChanged;
+                cboSuatDien.SelectedIndexChanged += cboSuatDien_SelectedIndexChanged;
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi tải Suất diễn: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải Suất diễn: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void cboSuatDien_SelectedIndexChanged(object sender, EventArgs e)
@@ -109,65 +102,46 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
 
-                // 1. Lấy Loại Sơ Đồ
-                int loaiSoDo = 1;
-                using (SqlConnection conn = DatabaseHelper.GetConnection())
-                {
-                    string sql = "SELECT LoaiSoDo FROM SuatDien WHERE MaSuat = @MaSuat";
-                    SqlCommand cmd = new SqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@MaSuat", maSuat);
-                    conn.Open();
-                    object result = cmd.ExecuteScalar();
-                    if (result != null && result != DBNull.Value) loaiSoDo = Convert.ToInt32(result);
-                }
+                // 1. Lấy Loại Sơ Đồ qua BLL
+                SuatDienDTO sd = SuatDienBLL.LayTheoMa(maSuat);
+                int loaiSoDo = sd != null ? sd.LoaiSoDo : 1;
 
                 // 2. Vẽ sơ đồ
                 DrawSeatMap(loaiSoDo);
 
-                // 3. Load bảng + legend
-                using (SqlConnection conn = DatabaseHelper.GetConnection())
+                // 3. Load bảng + legend qua BLL
+                DataTable dt = KhuVucBLL.LayDanhSachTheoSuat(maSuat);
+
+                dgvKhuVuc.Rows.Clear();
+                foreach (DataRow row in dt.Rows)
                 {
-                    string query = @"
-                        SELECT kv.MaKV, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
-                               (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
-                               (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
-                        FROM KhuVuc kv
-                        WHERE kv.MaSuat = @MaSuat
-                        ORDER BY kv.MaKV";
+                    int idx = dgvKhuVuc.Rows.Add();
+                    dgvKhuVuc.Rows[idx].Cells["colMaKV"].Value = row["MaKV"];
+                    dgvKhuVuc.Rows[idx].Cells["colTenKV"].Value = row["TenKV"];
+                    dgvKhuVuc.Rows[idx].Cells["colLoaiKV"].Value = row["HangVe"];
+                    dgvKhuVuc.Rows[idx].Cells["colSucChua"].Value = row["TongSoGhe"];
+                    dgvKhuVuc.Rows[idx].Cells["colGiaVe"].Value = Convert.ToDecimal(row["GiaVe"]).ToString("N0") + " đ";
+                    dgvKhuVuc.Rows[idx].Cells["colDaBan"].Value = row["DaBan"];
+                    dgvKhuVuc.Rows[idx].Cells["colConLai"].Value = row["ConLai"];
 
-                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
-                    da.SelectCommand.Parameters.AddWithValue("@MaSuat", maSuat);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-
-                    dgvKhuVuc.Rows.Clear();
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        int idx = dgvKhuVuc.Rows.Add();
-                        dgvKhuVuc.Rows[idx].Cells["colMaKV"].Value = row["MaKV"];
-                        dgvKhuVuc.Rows[idx].Cells["colTenKV"].Value = row["TenKV"];
-                        dgvKhuVuc.Rows[idx].Cells["colLoaiKV"].Value = row["HangVe"];
-                        dgvKhuVuc.Rows[idx].Cells["colSucChua"].Value = row["TongSoGhe"];
-                        dgvKhuVuc.Rows[idx].Cells["colGiaVe"].Value = Convert.ToDecimal(row["GiaVe"]).ToString("N0") + " đ";
-                        dgvKhuVuc.Rows[idx].Cells["colDaBan"].Value = row["DaBan"];
-                        dgvKhuVuc.Rows[idx].Cells["colConLai"].Value = row["ConLai"];
-
-                        bool choPhep = Convert.ToBoolean(row["ChoPhepBanVe"]);
-                        dgvKhuVuc.Rows[idx].Cells["colTrangThai"].Value =
-                            choPhep ? "Đang mở bán" : "Đang đóng";
-                        dgvKhuVuc.Rows[idx].Tag = choPhep;
-                    }
-
-                    // Ánh xạ vùng -> MaKV (chỉ phục vụ click)
-                    BindZonesToMaKV(dt);
-
-                    // Vẽ lại legend (DÙNG LOGIC GỐC)
-                    UpdateCardsAndLegend(dt);
-
-                    ClearInput();
+                    bool choPhep = Convert.ToBoolean(row["ChoPhepBanVe"]);
+                    dgvKhuVuc.Rows[idx].Cells["colTrangThai"].Value =
+                        choPhep ? "Đang mở bán" : "Đang đóng";
+                    dgvKhuVuc.Rows[idx].Tag = choPhep;
                 }
+
+                // Ánh xạ vùng -> MaKV (chỉ phục vụ click)
+                BindZonesToMaKV(dt);
+
+                // Vẽ lại legend (DÙNG LOGIC GỐC)
+                UpdateCardsAndLegend(dt);
+
+                ClearInput();
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi tải Khu vực: " + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải Khu vực: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         // ============================================================
@@ -384,15 +358,14 @@ namespace QuanLySuKienVaBanVe.GUI
         }
 
         // ============================================================
-        // LEGEND + CARDS — GIỮ NGUYÊN LOGIC GỐC (đã chạy được)
-        // Chỉ cập nhật lblCard3Value để đếm đúng "Đang mở bán"
+        // LEGEND + CARDS — GIỮ NGUYÊN LOGIC GỐC
         // ============================================================
         private void UpdateCardsAndLegend(DataTable dt)
         {
             int tongKV = dt.Rows.Count;
             int tongGhe = 0;
             decimal minPrice = 0;
-            int soKVBanVe = 0;      // [FIX-P2-8] đếm thật
+            int soKVBanVe = 0;
             foreach (DataRow row in dt.Rows)
             {
                 tongGhe += Convert.ToInt32(row["TongSoGhe"]);
@@ -406,7 +379,6 @@ namespace QuanLySuKienVaBanVe.GUI
             lblCard3Value.Text = soKVBanVe.ToString();
             lblCard4Value.Text = minPrice.ToString("N0") + " đ";
 
-            // ==== LEGEND: LOGIC Y HỆT BẢN GỐC ====
             pnlLegend.Controls.Clear();
             pnlLegend.Controls.Add(lblLegendTitle);
             pnlLegend.Visible = true;
@@ -522,92 +494,69 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void btnLuu_Click(object sender, EventArgs e)
         {
-            if (cboSuatDien.SelectedValue == null)
-            { MessageBox.Show("Vui lòng chọn Suất diễn!"); return; }
+            if (cboSuatDien.SelectedValue == null || cboSuatDien.SelectedValue is DataRowView)
+            {
+                MessageBox.Show("Vui lòng chọn Suất diễn!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             if (string.IsNullOrWhiteSpace(txtTenKV.Text))
-            { MessageBox.Show("Vui lòng nhập Tên khu vực!"); return; }
+            {
+                MessageBox.Show("Vui lòng nhập Tên khu vực!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             decimal giaVe = 0;
             if (!decimal.TryParse(
                     txtGiaVe.Text.Replace(".", "").Replace(",", "").Replace("đ", "").Trim(),
                     out giaVe))
-            { MessageBox.Show("Giá vé không hợp lệ!"); return; }
-            if (giaVe < 0) { MessageBox.Show("Giá vé phải >= 0!"); return; }
+            {
+                MessageBox.Show("Giá vé không hợp lệ!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (giaVe < 0)
+            {
+                MessageBox.Show("Giá vé phải >= 0!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             int sucChua = 0;
             if (!int.TryParse(txtSucChua.Text.Trim(), out sucChua))
-            { MessageBox.Show("Sức chứa không hợp lệ!"); return; }
+            {
+                MessageBox.Show("Sức chứa không hợp lệ!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             if (sucChua <= 0 || sucChua > 10000)
-            { MessageBox.Show("Sức chứa phải là số nguyên dương (1..10000)!"); return; }
+            {
+                MessageBox.Show("Sức chứa phải là số nguyên dương (1..10000)!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
             bool choPhepBanVe = toggleBanVe.Checked;
 
-            try
+            KhuVucDTO kv = new KhuVucDTO
             {
-                using (SqlConnection conn = DatabaseHelper.GetConnection())
-                {
-                    conn.Open();
-                    using (SqlTransaction trans = conn.BeginTransaction())
-                    {
-                        try
-                        {
-                            if (_editingMaKV == null)
-                            {
-                                const string sql = @"
-                                    INSERT INTO KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhepBanVe)
-                                    OUTPUT INSERTED.MaKV
-                                    VALUES (@MaSuat, @Ten, @Loai, @Gia, @Ghe, @ChoPhep)";
-                                SqlCommand cmd = new SqlCommand(sql, conn, trans);
-                                cmd.Parameters.AddWithValue("@MaSuat", maSuat);
-                                cmd.Parameters.AddWithValue("@Ten", txtTenKV.Text.Trim());
-                                cmd.Parameters.AddWithValue("@Loai", cboLoaiKV.Text);
-                                cmd.Parameters.AddWithValue("@Gia", giaVe);
-                                cmd.Parameters.AddWithValue("@Ghe", sucChua);
-                                cmd.Parameters.AddWithValue("@ChoPhep", choPhepBanVe);
-                                int newMaKV = (int)cmd.ExecuteScalar();
+                MaKV = _editingMaKV ?? 0,
+                MaSuat = maSuat,
+                TenKV = txtTenKV.Text.Trim(),
+                HangVe = cboLoaiKV.Text,
+                GiaVe = giaVe,
+                TongSoGhe = sucChua,
+                ChoPhepBanVe = choPhepBanVe
+            };
 
-                                const string sqlGhe =
-                                    "INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai) VALUES (@MaKV, 'A', @Cot, N'Trong')";
-                                for (int i = 1; i <= sucChua; i++)
-                                {
-                                    SqlCommand cmdGhe = new SqlCommand(sqlGhe, conn, trans);
-                                    cmdGhe.Parameters.AddWithValue("@MaKV", newMaKV);
-                                    cmdGhe.Parameters.AddWithValue("@Cot", i);
-                                    cmdGhe.ExecuteNonQuery();
-                                }
-                            }
-                            else
-                            {
-                                const string sql = @"
-                                    UPDATE KhuVuc
-                                    SET TenKV = @Ten, HangVe = @Loai, GiaVe = @Gia, ChoPhepBanVe = @ChoPhep
-                                    WHERE MaKV = @MaKV";
-                                SqlCommand cmd = new SqlCommand(sql, conn, trans);
-                                cmd.Parameters.AddWithValue("@Ten", txtTenKV.Text.Trim());
-                                cmd.Parameters.AddWithValue("@Loai", cboLoaiKV.Text);
-                                cmd.Parameters.AddWithValue("@Gia", giaVe);
-                                cmd.Parameters.AddWithValue("@ChoPhep", choPhepBanVe);
-                                cmd.Parameters.AddWithValue("@MaKV", _editingMaKV.Value);
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            trans.Commit();
-                        }
-                        catch
-                        {
-                            trans.Rollback();
-                            throw;
-                        }
-                    }
-                }
-
+            string result = _editingMaKV == null ? KhuVucBLL.Them(kv) : KhuVucBLL.Sua(kv);
+            if (result == "Success")
+            {
                 MessageBox.Show(_editingMaKV == null
                     ? "Thêm khu vực thành công!"
-                    : "Cập nhật thành công!");
+                    : "Cập nhật thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 LoadData();
             }
-            catch (Exception ex) { MessageBox.Show("Lỗi lưu: " + ex.Message); }
+            else
+            {
+                MessageBox.Show(result, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         // [FIX-P2-7] CellContentClick + nút Sửa / Xóa
@@ -631,37 +580,16 @@ namespace QuanLySuKienVaBanVe.GUI
                     "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
                     return;
 
-                try
+                string result = KhuVucBLL.Xoa(maKV);
+                if (result == "Success")
                 {
-                    using (SqlConnection conn = DatabaseHelper.GetConnection())
-                    {
-                        conn.Open();
-                        using (SqlTransaction trans = conn.BeginTransaction())
-                        {
-                            try
-                            {
-                                var cmdGhe = new SqlCommand(
-                                    "DELETE FROM Ghe WHERE MaKV = @MaKV", conn, trans);
-                                cmdGhe.Parameters.AddWithValue("@MaKV", maKV);
-                                cmdGhe.ExecuteNonQuery();
-
-                                var cmdKV = new SqlCommand(
-                                    "DELETE FROM KhuVuc WHERE MaKV = @MaKV", conn, trans);
-                                cmdKV.Parameters.AddWithValue("@MaKV", maKV);
-                                cmdKV.ExecuteNonQuery();
-
-                                trans.Commit();
-                            }
-                            catch
-                            {
-                                trans.Rollback();
-                                throw;
-                            }
-                        }
-                    }
+                    MessageBox.Show("Xóa khu vực thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     LoadData();
                 }
-                catch (Exception ex) { MessageBox.Show("Không thể xóa: " + ex.Message); }
+                else
+                {
+                    MessageBox.Show(result, "Không thể xóa", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
         }
 

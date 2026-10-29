@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DTO;
@@ -7,8 +7,6 @@ namespace QuanLySuKienVaBanVe.DAL
 {
     public class SuatDienDAL
     {
-        private static string connectionString;
-
         public static DataTable LayDanhSach()
         {
             using (SqlConnection conn = DatabaseHelper.GetConnection())
@@ -17,10 +15,27 @@ namespace QuanLySuKienVaBanVe.DAL
                                  FROM SuatDien sd 
                                  INNER JOIN SuKien sk ON sd.MaSK = sk.MaSK
                                  ORDER BY sd.ThoiGianBatDau DESC";
-                SqlDataAdapter da = new SqlDataAdapter(query, conn);
-                DataTable dt = new DataTable();
-                da.Fill(dt);
-                return dt;
+                using (SqlDataAdapter da = new SqlDataAdapter(query, conn))
+                {
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+                    return dt;
+                }
+            }
+        }
+
+        public static DataTable LayDanhSachTheoSuKien(int maSK)
+        {
+            using (SqlConnection conn = DatabaseHelper.GetConnection())
+            {
+                string query = @"SELECT MaSuat, ThoiGianBatDau FROM SuatDien WHERE MaSK = @MaSK ORDER BY ThoiGianBatDau";
+                using (SqlDataAdapter da = new SqlDataAdapter(query, conn))
+                {
+                    da.SelectCommand.Parameters.AddWithValue("@MaSK", maSK);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+                    return dt;
+                }
             }
         }
 

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -57,17 +57,20 @@
   <ItemGroup>
     <Compile Include="BLL\PhienDangNhap.cs" />
     <Compile Include="BLL\KhachHangBLL.cs" />
+    <Compile Include="BLL\KhuVucBLL.cs" />
     <Compile Include="BLL\SuatDienBLL.cs" />
     <Compile Include="BLL\SuKienBLL.cs" />
     <Compile Include="BLL\TaiKhoanBLL.cs" />
     <Compile Include="BLL\ThongKeBLL.cs" />
     <Compile Include="DAL\Database.cs" />
     <Compile Include="DAL\KhachHangDAL.cs" />
+    <Compile Include="DAL\KhuVucDAL.cs" />
     <Compile Include="DAL\DatabaseHelper.cs" />
     <Compile Include="DAL\SuatDienDAL.cs" />
     <Compile Include="DAL\SuKienDAL.cs" />
     <Compile Include="DAL\TaiKhoanDAL.cs" />
     <Compile Include="DAL\ThongKeDAL.cs" />
+    <Compile Include="DTO\KhuVucDTO.cs" />
     <Compile Include="DTO\SuatDienDTO.cs" />
     <Compile Include="DTO\KhachHangDTO.cs" />
     <Compile Include="DTO\SuKienDTO.cs" />

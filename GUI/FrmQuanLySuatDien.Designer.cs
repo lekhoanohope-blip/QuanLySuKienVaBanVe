@@ -1,4 +1,4 @@
-namespace QuanLySuKienVaBanVe.GUI
+﻿namespace QuanLySuKienVaBanVe.GUI
 {
     partial class FrmQuanLySuatDien
     {
@@ -82,9 +82,9 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // pnlMainContent
             // 
-            this.pnlMainContent.Controls.Add(this.pnlHeader);
-            this.pnlMainContent.Controls.Add(this.pnlBottom);
             this.pnlMainContent.Controls.Add(this.dgvSuatDien);
+            this.pnlMainContent.Controls.Add(this.pnlBottom);
+            this.pnlMainContent.Controls.Add(this.pnlHeader);
             this.pnlMainContent.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlMainContent.Location = new System.Drawing.Point(200, 0);
             this.pnlMainContent.Name = "pnlMainContent";
