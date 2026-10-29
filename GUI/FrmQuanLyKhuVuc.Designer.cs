@@ -48,7 +48,8 @@ namespace QuanLySuKienVaBanVe.GUI
             this.colDaBan = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colConLai = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colTrangThai = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.colThaoTac = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colSua = new System.Windows.Forms.DataGridViewButtonColumn();
+            this.colXoa = new System.Windows.Forms.DataGridViewButtonColumn();
             this.lblTitleGrid = new System.Windows.Forms.Label();
             this.pnlBottom = new Guna.UI2.WinForms.Guna2Panel();
             this.pnlLeftMap = new Guna.UI2.WinForms.Guna2ShadowPanel();
@@ -392,7 +393,8 @@ namespace QuanLySuKienVaBanVe.GUI
             this.colDaBan,
             this.colConLai,
             this.colTrangThai,
-            this.colThaoTac});
+            this.colSua,
+            this.colXoa});
             dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle3.BackColor = System.Drawing.Color.White;
             dataGridViewCellStyle3.Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -420,7 +422,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.dgvKhuVuc.ThemeStyle.ReadOnly = true;
             this.dgvKhuVuc.ThemeStyle.RowsStyle.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.dgvKhuVuc.ThemeStyle.RowsStyle.Height = 45;
-            this.dgvKhuVuc.CellClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvKhuVuc_CellClick);
+            this.dgvKhuVuc.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvKhuVuc_CellContentClick);
             // 
             // colMaKV
             // 
@@ -478,12 +480,25 @@ namespace QuanLySuKienVaBanVe.GUI
             this.colTrangThai.Name = "colTrangThai";
             this.colTrangThai.ReadOnly = true;
             // 
-            // colThaoTac
+            // colSua
             // 
-            this.colThaoTac.HeaderText = "Thao tác";
-            this.colThaoTac.MinimumWidth = 6;
-            this.colThaoTac.Name = "colThaoTac";
-            this.colThaoTac.ReadOnly = true;
+            this.colSua.HeaderText = "Sửa";
+            this.colSua.MinimumWidth = 6;
+            this.colSua.Name = "colSua";
+            this.colSua.ReadOnly = true;
+            this.colSua.Text = "Sửa";
+            this.colSua.UseColumnTextForButtonValue = true;
+            this.colSua.Width = 70;
+            // 
+            // colXoa
+            // 
+            this.colXoa.HeaderText = "Xóa";
+            this.colXoa.MinimumWidth = 6;
+            this.colXoa.Name = "colXoa";
+            this.colXoa.ReadOnly = true;
+            this.colXoa.Text = "Xóa";
+            this.colXoa.UseColumnTextForButtonValue = true;
+            this.colXoa.Width = 70;
             // 
             // lblTitleGrid
             // 
@@ -959,7 +974,8 @@ namespace QuanLySuKienVaBanVe.GUI
         private System.Windows.Forms.DataGridViewTextBoxColumn colDaBan;
         private System.Windows.Forms.DataGridViewTextBoxColumn colConLai;
         private System.Windows.Forms.DataGridViewTextBoxColumn colTrangThai;
-        private System.Windows.Forms.DataGridViewTextBoxColumn colThaoTac;
+        private System.Windows.Forms.DataGridViewButtonColumn colSua;
+        private System.Windows.Forms.DataGridViewButtonColumn colXoa;
         private Guna.UI2.WinForms.Guna2Panel pnlBottom;
         private Guna.UI2.WinForms.Guna2ShadowPanel pnlLeftMap;
         private System.Windows.Forms.Label lblTitleMap;

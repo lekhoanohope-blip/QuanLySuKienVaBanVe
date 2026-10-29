@@ -193,8 +193,8 @@
   <ItemGroup>
     <Content Include="database\create_database.sql" />
     <Content Include="database\dashboard_demo_data.sql" />
+    <Content Include="database\migration_add_columns.sql" />
     <Content Include="database\sample_data.sql" />
-    <Content Include="database\SQLQuery1.sql" />
     <Content Include="QuanLySuKienVaBanVe.slnx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

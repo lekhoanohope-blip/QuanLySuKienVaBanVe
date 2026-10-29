@@ -1,4 +1,4 @@
-﻿-- ==============================================================
+﻿﻿-- ==============================================================
 -- DE TAI 20: QUAN LY SU KIEN VA BAN VE
 -- Script 01: Tao Database, Cac bang va Rang buoc toan ven
 -- ==============================================================
@@ -43,6 +43,7 @@ END
 GO
 
 -- 3. Bang SuatDien (Cac buoi dien cu the cua su kien)
+--    [FIX-P1-1] Bo sung cot LoaiSoDo (1/2/3)
 IF OBJECT_ID('SuatDien', 'U') IS NULL
 BEGIN
     CREATE TABLE SuatDien (
@@ -51,6 +52,7 @@ BEGIN
         ThoiGianBatDau DATETIME NOT NULL,
         ThoiGianKetThuc DATETIME,
         DiaDiem NVARCHAR(255) NOT NULL,
+        LoaiSoDo INT NOT NULL CONSTRAINT DF_SuatDien_LoaiSoDo DEFAULT 1,
         TrangThai NVARCHAR(30) NOT NULL DEFAULT N'MoCuaBanVe'
             CONSTRAINT CK_SuatDien_TrangThai CHECK (TrangThai IN (N'MoCuaBanVe', N'DongBanVe', N'DangDien', N'DaKetThuc'))
     );
@@ -58,6 +60,8 @@ END
 GO
 
 -- 4. Bang KhuVuc (Khu vuc khan phong / Hang ve cua tung suat dien)
+--    [FIX-P2-5] Rang buoc TongSoGhe > 0
+--    [FIX-P2-8] Bo sung cot ChoPhepBanVe
 IF OBJECT_ID('KhuVuc', 'U') IS NULL
 BEGIN
     CREATE TABLE KhuVuc (
@@ -66,7 +70,9 @@ BEGIN
         TenKV NVARCHAR(100) NOT NULL,
         HangVe NVARCHAR(50) NOT NULL, -- VIP, Thuong, PhoThong
         GiaVe DECIMAL(18,0) NOT NULL CONSTRAINT CK_KhuVuc_GiaVe CHECK (GiaVe >= 0),
-        TongSoGhe INT NOT NULL DEFAULT 0
+        TongSoGhe INT NOT NULL DEFAULT 0,
+        ChoPhepBanVe BIT NOT NULL CONSTRAINT DF_KhuVuc_ChoPhepBanVe DEFAULT 1,
+        CONSTRAINT CK_KhuVuc_TongSoGhe CHECK (TongSoGhe > 0 AND TongSoGhe <= 10000)
     );
 END
 GO
@@ -155,5 +161,33 @@ BEGIN
         ThoiGian DATETIME NOT NULL DEFAULT GETDATE(),
         ChiTiet NVARCHAR(MAX)
     );
+END
+GO
+
+-- ==============================================================
+-- MIGRATION: Chay phan nay cho database da ton tai (idempotent)
+-- ==============================================================
+USE QuanLySuKienVaBanVe;
+GO
+
+IF COL_LENGTH('SuatDien', 'LoaiSoDo') IS NULL
+BEGIN
+    ALTER TABLE SuatDien ADD LoaiSoDo INT NOT NULL
+        CONSTRAINT DF_SuatDien_LoaiSoDo DEFAULT 1;
+END
+GO
+
+IF COL_LENGTH('KhuVuc', 'ChoPhepBanVe') IS NULL
+BEGIN
+    ALTER TABLE KhuVuc ADD ChoPhepBanVe BIT NOT NULL
+        CONSTRAINT DF_KhuVuc_ChoPhepBanVe DEFAULT 1;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_KhuVuc_TongSoGhe')
+BEGIN
+    UPDATE KhuVuc SET TongSoGhe = 1 WHERE TongSoGhe <= 0;
+    ALTER TABLE KhuVuc WITH CHECK
+        ADD CONSTRAINT CK_KhuVuc_TongSoGhe CHECK (TongSoGhe > 0 AND TongSoGhe <= 10000);
 END
 GO

@@ -1,4 +1,5 @@
 ﻿using QuanLySuKienVaBanVe.BLL;
+using QuanLySuKienVaBanVe.DAL;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -11,9 +12,12 @@ namespace QuanLySuKienVaBanVe.GUI
 {
     public partial class FrmQuanLyKhuVuc : Form
     {
-        private string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=QuanLySuKienVaBanVe;Integrated Security=True";
         private int? _editingMaKV = null;
         private Panel seatMapWrapper;
+
+        // [FIX-P2-3] Ánh xạ control vùng -> MaKV thực tế (chỉ dùng cho click)
+        private readonly Dictionary<Guna.UI2.WinForms.Guna2Button, int> _zoneMaKVMap
+            = new Dictionary<Guna.UI2.WinForms.Guna2Button, int>();
 
         public FrmQuanLyKhuVuc()
         {
@@ -24,21 +28,29 @@ namespace QuanLySuKienVaBanVe.GUI
         private void FrmQuanLyKhuVuc_Load(object sender, EventArgs e)
         {
             LoadComboBoxSuKien();
+
+            // ============ PHÂN QUYỀN ADMIN / STAFF ============
+            // Chỉ Admin được Thêm/Sửa/Xóa khu vực. Staff chỉ xem.
             if (!PhienDangNhap.LaQuanLy)
             {
-                btnThemKhuVuc.Visible = false;
-                pnlRightInfo.Visible = false;
-                btnToggleInfo.Visible = false;
-                if (dgvKhuVuc.Columns["colThaoTac"] != null)
-                    dgvKhuVuc.Columns["colThaoTac"].Visible = false;
+                btnThemKhuVuc.Visible = false;          // Ẩn nút Thêm
+                pnlRightInfo.Visible = false;          // Ẩn panel form nhập
+                btnToggleInfo.Visible = false;          // Ẩn nút mở/đóng panel
+
+                // Ẩn 2 cột nút Sửa / Xóa
+                if (dgvKhuVuc.Columns["colSua"] != null)
+                    dgvKhuVuc.Columns["colSua"].Visible = false;
+                if (dgvKhuVuc.Columns["colXoa"] != null)
+                    dgvKhuVuc.Columns["colXoa"].Visible = false;
             }
+            // ====================================================
         }
 
         private void LoadComboBoxSuKien()
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
                 {
                     SqlDataAdapter da = new SqlDataAdapter("SELECT MaSK, TenSK FROM SuKien", conn);
                     DataTable dt = new DataTable();
@@ -61,9 +73,10 @@ namespace QuanLySuKienVaBanVe.GUI
             try
             {
                 int maSK = Convert.ToInt32(cboSuKien.SelectedValue);
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
                 {
-                    SqlDataAdapter da = new SqlDataAdapter("SELECT MaSuat, ThoiGianBatDau FROM SuatDien WHERE MaSK = @MaSK", conn);
+                    SqlDataAdapter da = new SqlDataAdapter(
+                        "SELECT MaSuat, ThoiGianBatDau FROM SuatDien WHERE MaSK = @MaSK", conn);
                     da.SelectCommand.Parameters.AddWithValue("@MaSK", maSK);
                     DataTable dt = new DataTable();
                     da.Fill(dt);
@@ -85,6 +98,9 @@ namespace QuanLySuKienVaBanVe.GUI
             LoadData();
         }
 
+        // ============================================================
+        // LOAD DATA
+        // ============================================================
         private void LoadData()
         {
             if (cboSuatDien.SelectedValue == null || cboSuatDien.SelectedValue is DataRowView) return;
@@ -93,9 +109,9 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
 
-                // 1. Lấy Loại Sơ Đồ từ Database
+                // 1. Lấy Loại Sơ Đồ
                 int loaiSoDo = 1;
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
                 {
                     string sql = "SELECT LoaiSoDo FROM SuatDien WHERE MaSuat = @MaSuat";
                     SqlCommand cmd = new SqlCommand(sql, conn);
@@ -108,15 +124,16 @@ namespace QuanLySuKienVaBanVe.GUI
                 // 2. Vẽ sơ đồ
                 DrawSeatMap(loaiSoDo);
 
-                // 3. Load bảng dữ liệu
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                // 3. Load bảng + legend
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
                 {
                     string query = @"
-                        SELECT kv.MaKV, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe,
+                        SELECT kv.MaKV, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
                                (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
                                (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
                         FROM KhuVuc kv
-                        WHERE kv.MaSuat = @MaSuat";
+                        WHERE kv.MaSuat = @MaSuat
+                        ORDER BY kv.MaKV";
 
                     SqlDataAdapter da = new SqlDataAdapter(query, conn);
                     da.SelectCommand.Parameters.AddWithValue("@MaSuat", maSuat);
@@ -134,16 +151,92 @@ namespace QuanLySuKienVaBanVe.GUI
                         dgvKhuVuc.Rows[idx].Cells["colGiaVe"].Value = Convert.ToDecimal(row["GiaVe"]).ToString("N0") + " đ";
                         dgvKhuVuc.Rows[idx].Cells["colDaBan"].Value = row["DaBan"];
                         dgvKhuVuc.Rows[idx].Cells["colConLai"].Value = row["ConLai"];
-                        dgvKhuVuc.Rows[idx].Cells["colTrangThai"].Value = "Đang mở bán";
+
+                        bool choPhep = Convert.ToBoolean(row["ChoPhepBanVe"]);
+                        dgvKhuVuc.Rows[idx].Cells["colTrangThai"].Value =
+                            choPhep ? "Đang mở bán" : "Đang đóng";
+                        dgvKhuVuc.Rows[idx].Tag = choPhep;
                     }
+
+                    // Ánh xạ vùng -> MaKV (chỉ phục vụ click)
+                    BindZonesToMaKV(dt);
+
+                    // Vẽ lại legend (DÙNG LOGIC GỐC)
                     UpdateCardsAndLegend(dt);
+
                     ClearInput();
                 }
             }
             catch (Exception ex) { MessageBox.Show("Lỗi tải Khu vực: " + ex.Message); }
         }
 
-        // =================== HÀM VẼ SƠ ĐỒ TỰ ĐỘNG ===================
+        // ============================================================
+        // [FIX-P2-3] ÁNH XẠ VÙNG -> MaKV (chỉ cho click)
+        // ============================================================
+        private void BindZonesToMaKV(DataTable dt)
+        {
+            _zoneMaKVMap.Clear();
+            if (seatMapWrapper == null) return;
+
+            foreach (Control ctrl in seatMapWrapper.Controls)
+            {
+                if (!(ctrl is Guna.UI2.WinForms.Guna2Button btn)) continue;
+
+                string category = btn.Tag?.ToString() ?? "";
+                if (category == "STAGE") continue;
+
+                string zoneText = btn.Text.Trim();
+                int matchedMaKV = 0;
+
+                // (1) Khớp chính xác
+                foreach (DataRow row in dt.Rows)
+                {
+                    if (row["TenKV"].ToString().Trim()
+                        .Equals(zoneText, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matchedMaKV = Convert.ToInt32(row["MaKV"]);
+                        break;
+                    }
+                }
+                // (2) Khớp chứa
+                if (matchedMaKV == 0)
+                {
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        if (row["TenKV"].ToString().Trim()
+                            .IndexOf(zoneText, StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            matchedMaKV = Convert.ToInt32(row["MaKV"]);
+                            break;
+                        }
+                    }
+                }
+                // (3) Fallback theo category nếu duy nhất
+                if (matchedMaKV == 0)
+                {
+                    string dbCategory = category == "GA" ? "PHO THONG"
+                                      : category == "CAT" ? "THUONG"
+                                      : category;
+                    int count = 0, first = 0;
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        string hangVe = RemoveSign(row["HangVe"].ToString().ToUpper());
+                        if (hangVe.Contains(dbCategory))
+                        {
+                            count++;
+                            if (first == 0) first = Convert.ToInt32(row["MaKV"]);
+                        }
+                    }
+                    if (count == 1) matchedMaKV = first;
+                }
+
+                if (matchedMaKV > 0) _zoneMaKVMap[btn] = matchedMaKV;
+            }
+        }
+
+        // ============================================================
+        // VẼ SƠ ĐỒ
+        // ============================================================
         private void DrawSeatMap(int loaiSoDo)
         {
             if (seatMapWrapper == null)
@@ -152,6 +245,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 pnlSeatMap.Controls.Add(seatMapWrapper);
             }
             seatMapWrapper.Controls.Clear();
+            _zoneMaKVMap.Clear();
 
             Color clrVip = Color.FromArgb(147, 51, 234);
             Color clrGA = Color.FromArgb(56, 189, 248);
@@ -246,67 +340,80 @@ namespace QuanLySuKienVaBanVe.GUI
             seatMapWrapper.Size = new Size(wrapperWidth, wrapperHeight);
         }
 
-        // =================== XỬ LÝ CLICK ===================
+        // ============================================================
+        // [FIX-P2-3] CLICK VÙNG
+        // ============================================================
         private void Zone_Click(object sender, EventArgs e)
         {
-            Guna.UI2.WinForms.Guna2Button clickedBtn = sender as Guna.UI2.WinForms.Guna2Button;
+            var clickedBtn = sender as Guna.UI2.WinForms.Guna2Button;
             if (clickedBtn == null) return;
-
-            string zoneTag = clickedBtn.Tag?.ToString() ?? "";
 
             if (seatMapWrapper != null)
             {
                 foreach (Control ctrl in seatMapWrapper.Controls)
-                {
                     if (ctrl is Guna.UI2.WinForms.Guna2Button btn) btn.BorderThickness = 0;
-                }
             }
-
             clickedBtn.BorderColor = Color.Black;
             clickedBtn.BorderThickness = 3;
 
-            if (zoneTag == "STAGE") return;
+            if (!_zoneMaKVMap.TryGetValue(clickedBtn, out int maKV)) return;
 
             foreach (DataGridViewRow row in dgvKhuVuc.Rows)
             {
-                if (row.Cells["colTenKV"].Value != null &&
-                    row.Cells["colTenKV"].Value.ToString().ToUpper().Contains(zoneTag.ToUpper()))
+                if (row.Cells["colMaKV"].Value != null &&
+                    Convert.ToInt32(row.Cells["colMaKV"].Value) == maKV)
                 {
                     row.Selected = true;
                     dgvKhuVuc.CurrentCell = row.Cells["colTenKV"];
-
-                    _editingMaKV = Convert.ToInt32(row.Cells["colMaKV"].Value);
-
-                    txtTenKV.Text = row.Cells["colTenKV"].Value.ToString();
-                    cboLoaiKV.Text = row.Cells["colLoaiKV"].Value.ToString();
-                    txtSucChua.Text = row.Cells["colSucChua"].Value.ToString();
-                    txtSucChua.Enabled = false;
-                    txtGiaVe.Text = row.Cells["colGiaVe"].Value.ToString().Replace(" đ", "").Replace(".", "");
-
+                    PopulateInputsFromRow(row);
                     break;
                 }
             }
         }
 
-        // =================== VẼ CHÚ THÍCH ===================
+        private void PopulateInputsFromRow(DataGridViewRow row)
+        {
+            _editingMaKV = Convert.ToInt32(row.Cells["colMaKV"].Value);
+            txtTenKV.Text = row.Cells["colTenKV"].Value?.ToString() ?? "";
+            cboLoaiKV.Text = row.Cells["colLoaiKV"].Value?.ToString() ?? "";
+            txtSucChua.Text = row.Cells["colSucChua"].Value?.ToString() ?? "";
+            txtSucChua.Enabled = false;
+            txtGiaVe.Text = (row.Cells["colGiaVe"].Value?.ToString() ?? "")
+                                    .Replace(" đ", "").Replace(".", "");
+            toggleBanVe.Checked = row.Tag is bool b ? b : true;
+        }
+
+        // ============================================================
+        // LEGEND + CARDS — GIỮ NGUYÊN LOGIC GỐC (đã chạy được)
+        // Chỉ cập nhật lblCard3Value để đếm đúng "Đang mở bán"
+        // ============================================================
         private void UpdateCardsAndLegend(DataTable dt)
         {
-            int tongKV = dt.Rows.Count; int tongGhe = 0; decimal minPrice = 0;
+            int tongKV = dt.Rows.Count;
+            int tongGhe = 0;
+            decimal minPrice = 0;
+            int soKVBanVe = 0;      // [FIX-P2-8] đếm thật
             foreach (DataRow row in dt.Rows)
             {
                 tongGhe += Convert.ToInt32(row["TongSoGhe"]);
                 decimal gia = Convert.ToDecimal(row["GiaVe"]);
                 if (minPrice == 0 || gia < minPrice) minPrice = gia;
+                if (Convert.ToBoolean(row["ChoPhepBanVe"])) soKVBanVe++;
             }
-            lblCard1Value.Text = tongKV.ToString(); lblCard2Value.Text = tongGhe.ToString("N0");
-            lblCard3Value.Text = tongKV.ToString(); lblCard4Value.Text = minPrice.ToString("N0") + " đ";
 
-            pnlLegend.Controls.Clear(); pnlLegend.Controls.Add(lblLegendTitle);
+            lblCard1Value.Text = tongKV.ToString();
+            lblCard2Value.Text = tongGhe.ToString("N0");
+            lblCard3Value.Text = soKVBanVe.ToString();
+            lblCard4Value.Text = minPrice.ToString("N0") + " đ";
+
+            // ==== LEGEND: LOGIC Y HỆT BẢN GỐC ====
+            pnlLegend.Controls.Clear();
+            pnlLegend.Controls.Add(lblLegendTitle);
+            pnlLegend.Visible = true;
 
             var zoneInfos = new List<ZoneLegendInfo>();
             var processedTags = new HashSet<string>();
 
-            // SỬA LỖI Ở ĐÂY: Duyệt qua seatMapWrapper thay vì pnlSeatMap
             if (seatMapWrapper != null)
             {
                 foreach (Control ctrl in seatMapWrapper.Controls)
@@ -339,7 +446,12 @@ namespace QuanLySuKienVaBanVe.GUI
                                 }
                             }
 
-                            zoneInfos.Add(new ZoneLegendInfo { Tag = tag, Color = btn.FillColor, Price = matchedPrice });
+                            zoneInfos.Add(new ZoneLegendInfo
+                            {
+                                Tag = tag,
+                                Color = btn.FillColor,
+                                Price = matchedPrice
+                            });
                         }
                     }
                 }
@@ -350,16 +462,39 @@ namespace QuanLySuKienVaBanVe.GUI
             foreach (var zone in sortedZones)
             {
                 Panel pnlItem = new Panel { Size = new Size(190, 45), Location = new Point(5, yOffset) };
-                Guna.UI2.WinForms.Guna2CirclePictureBox dot = new Guna.UI2.WinForms.Guna2CirclePictureBox { FillColor = zone.Color, Size = new Size(14, 14), Location = new Point(0, 5) };
-                Label lblName = new Label { Text = zone.Tag, AutoSize = false, Width = 160, Height = 18, Font = new Font("Segoe UI", 9F, FontStyle.Bold), Location = new Point(22, 2) };
-                Label lblPrice = new Label { Text = zone.Price > 0 ? $"{zone.Price:N0} đ" : "Chưa có giá", AutoSize = true, Font = new Font("Segoe UI", 8F), ForeColor = Color.Gray, Location = new Point(22, 20) };
-                pnlItem.Controls.Add(dot); pnlItem.Controls.Add(lblName); pnlItem.Controls.Add(lblPrice);
+                Guna.UI2.WinForms.Guna2CirclePictureBox dot = new Guna.UI2.WinForms.Guna2CirclePictureBox
+                { FillColor = zone.Color, Size = new Size(14, 14), Location = new Point(0, 5) };
+                Label lblName = new Label
+                {
+                    Text = zone.Tag,
+                    AutoSize = false,
+                    Width = 160,
+                    Height = 18,
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    Location = new Point(22, 2)
+                };
+                Label lblPrice = new Label
+                {
+                    Text = zone.Price > 0 ? $"{zone.Price:N0} đ" : "Chưa có giá",
+                    AutoSize = true,
+                    Font = new Font("Segoe UI", 8F),
+                    ForeColor = Color.Gray,
+                    Location = new Point(22, 20)
+                };
+                pnlItem.Controls.Add(dot);
+                pnlItem.Controls.Add(lblName);
+                pnlItem.Controls.Add(lblPrice);
                 pnlLegend.Controls.Add(pnlItem);
                 yOffset += 50;
             }
         }
 
-        private class ZoneLegendInfo { public string Tag { get; set; } public Color Color { get; set; } public decimal Price { get; set; } }
+        private class ZoneLegendInfo
+        {
+            public string Tag { get; set; }
+            public Color Color { get; set; }
+            public decimal Price { get; set; }
+        }
 
         private string RemoveSign(string str)
         {
@@ -367,106 +502,166 @@ namespace QuanLySuKienVaBanVe.GUI
             str = str.Replace("đ", "d").Replace("Đ", "D");
             string[] arr1 = new string[] { "á", "à", "ả", "ã", "ạ", "â", "ấ", "ầ", "ẩ", "ẫ", "ậ", "ă", "ắ", "ằ", "ẳ", "ẵ", "ặ", "é", "è", "ẻ", "ẽ", "ẹ", "ê", "ế", "ề", "ể", "ễ", "ệ", "í", "ì", "ỉ", "ĩ", "ị", "ó", "ò", "ỏ", "õ", "ọ", "ô", "ố", "ồ", "ổ", "ỗ", "ộ", "ơ", "ớ", "ờ", "ở", "ỡ", "ợ", "ú", "ù", "ủ", "ũ", "ụ", "ư", "ứ", "ừ", "ử", "ữ", "ự", "ý", "ỳ", "ỷ", "ỹ", "ỵ" };
             string[] arr2 = new string[] { "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "a", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "e", "i", "i", "i", "i", "i", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "o", "u", "u", "u", "u", "u", "u", "u", "u", "u", "u", "u", "y", "y", "y", "y", "y" };
-            for (int i = 0; i < arr1.Length; i++) { str = str.Replace(arr1[i], arr2[i]); str = str.Replace(arr1[i].ToUpper(), arr2[i].ToUpper()); }
+            for (int i = 0; i < arr1.Length; i++)
+            {
+                str = str.Replace(arr1[i], arr2[i]);
+                str = str.Replace(arr1[i].ToUpper(), arr2[i].ToUpper());
+            }
             return str;
         }
 
-        // =================== CÁC HÀM XỬ LÝ NÚT BẤM KHÁC ===================
-        private void btnThemKhuVuc_Click(object sender, EventArgs e) { _editingMaKV = null; ClearInput(); txtTenKV.Focus(); }
+        // ============================================================
+        // NÚT BẤM
+        // ============================================================
+        private void btnThemKhuVuc_Click(object sender, EventArgs e)
+        {
+            _editingMaKV = null;
+            ClearInput();
+            txtTenKV.Focus();
+        }
 
         private void btnLuu_Click(object sender, EventArgs e)
         {
-            if (cboSuatDien.SelectedValue == null) { MessageBox.Show("Vui lòng chọn Suất diễn!"); return; }
-            if (string.IsNullOrWhiteSpace(txtTenKV.Text)) { MessageBox.Show("Vui lòng nhập Tên khu vực!"); return; }
+            if (cboSuatDien.SelectedValue == null)
+            { MessageBox.Show("Vui lòng chọn Suất diễn!"); return; }
+            if (string.IsNullOrWhiteSpace(txtTenKV.Text))
+            { MessageBox.Show("Vui lòng nhập Tên khu vực!"); return; }
 
             decimal giaVe = 0;
-            if (!decimal.TryParse(txtGiaVe.Text.Replace(".", "").Replace(",", "").Replace("đ", "").Trim(), out giaVe)) { MessageBox.Show("Giá vé không hợp lệ!"); return; }
+            if (!decimal.TryParse(
+                    txtGiaVe.Text.Replace(".", "").Replace(",", "").Replace("đ", "").Trim(),
+                    out giaVe))
+            { MessageBox.Show("Giá vé không hợp lệ!"); return; }
+            if (giaVe < 0) { MessageBox.Show("Giá vé phải >= 0!"); return; }
+
             int sucChua = 0;
-            if (!int.TryParse(txtSucChua.Text.Trim(), out sucChua)) { MessageBox.Show("Sức chứa không hợp lệ!"); return; }
+            if (!int.TryParse(txtSucChua.Text.Trim(), out sucChua))
+            { MessageBox.Show("Sức chứa không hợp lệ!"); return; }
+            if (sucChua <= 0 || sucChua > 10000)
+            { MessageBox.Show("Sức chứa phải là số nguyên dương (1..10000)!"); return; }
+
+            int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
+            bool choPhepBanVe = toggleBanVe.Checked;
 
             try
             {
-                int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
                 {
                     conn.Open();
-                    if (_editingMaKV == null)
+                    using (SqlTransaction trans = conn.BeginTransaction())
                     {
-                        string sql = "INSERT INTO KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe) OUTPUT INSERTED.MaKV VALUES (@MaSuat, @Ten, @Loai, @Gia, @Ghe)";
-                        SqlCommand cmd = new SqlCommand(sql, conn);
-                        cmd.Parameters.AddWithValue("@MaSuat", maSuat);
-                        cmd.Parameters.AddWithValue("@Ten", txtTenKV.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Loai", cboLoaiKV.Text);
-                        cmd.Parameters.AddWithValue("@Gia", giaVe);
-                        cmd.Parameters.AddWithValue("@Ghe", sucChua);
-                        int newMaKV = (int)cmd.ExecuteScalar();
-
-                        string sqlGhe = "INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai) VALUES (@MaKV, 'A', @Cot, N'Trong')";
-                        for (int i = 1; i <= sucChua; i++)
+                        try
                         {
-                            SqlCommand cmdGhe = new SqlCommand(sqlGhe, conn);
-                            cmdGhe.Parameters.AddWithValue("@MaKV", newMaKV);
-                            cmdGhe.Parameters.AddWithValue("@Cot", i);
-                            cmdGhe.ExecuteNonQuery();
+                            if (_editingMaKV == null)
+                            {
+                                const string sql = @"
+                                    INSERT INTO KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhepBanVe)
+                                    OUTPUT INSERTED.MaKV
+                                    VALUES (@MaSuat, @Ten, @Loai, @Gia, @Ghe, @ChoPhep)";
+                                SqlCommand cmd = new SqlCommand(sql, conn, trans);
+                                cmd.Parameters.AddWithValue("@MaSuat", maSuat);
+                                cmd.Parameters.AddWithValue("@Ten", txtTenKV.Text.Trim());
+                                cmd.Parameters.AddWithValue("@Loai", cboLoaiKV.Text);
+                                cmd.Parameters.AddWithValue("@Gia", giaVe);
+                                cmd.Parameters.AddWithValue("@Ghe", sucChua);
+                                cmd.Parameters.AddWithValue("@ChoPhep", choPhepBanVe);
+                                int newMaKV = (int)cmd.ExecuteScalar();
+
+                                const string sqlGhe =
+                                    "INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai) VALUES (@MaKV, 'A', @Cot, N'Trong')";
+                                for (int i = 1; i <= sucChua; i++)
+                                {
+                                    SqlCommand cmdGhe = new SqlCommand(sqlGhe, conn, trans);
+                                    cmdGhe.Parameters.AddWithValue("@MaKV", newMaKV);
+                                    cmdGhe.Parameters.AddWithValue("@Cot", i);
+                                    cmdGhe.ExecuteNonQuery();
+                                }
+                            }
+                            else
+                            {
+                                const string sql = @"
+                                    UPDATE KhuVuc
+                                    SET TenKV = @Ten, HangVe = @Loai, GiaVe = @Gia, ChoPhepBanVe = @ChoPhep
+                                    WHERE MaKV = @MaKV";
+                                SqlCommand cmd = new SqlCommand(sql, conn, trans);
+                                cmd.Parameters.AddWithValue("@Ten", txtTenKV.Text.Trim());
+                                cmd.Parameters.AddWithValue("@Loai", cboLoaiKV.Text);
+                                cmd.Parameters.AddWithValue("@Gia", giaVe);
+                                cmd.Parameters.AddWithValue("@ChoPhep", choPhepBanVe);
+                                cmd.Parameters.AddWithValue("@MaKV", _editingMaKV.Value);
+                                cmd.ExecuteNonQuery();
+                            }
+
+                            trans.Commit();
                         }
-                        MessageBox.Show("Thêm khu vực thành công!");
-                    }
-                    else
-                    {
-                        string sql = "UPDATE KhuVuc SET TenKV = @Ten, HangVe = @Loai, GiaVe = @Gia WHERE MaKV = @MaKV";
-                        SqlCommand cmd = new SqlCommand(sql, conn);
-                        cmd.Parameters.AddWithValue("@Ten", txtTenKV.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Loai", cboLoaiKV.Text);
-                        cmd.Parameters.AddWithValue("@Gia", giaVe);
-                        cmd.Parameters.AddWithValue("@MaKV", _editingMaKV.Value);
-                        cmd.ExecuteNonQuery();
-                        MessageBox.Show("Cập nhật thành công!");
+                        catch
+                        {
+                            trans.Rollback();
+                            throw;
+                        }
                     }
                 }
+
+                MessageBox.Show(_editingMaKV == null
+                    ? "Thêm khu vực thành công!"
+                    : "Cập nhật thành công!");
                 LoadData();
             }
             catch (Exception ex) { MessageBox.Show("Lỗi lưu: " + ex.Message); }
         }
 
-        private void dgvKhuVuc_CellClick(object sender, DataGridViewCellEventArgs e)
+        // [FIX-P2-7] CellContentClick + nút Sửa / Xóa
+        private void dgvKhuVuc_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
+
+            string colName = dgvKhuVuc.Columns[e.ColumnIndex].Name;
+            if (colName != "colSua" && colName != "colXoa") return;
+
             int maKV = Convert.ToInt32(dgvKhuVuc.Rows[e.RowIndex].Cells["colMaKV"].Value);
-            if (dgvKhuVuc.Columns[e.ColumnIndex].Name == "colThaoTac")
+
+            if (colName == "colSua")
             {
-                Point p = dgvKhuVuc.PointToClient(Cursor.Position);
-                Rectangle rect = dgvKhuVuc.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
-                int x = p.X - rect.X;
-                if (x >= 10 && x <= 35)
+                PopulateInputsFromRow(dgvKhuVuc.Rows[e.RowIndex]);
+            }
+            else if (colName == "colXoa")
+            {
+                if (MessageBox.Show(
+                    "Xóa khu vực này sẽ xóa toàn bộ ghế bên trong. Tiếp tục?",
+                    "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return;
+
+                try
                 {
-                    _editingMaKV = maKV;
-                    txtTenKV.Text = dgvKhuVuc.Rows[e.RowIndex].Cells["colTenKV"].Value.ToString();
-                    cboLoaiKV.Text = dgvKhuVuc.Rows[e.RowIndex].Cells["colLoaiKV"].Value.ToString();
-                    txtSucChua.Text = dgvKhuVuc.Rows[e.RowIndex].Cells["colSucChua"].Value.ToString();
-                    txtSucChua.Enabled = false;
-                    txtGiaVe.Text = dgvKhuVuc.Rows[e.RowIndex].Cells["colGiaVe"].Value.ToString().Replace(" đ", "").Replace(".", "");
-                }
-                else if (x > 35 && x <= 75)
-                {
-                    if (MessageBox.Show("Xóa khu vực này sẽ xóa toàn bộ ghế bên trong. Tiếp tục?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                    using (SqlConnection conn = DatabaseHelper.GetConnection())
                     {
-                        try
+                        conn.Open();
+                        using (SqlTransaction trans = conn.BeginTransaction())
                         {
-                            using (SqlConnection conn = new SqlConnection(connectionString))
+                            try
                             {
-                                conn.Open();
-                                SqlCommand cmdGhe = new SqlCommand("DELETE FROM Ghe WHERE MaKV = @MaKV", conn);
+                                var cmdGhe = new SqlCommand(
+                                    "DELETE FROM Ghe WHERE MaKV = @MaKV", conn, trans);
                                 cmdGhe.Parameters.AddWithValue("@MaKV", maKV);
                                 cmdGhe.ExecuteNonQuery();
-                                SqlCommand cmdKV = new SqlCommand("DELETE FROM KhuVuc WHERE MaKV = @MaKV", conn);
+
+                                var cmdKV = new SqlCommand(
+                                    "DELETE FROM KhuVuc WHERE MaKV = @MaKV", conn, trans);
                                 cmdKV.Parameters.AddWithValue("@MaKV", maKV);
                                 cmdKV.ExecuteNonQuery();
+
+                                trans.Commit();
                             }
-                            LoadData();
+                            catch
+                            {
+                                trans.Rollback();
+                                throw;
+                            }
                         }
-                        catch (Exception ex) { MessageBox.Show("Không thể xóa: " + ex.Message); }
                     }
+                    LoadData();
                 }
+                catch (Exception ex) { MessageBox.Show("Không thể xóa: " + ex.Message); }
             }
         }
 
@@ -480,32 +675,24 @@ namespace QuanLySuKienVaBanVe.GUI
             txtGiaVe.Text = "";
             toggleBanVe.Checked = true;
 
-            // SỬA LỖI Ở ĐÂY: Duyệt qua seatMapWrapper
             if (seatMapWrapper != null)
             {
                 foreach (Control ctrl in seatMapWrapper.Controls)
-                {
                     if (ctrl is Guna.UI2.WinForms.Guna2Button btn) btn.BorderThickness = 0;
-                }
             }
         }
 
         private void btnHuy_Click(object sender, EventArgs e) { ClearInput(); }
 
-        // Xử lý ẩn/hiện Form thông tin
         private void btnToggleInfo_Click(object sender, EventArgs e)
         {
             pnlRightInfo.Visible = !pnlRightInfo.Visible;
             btnToggleInfo.Text = pnlRightInfo.Visible ? "▶" : "◀";
 
-            // Ép layout tính toán lại kích thước
             pnlLeftMap.PerformLayout();
             pnlSeatMap.PerformLayout();
 
-            // Đợi layout chạy xong mới căn giữa (tránh bị lệch do size cũ)
-            this.BeginInvoke(new Action(() => {
-                CenterSeatMap();
-            }));
+            this.BeginInvoke(new Action(() => { CenterSeatMap(); }));
         }
 
         private void CenterSeatMap()
@@ -526,7 +713,6 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
-        // HÀM NÀY ĐƯỢC CHUYỂN TỪ DESIGNER SANG ĐÂY
         private void pnlSeatMap_Resize(object sender, EventArgs e)
         {
             CenterSeatMap();
