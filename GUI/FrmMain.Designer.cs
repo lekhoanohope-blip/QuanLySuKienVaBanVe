@@ -31,7 +31,6 @@
             this.btnCaiDat = new Guna.UI2.WinForms.Guna2Button();
             this.btnKhuVuc = new Guna.UI2.WinForms.Guna2Button();
             this.btnBanVe = new Guna.UI2.WinForms.Guna2Button();
-            this.btnDonVe = new Guna.UI2.WinForms.Guna2Button();
             this.btnNhanVien = new Guna.UI2.WinForms.Guna2Button();
             this.btnThongKe = new Guna.UI2.WinForms.Guna2Button();
             this.btnNhatKy = new Guna.UI2.WinForms.Guna2Button();
@@ -121,7 +120,6 @@
             this.pnlSidebar.Controls.Add(this.btnNhatKy);
             this.pnlSidebar.Controls.Add(this.btnNhanVien);
             this.pnlSidebar.Controls.Add(this.btnThongKe);
-            this.pnlSidebar.Controls.Add(this.btnDonVe);
             this.pnlSidebar.Controls.Add(this.btnKhachHang);
             this.pnlSidebar.Controls.Add(this.btnSuatDien);
             this.pnlSidebar.Controls.Add(this.btnSuKien);
@@ -1158,7 +1156,6 @@
         private Guna.UI2.WinForms.Guna2ControlBox controlBoxMinimize;
         private Guna.UI2.WinForms.Guna2ResizeForm resizeForm;
         private Guna.UI2.WinForms.Guna2ResizeBox resizeBox;
-        private Guna.UI2.WinForms.Guna2Button btnDonVe;
         private Guna.UI2.WinForms.Guna2Button btnTaiKhoan;
         private Guna.UI2.WinForms.Guna2Button btnBaoCao;
     }

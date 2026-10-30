@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.Linq;
@@ -155,16 +155,6 @@ namespace QuanLySuKienVaBanVe.GUI
             int viewportWidth = sidebarWidth -
                 (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
             int currentY = Px(140);
-<<<<<<< HEAD
-=======
-
-            // Cập nhật mảng này để bao gồm tất cả các nút có thể hiển thị
-            Control[] navButtons = new Control[] {
-                btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnTaiKhoan, btnBaoCao,
-                btnBanVe, btnDonVe
-            };
-
->>>>>>> feature/area-management
             foreach (Control btn in navButtons)
             {
                 if (btn != null)
@@ -427,15 +417,12 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnKhachHang != null) { btnKhachHang.FillColor = defaultColor; btnKhachHang.ForeColor = defaultTextColor; }
             if (btnBanVe != null) { btnBanVe.FillColor = defaultColor; btnBanVe.ForeColor = defaultTextColor; }
             if (btnDonVe != null) { btnDonVe.FillColor = defaultColor; btnDonVe.ForeColor = defaultTextColor; }
-<<<<<<< HEAD
             if (btnNhanVien != null) { btnNhanVien.FillColor = defaultColor; btnNhanVien.ForeColor = defaultTextColor; }
             if (btnThongKe != null) { btnThongKe.FillColor = defaultColor; btnThongKe.ForeColor = defaultTextColor; }
             if (btnNhatKy != null) { btnNhatKy.FillColor = defaultColor; btnNhatKy.ForeColor = defaultTextColor; }
             if (btnCaiDat != null) { btnCaiDat.FillColor = defaultColor; btnCaiDat.ForeColor = defaultTextColor; }
-=======
             if (btnTaiKhoan != null) { btnTaiKhoan.FillColor = defaultColor; btnTaiKhoan.ForeColor = defaultTextColor; }
             if (btnBaoCao != null) { btnBaoCao.FillColor = defaultColor; btnBaoCao.ForeColor = defaultTextColor; }
->>>>>>> feature/area-management
         }
 
         private void btnTrangChu_Click(object sender, EventArgs e)
@@ -488,7 +475,6 @@ namespace QuanLySuKienVaBanVe.GUI
             OpenChildForm(new FrmQuanLyKhuVuc(), btnKhuVuc);
         }
 
-<<<<<<< HEAD
         private void btnDonVe_Click(object sender, EventArgs e)
         {
             if (pnlDashboard != null) pnlDashboard.Visible = false;
@@ -499,7 +485,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (!PhienDangNhap.LaQuanLy)
             {
-                MessageBox.Show("Bạn không có quyền truy cập chức năng Quản lý Nhân viên!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Bạn không có quyền truy cập chức năng Quản lý nhân viêm", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
@@ -510,7 +496,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (!PhienDangNhap.LaQuanLy)
             {
-                MessageBox.Show("Bạn không có quyền truy cập chức năng Thống kê!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Bạn không có quyền truy cập chức năng Thống kê", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
@@ -521,7 +507,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (!PhienDangNhap.LaQuanLy)
             {
-                MessageBox.Show("Bạn không có quyền truy cập chức năng Nhật ký!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Bạn không có quyền truy cập chức năng Nhật ký", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
@@ -534,19 +520,10 @@ namespace QuanLySuKienVaBanVe.GUI
             OpenChildForm(new FrmCaiDat(), btnCaiDat);
         }
 
-        private void chartDoanhThu_Click(object sender, EventArgs e)
-=======
         private void btnBanVe_Click(object sender, EventArgs e)
->>>>>>> feature/area-management
         {
             if (pnlDashboard != null) pnlDashboard.Visible = false;
-            OpenChildForm(new FrmQuanLyKhuVuc(), btnBanVe);
-        }
-
-        private void btnDonVe_Click(object sender, EventArgs e)
-        {
-            if (pnlDashboard != null) pnlDashboard.Visible = false;
-            OpenChildForm(new FrmQuanLyDonVe(), btnDonVe);
+            OpenChildForm(new FrmBanVe(), btnBanVe);
         }
 
         private void btnTaiKhoan_Click(object sender, EventArgs e)
@@ -568,44 +545,30 @@ namespace QuanLySuKienVaBanVe.GUI
             if (PhienDangNhap.DaDangNhap)
             {
                 var tk = PhienDangNhap.TaiKhoan;
+                bool isAdmin = PhienDangNhap.LaQuanLy;
                 if (lblUser != null)
                 {
-<<<<<<< HEAD
-                    string vaiTroHienThi = tk.VaiTro == VaiTro.QuanLy ? "Quản lý" : (tk.VaiTro == VaiTro.NhanVien ? "Nhân viên" : tk.VaiTro);
-                    lblUser.Text = $"{tk.TenDangNhap} ({vaiTroHienThi})";
-=======
-                    lblUser.Text = $"{tk.TenDangNhap} ({(PhienDangNhap.LaQuanLy ? "Quản lý" : "Nhân viên")})";
->>>>>>> feature/area-management
+                    string vaiTro = isAdmin ? "Quản lý" : "Nhân viên";
+                    lblUser.Text = string.Format("{0} ({1})", tk.TenDangNhap, vaiTro);
                 }
 
-<<<<<<< HEAD
-                // Nhân viên chỉ được xem Bán vé, Khách hàng, Trang chủ
-                // Ẩn toàn bộ phân hệ Quản trị khỏi thanh điều hướng
-                if (btnSuKien != null) btnSuKien.Visible = laQuanLy;
-                if (btnSuatDien != null) btnSuatDien.Visible = laQuanLy;
-                if (btnKhuVuc != null) btnKhuVuc.Visible = laQuanLy;
-                if (btnNhanVien != null) btnNhanVien.Visible = laQuanLy;
-                if (btnThongKe != null) btnThongKe.Visible = laQuanLy;
-                if (btnNhatKy != null) btnNhatKy.Visible = laQuanLy;
-                if (btnCaiDat != null) btnCaiDat.Visible = true;
-                if (btnDonVe != null) btnDonVe.Visible = true;
-=======
-                bool isAdmin = PhienDangNhap.LaQuanLy;
-
-                // 1. ADMIN
+                // 1. PhÃ¢n quyá»n Menu Admin (Quản lý)
                 if (btnSuKien != null) btnSuKien.Visible = isAdmin;
                 if (btnSuatDien != null) btnSuatDien.Visible = isAdmin;
                 if (btnKhachHang != null) btnKhachHang.Visible = isAdmin;
                 if (btnTaiKhoan != null) btnTaiKhoan.Visible = isAdmin;
+                if (btnNhanVien != null) btnNhanVien.Visible = false;
                 if (btnBaoCao != null) btnBaoCao.Visible = isAdmin;
+                if (btnThongKe != null) btnThongKe.Visible = false;
+                if (btnNhatKy != null) btnNhatKy.Visible = isAdmin;
 
-                // 2. STAFF
+                // 2. PhÃ¢n quyá»n Menu Staff (Nhân viên)
                 if (btnBanVe != null) btnBanVe.Visible = !isAdmin;
-                if (btnDonVe != null) btnDonVe.Visible = !isAdmin;
+                if (btnDonVe != null) btnDonVe.Visible = true;
 
-                // 3. ẨN CÁC NÚT CŨ
+                // 3. KhÃ¡c
                 if (btnKhuVuc != null) btnKhuVuc.Visible = false;
->>>>>>> feature/area-management
+                if (btnCaiDat != null) btnCaiDat.Visible = true;
 
                 LayoutSidebar();
             }

@@ -82,13 +82,26 @@
     <Compile Include="DTO\DonVeDTO.cs" />
     <Compile Include="DTO\ChiTietVeDTO.cs" />
     <Compile Include="DTO\ThanhToanDTO.cs" />
+    <Compile Include="BLL\MockDataService.cs" />
+    <Compile Include="DTO\ThongTinDatVeDTO.cs" />
+    <Compile Include="GUI\FrmBanVe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmBanVe.Designer.cs">
+      <DependentUpon>FrmBanVe.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmThanhToan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmThanhToan.Designer.cs">
+      <DependentUpon>FrmThanhToan.cs</DependentUpon>
+    </Compile>
     <Compile Include="GUI\Controls\FxControls.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="GUI\Forms\FrmDangNhap.cs">
       <SubType>Form</SubType>
     </Compile>
-<<<<<<< HEAD
     <Compile Include="GUI\Forms\FrmCaiDat.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -105,9 +118,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\Forms\FrmNhatKy.cs">
-=======
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="GUI\FrmBaoCao.cs">
->>>>>>> feature/area-management
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\FrmChiTietSuatDien.cs">
@@ -140,9 +153,6 @@
     <Compile Include="GUI\FrmMain.Designer.cs">
       <DependentUpon>FrmMain.cs</DependentUpon>
     </Compile>
-    <Compile Include="GUI\FrmQuanLyDonVe.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="GUI\FrmQuanLyKhuVuc.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -161,7 +171,6 @@
     <Compile Include="GUI\FrmQuanLySuKien.Designer.cs">
       <DependentUpon>FrmQuanLySuKien.cs</DependentUpon>
     </Compile>
-<<<<<<< HEAD
     <Compile Include="GUI\FrmQuanLyDonVe.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -174,17 +183,18 @@
     <Compile Include="GUI\FrmDoiVe.Designer.cs">
       <DependentUpon>FrmDoiVe.cs</DependentUpon>
     </Compile>
-=======
     <Compile Include="GUI\FrmQuanLyTaiKhoan.cs">
       <SubType>Form</SubType>
     </Compile>
->>>>>>> feature/area-management
     <Compile Include="GUI\Helpers\Fx.cs" />
     <Compile Include="GUI\Helpers\Lang.cs" />
     <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\ManagementGridRenderer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="GUI\FrmBanVe.resx">
+      <DependentUpon>FrmBanVe.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmChiTietSuatDien.resx">
       <DependentUpon>FrmChiTietSuatDien.cs</DependentUpon>
     </EmbeddedResource>
@@ -211,6 +221,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmQuanLySuKien.resx">
       <DependentUpon>FrmQuanLySuKien.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmThanhToan.resx">
+      <DependentUpon>FrmThanhToan.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -242,12 +255,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="database\create_database.sql" />
-<<<<<<< HEAD
     <Content Include="database\migrate_tv3_donve.sql" />
-=======
     <Content Include="database\dashboard_demo_data.sql" />
     <Content Include="database\migration_add_columns.sql" />
->>>>>>> feature/area-management
     <Content Include="database\sample_data.sql" />
     <Content Include="QuanLySuKienVaBanVe.slnx" />
   </ItemGroup>
