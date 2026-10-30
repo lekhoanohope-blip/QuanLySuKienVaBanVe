@@ -10,5 +10,6 @@ namespace QuanLySuKienVaBanVe.DTO
         public DateTime? ThoiGianKetThuc { get; set; }
         public string DiaDiem { get; set; }
         public string TrangThai { get; set; }
+        public int LoaiSoDo { get; set; } = 1;
     }
 }

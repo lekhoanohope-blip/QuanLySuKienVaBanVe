@@ -14,12 +14,16 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             InitializeComponent();
             _maSuat = maSuat;
-            if (_maSuat.HasValue) this.Text = "Sửa Suất diễn"; else this.Text = "Thêm Suất diễn";
+            this.Text = _maSuat.HasValue ? "Sửa Suất diễn" : "Thêm Suất diễn";
         }
 
         private void FrmChiTietSuatDien_Load(object sender, EventArgs e)
         {
             cboTrangThai.SelectedIndex = 0;
+
+            cboLoaiSoDo.Items.Clear();
+            cboLoaiSoDo.Items.AddRange(new object[] { "Sơ đồ 1 (Chữ T)", "Sơ đồ 2 (Hình chữ nhật)", "Sơ đồ 3 (Lưới)" });
+            cboLoaiSoDo.SelectedIndex = 0;
 
             // Load danh sách sự kiện
             try
@@ -45,6 +49,11 @@ namespace QuanLySuKienVaBanVe.GUI
                         dtpKetThuc.Value = sd.ThoiGianKetThuc.Value;
                     txtDiaDiem.Text = sd.DiaDiem;
                     cboTrangThai.Text = sd.TrangThai;
+
+                    if (sd.LoaiSoDo >= 1 && sd.LoaiSoDo <= 3)
+                        cboLoaiSoDo.SelectedIndex = sd.LoaiSoDo - 1;
+                    else
+                        cboLoaiSoDo.SelectedIndex = 0; 
                 }
             }
         }
@@ -60,7 +69,8 @@ namespace QuanLySuKienVaBanVe.GUI
                 ThoiGianBatDau = dtpBatDau.Value,
                 ThoiGianKetThuc = dtpKetThuc.Value,
                 DiaDiem = txtDiaDiem.Text.Trim(),
-                TrangThai = cboTrangThai.Text
+                TrangThai = cboTrangThai.Text,
+                LoaiSoDo = cboLoaiSoDo.SelectedIndex >= 0 ? cboLoaiSoDo.SelectedIndex + 1 : 1
             };
 
             string kq;

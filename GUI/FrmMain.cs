@@ -13,7 +13,7 @@ namespace QuanLySuKienVaBanVe.GUI
     {
         public bool DangXuat { get; private set; }
         private Form currentFormChild;
-        private System.Windows.Forms.Timer timerClock; // Khai báo Timer
+        private System.Windows.Forms.Timer timerClock;
         private Panel dashboardCanvas;
         private bool adjustingWindow;
         private bool layingOutDashboard;
@@ -64,21 +64,17 @@ namespace QuanLySuKienVaBanVe.GUI
             };
             pnlDashboard.SizeChanged += (s, e) => LayoutDashboard();
 
-            // Hỗ trợ kéo di chuyển cửa sổ
             pnlHeader.MouseDown += DragWindow_MouseDown;
             pnlLogo.MouseDown += DragWindow_MouseDown;
             lblLogo.MouseDown += DragWindow_MouseDown;
 
-            // Nháy đúp vào thanh tiêu đề để phóng to / thu nhỏ
             pnlHeader.DoubleClick += (s, e) =>
             {
                 this.WindowState = (this.WindowState == FormWindowState.Maximized) ? FormWindowState.Normal : FormWindowState.Maximized;
             };
 
-            // Nút đóng thoát hẳn app
             controlBoxClose.Click += (s, e) => Application.Exit();
 
-            // Khởi tạo Timer chạy mỗi 1 giây
             timerClock = new System.Windows.Forms.Timer();
             timerClock.Interval = 1000;
             timerClock.Tick += TimerClock_Tick;
@@ -148,7 +144,6 @@ namespace QuanLySuKienVaBanVe.GUI
             int sidebarWidth = Width < Px(1050) ? Px(200) : Px(250);
             if (pnlSidebar.Width != sidebarWidth) pnlSidebar.Width = sidebarWidth;
 
-            // Short screens scroll the last two links instead of letting them cover navigation.
             pnlSidebar.AutoScroll = true;
             btnDangXuat.Dock = DockStyle.None;
             btnCaiDat.Dock = DockStyle.None;
@@ -160,6 +155,16 @@ namespace QuanLySuKienVaBanVe.GUI
             int viewportWidth = sidebarWidth -
                 (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
             int currentY = Px(140);
+<<<<<<< HEAD
+=======
+
+            // Cập nhật mảng này để bao gồm tất cả các nút có thể hiển thị
+            Control[] navButtons = new Control[] {
+                btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnTaiKhoan, btnBaoCao,
+                btnBanVe, btnDonVe
+            };
+
+>>>>>>> feature/area-management
             foreach (Control btn in navButtons)
             {
                 if (btn != null)
@@ -172,6 +177,7 @@ namespace QuanLySuKienVaBanVe.GUI
                     }
                 }
             }
+
             btnDangXuat.Width = viewportWidth;
             btnCaiDat.Width = viewportWidth;
             if (btnCaiDat.Visible)
@@ -257,8 +263,6 @@ namespace QuanLySuKienVaBanVe.GUI
                     splitTables ? rightWidth : contentWidth, tableHeight);
                 y += splitTables ? tableHeight + gap : 2 * (tableHeight + gap);
                 dashboardCanvas.Height = y + margin;
-                // AutoScroll keeps the previous virtual bounds after controls shrink.
-                // Recreate its scroll range when the window changes size.
                 pnlDashboard.AutoScroll = false;
                 pnlDashboard.AutoScroll = true;
             }
@@ -272,31 +276,26 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void FrmMain_Load(object sender, EventArgs e)
         {
-            timerClock.Start(); // Bật đồng hồ khi form load
-            TimerClock_Tick(null, null); // Cập nhật giờ ngay lập tức
+            timerClock.Start();
+            TimerClock_Tick(null, null);
             LoadDashboardData();
         }
 
-        // Hàm cập nhật thời gian thực
         private void TimerClock_Tick(object sender, EventArgs e)
         {
-            // Định dạng: Thứ Hai, 28/10/2025 | 16:42:05
             lblTime.Text = "📅 " + DateTime.Now.ToString("dddd, dd/MM/yyyy") + " | 🕒 " + DateTime.Now.ToString("HH:mm:ss");
         }
 
-        // =================== LOAD DASHBOARD DATA TỪ BLL ===================
         private void LoadDashboardData()
         {
             try
             {
-                // 1. LOAD THẺ THỐNG KÊ
                 var cards = ThongKeBLL.LayThongKeCards();
                 lblCard1Value.Text = cards.DoanhThu;
                 lblCard2Value.Text = cards.SoVe;
                 lblCard3Value.Text = cards.SoSuKien;
                 lblCard4Value.Text = cards.SoDonHuy;
 
-                // 2. LOAD BIỂU ĐỒ DOANH THU
                 chartDoanhThu.Series[0].Points.Clear();
                 DataTable dtDoanhThu = ThongKeBLL.LayDoanhThu7Ngay();
                 foreach (DataRow row in dtDoanhThu.Rows)
@@ -306,7 +305,6 @@ namespace QuanLySuKienVaBanVe.GUI
                     chartDoanhThu.Series[0].Points.AddXY(ngay.ToString("dd/MM"), doanhThu);
                 }
 
-                // 3. LOAD BIỂU ĐỒ TỶ LỆ
                 chartTyLe.Series[0].Points.Clear();
                 DataTable dtTyLe = ThongKeBLL.LayTyLeGhe();
                 foreach (DataRow row in dtTyLe.Rows)
@@ -317,18 +315,16 @@ namespace QuanLySuKienVaBanVe.GUI
                     chartTyLe.Series[0].Points[index].LegendText = trangThai;
                 }
 
-                // 4. LOAD BẢNG SỰ KIỆN SẮP DIỄN RA
                 dgvSuKienSapDien.DataSource = ThongKeBLL.LaySuKienSapDien(5);
                 if (dgvSuKienSapDien.Columns["Thời gian"] != null)
                     dgvSuKienSapDien.Columns["Thời gian"].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
 
-                // 5. LOAD BẢNG TOP SỰ KIỆN
                 dgvTopSuKien.DataSource = ThongKeBLL.LayTopSuKienDoanhThu(5);
                 if (dgvTopSuKien.Columns["Doanh thu"] != null)
                     dgvTopSuKien.Columns["Doanh thu"].DefaultCellStyle.Format = "N0";
                 ConfigureDashboardColumns();
             }
-            catch { /* Bỏ qua lỗi nếu chưa có data */ }
+            catch { }
         }
 
         private void Dgv_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
@@ -377,7 +373,6 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void ClearDashboardSelection()
         {
-            // Run once after the form receives focus so binding does not select the first row again.
             foreach (DataGridView grid in new DataGridView[] { dgvSuKienSapDien, dgvTopSuKien })
             {
                 grid.ClearSelection();
@@ -432,10 +427,15 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnKhachHang != null) { btnKhachHang.FillColor = defaultColor; btnKhachHang.ForeColor = defaultTextColor; }
             if (btnBanVe != null) { btnBanVe.FillColor = defaultColor; btnBanVe.ForeColor = defaultTextColor; }
             if (btnDonVe != null) { btnDonVe.FillColor = defaultColor; btnDonVe.ForeColor = defaultTextColor; }
+<<<<<<< HEAD
             if (btnNhanVien != null) { btnNhanVien.FillColor = defaultColor; btnNhanVien.ForeColor = defaultTextColor; }
             if (btnThongKe != null) { btnThongKe.FillColor = defaultColor; btnThongKe.ForeColor = defaultTextColor; }
             if (btnNhatKy != null) { btnNhatKy.FillColor = defaultColor; btnNhatKy.ForeColor = defaultTextColor; }
             if (btnCaiDat != null) { btnCaiDat.FillColor = defaultColor; btnCaiDat.ForeColor = defaultTextColor; }
+=======
+            if (btnTaiKhoan != null) { btnTaiKhoan.FillColor = defaultColor; btnTaiKhoan.ForeColor = defaultTextColor; }
+            if (btnBaoCao != null) { btnBaoCao.FillColor = defaultColor; btnBaoCao.ForeColor = defaultTextColor; }
+>>>>>>> feature/area-management
         }
 
         private void btnTrangChu_Click(object sender, EventArgs e)
@@ -484,14 +484,11 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void btnKhuVuc_Click(object sender, EventArgs e)
         {
-            if (!PhienDangNhap.LaQuanLy)
-            {
-                MessageBox.Show("Bạn không có quyền truy cập chức năng Quản lý Khu vực & Giá vé!", "Từ chối truy cập", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            MessageBox.Show("Tính năng Quản lý Khu vực & Giá vé đang được phát triển!", "Thông báo");
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmQuanLyKhuVuc(), btnKhuVuc);
         }
 
+<<<<<<< HEAD
         private void btnDonVe_Click(object sender, EventArgs e)
         {
             if (pnlDashboard != null) pnlDashboard.Visible = false;
@@ -538,9 +535,33 @@ namespace QuanLySuKienVaBanVe.GUI
         }
 
         private void chartDoanhThu_Click(object sender, EventArgs e)
+=======
+        private void btnBanVe_Click(object sender, EventArgs e)
+>>>>>>> feature/area-management
         {
-
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmQuanLyKhuVuc(), btnBanVe);
         }
+
+        private void btnDonVe_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmQuanLyDonVe(), btnDonVe);
+        }
+
+        private void btnTaiKhoan_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmQuanLyTaiKhoan(), btnTaiKhoan);
+        }
+
+        private void btnBaoCao_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmBaoCao(), btnBaoCao);
+        }
+
+        private void chartDoanhThu_Click(object sender, EventArgs e) { }
 
         private void ApplyPhanQuyen()
         {
@@ -549,11 +570,15 @@ namespace QuanLySuKienVaBanVe.GUI
                 var tk = PhienDangNhap.TaiKhoan;
                 if (lblUser != null)
                 {
+<<<<<<< HEAD
                     string vaiTroHienThi = tk.VaiTro == VaiTro.QuanLy ? "Quản lý" : (tk.VaiTro == VaiTro.NhanVien ? "Nhân viên" : tk.VaiTro);
                     lblUser.Text = $"{tk.TenDangNhap} ({vaiTroHienThi})";
+=======
+                    lblUser.Text = $"{tk.TenDangNhap} ({(PhienDangNhap.LaQuanLy ? "Quản lý" : "Nhân viên")})";
+>>>>>>> feature/area-management
                 }
-                bool laQuanLy = PhienDangNhap.LaQuanLy;
 
+<<<<<<< HEAD
                 // Nhân viên chỉ được xem Bán vé, Khách hàng, Trang chủ
                 // Ẩn toàn bộ phân hệ Quản trị khỏi thanh điều hướng
                 if (btnSuKien != null) btnSuKien.Visible = laQuanLy;
@@ -564,6 +589,23 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (btnNhatKy != null) btnNhatKy.Visible = laQuanLy;
                 if (btnCaiDat != null) btnCaiDat.Visible = true;
                 if (btnDonVe != null) btnDonVe.Visible = true;
+=======
+                bool isAdmin = PhienDangNhap.LaQuanLy;
+
+                // 1. ADMIN
+                if (btnSuKien != null) btnSuKien.Visible = isAdmin;
+                if (btnSuatDien != null) btnSuatDien.Visible = isAdmin;
+                if (btnKhachHang != null) btnKhachHang.Visible = isAdmin;
+                if (btnTaiKhoan != null) btnTaiKhoan.Visible = isAdmin;
+                if (btnBaoCao != null) btnBaoCao.Visible = isAdmin;
+
+                // 2. STAFF
+                if (btnBanVe != null) btnBanVe.Visible = !isAdmin;
+                if (btnDonVe != null) btnDonVe.Visible = !isAdmin;
+
+                // 3. ẨN CÁC NÚT CŨ
+                if (btnKhuVuc != null) btnKhuVuc.Visible = false;
+>>>>>>> feature/area-management
 
                 LayoutSidebar();
             }

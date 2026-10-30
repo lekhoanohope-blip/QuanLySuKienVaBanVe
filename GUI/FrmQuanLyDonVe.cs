@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using System;
 using System.Data;
 using System.Drawing;
@@ -822,3 +823,13 @@ namespace QuanLySuKienVaBanVe.GUI
         }
     }
 }
+=======
+﻿using System.Windows.Forms;
+
+namespace QuanLySuKienVaBanVe.GUI
+{
+    internal class FrmQuanLyDonVe : Form
+    {
+    }
+}
+>>>>>>> feature/area-management
