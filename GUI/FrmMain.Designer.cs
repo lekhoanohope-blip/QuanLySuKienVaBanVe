@@ -29,6 +29,9 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnKhuVuc = new Guna.UI2.WinForms.Guna2Button();
             this.btnBanVe = new Guna.UI2.WinForms.Guna2Button();
             this.btnDonVe = new Guna.UI2.WinForms.Guna2Button();
+            this.btnNhanVien = new Guna.UI2.WinForms.Guna2Button();
+            this.btnThongKe = new Guna.UI2.WinForms.Guna2Button();
+            this.btnNhatKy = new Guna.UI2.WinForms.Guna2Button();
             this.btnKhachHang = new Guna.UI2.WinForms.Guna2Button();
             this.btnSuatDien = new Guna.UI2.WinForms.Guna2Button();
             this.btnSuKien = new Guna.UI2.WinForms.Guna2Button();
@@ -109,6 +112,9 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlSidebar.Controls.Add(this.btnCaiDat);
             this.pnlSidebar.Controls.Add(this.btnKhuVuc);
             this.pnlSidebar.Controls.Add(this.btnBanVe);
+            this.pnlSidebar.Controls.Add(this.btnNhatKy);
+            this.pnlSidebar.Controls.Add(this.btnNhanVien);
+            this.pnlSidebar.Controls.Add(this.btnThongKe);
             this.pnlSidebar.Controls.Add(this.btnDonVe);
             this.pnlSidebar.Controls.Add(this.btnKhachHang);
             this.pnlSidebar.Controls.Add(this.btnSuatDien);
@@ -148,6 +154,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnCaiDat.TabIndex = 6;
             this.btnCaiDat.Text = "Cài đặt";
             this.btnCaiDat.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnCaiDat.Click += new System.EventHandler(this.btnCaiDat_Click);
             // 
             // btnKhuVuc
             // 
@@ -190,6 +197,34 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnDonVe.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnDonVe.Click += new System.EventHandler(this.btnDonVe_Click);
             // 
+            // btnThongKe
+            // 
+            this.btnThongKe.FillColor = System.Drawing.Color.Transparent;
+            this.btnThongKe.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnThongKe.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnThongKe.Location = new System.Drawing.Point(0, 560);
+            this.btnThongKe.Name = "btnThongKe";
+            this.btnThongKe.Padding = new System.Windows.Forms.Padding(20, 0, 0, 0);
+            this.btnThongKe.Size = new System.Drawing.Size(250, 50);
+            this.btnThongKe.TabIndex = 10;
+            this.btnThongKe.Text = "Thống kê";
+            this.btnThongKe.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnThongKe.Click += new System.EventHandler(this.btnThongKe_Click);
+            // 
+            // btnNhatKy
+            // 
+            this.btnNhatKy.FillColor = System.Drawing.Color.Transparent;
+            this.btnNhatKy.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnNhatKy.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnNhatKy.Location = new System.Drawing.Point(0, 620);
+            this.btnNhatKy.Name = "btnNhatKy";
+            this.btnNhatKy.Padding = new System.Windows.Forms.Padding(20, 0, 0, 0);
+            this.btnNhatKy.Size = new System.Drawing.Size(250, 50);
+            this.btnNhatKy.TabIndex = 11;
+            this.btnNhatKy.Text = "Nhật ký";
+            this.btnNhatKy.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnNhatKy.Click += new System.EventHandler(this.btnNhatKy_Click);
+            // 
             // btnKhachHang
             // 
             this.btnKhachHang.FillColor = System.Drawing.Color.Transparent;
@@ -203,6 +238,20 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnKhachHang.Text = "Khách hàng";
             this.btnKhachHang.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnKhachHang.Click += new System.EventHandler(this.btnKhachHang_Click);
+            // 
+            // btnNhanVien
+            // 
+            this.btnNhanVien.FillColor = System.Drawing.Color.Transparent;
+            this.btnNhanVien.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnNhanVien.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnNhanVien.Location = new System.Drawing.Point(0, 680);
+            this.btnNhanVien.Name = "btnNhanVien";
+            this.btnNhanVien.Padding = new System.Windows.Forms.Padding(20, 0, 0, 0);
+            this.btnNhanVien.Size = new System.Drawing.Size(250, 50);
+            this.btnNhanVien.TabIndex = 12;
+            this.btnNhanVien.Text = "Nhân viên";
+            this.btnNhanVien.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnNhanVien.Click += new System.EventHandler(this.btnNhanVien_Click);
             // 
             // btnSuatDien
             // 
@@ -966,6 +1015,9 @@ namespace QuanLySuKienVaBanVe.GUI
         private Guna.UI2.WinForms.Guna2Button btnKhuVuc;
         private Guna.UI2.WinForms.Guna2Button btnBanVe;
         private Guna.UI2.WinForms.Guna2Button btnDonVe;
+        private Guna.UI2.WinForms.Guna2Button btnNhanVien;
+        private Guna.UI2.WinForms.Guna2Button btnThongKe;
+        private Guna.UI2.WinForms.Guna2Button btnNhatKy;
         private Guna.UI2.WinForms.Guna2Button btnCaiDat;
         private Guna.UI2.WinForms.Guna2Button btnDangXuat;
         private Guna.UI2.WinForms.Guna2Panel pnlHeader;

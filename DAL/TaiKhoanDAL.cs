@@ -66,5 +66,42 @@ namespace QuanLySuKienVaBanVe.DAL
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
+
+        public static bool CapNhatMatKhau(int maTK, string matKhauDaBam)
+        {
+            const string sql = "UPDATE TaiKhoan SET MatKhau = @mk WHERE MaTK = @ma";
+            using (SqlConnection conn = Database.GetConnection())
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.Add("@mk", SqlDbType.NVarChar, 255).Value = matKhauDaBam;
+                cmd.Parameters.Add("@ma", SqlDbType.Int).Value = maTK;
+                conn.Open();
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        public static DataTable LayDanhSach(string tuKhoa)
+        {
+            const string sql =
+                "SELECT MaTK, TenDangNhap, VaiTro, " +
+                "CASE VaiTro WHEN N'QuanLy' THEN N'Quản lý' ELSE N'Nhân viên' END AS ChucVu, MatKhau " +
+                "FROM TaiKhoan WHERE TenDangNhap LIKE @kw ESCAPE '\\' ORDER BY MaTK DESC";
+
+            string escaped = (tuKhoa ?? "").Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
+            SqlParameter[] parameters = { new SqlParameter("@kw", SqlDbType.NVarChar, 100) { Value = "%" + escaped + "%" } };
+            return Database.ExecuteQuery(sql, parameters);
+        }
+
+        public static bool Xoa(int maTK)
+        {
+            const string sql = "DELETE FROM TaiKhoan WHERE MaTK = @ma";
+            using (SqlConnection conn = Database.GetConnection())
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.Add("@ma", SqlDbType.Int).Value = maTK;
+                conn.Open();
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
     }
 }

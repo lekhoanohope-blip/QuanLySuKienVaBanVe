@@ -85,6 +85,24 @@
     <Compile Include="GUI\Forms\FrmDangNhap.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="GUI\Forms\FrmCaiDat.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\Forms\FrmTaiKhoan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmNhanVien.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmNhanVien.Designer.cs">
+      <DependentUpon>FrmNhanVien.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\Forms\FrmThongKe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\Forms\FrmNhatKy.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="GUI\FrmChiTietSuatDien.cs">
       <SubType>Form</SubType>
     </Compile>
