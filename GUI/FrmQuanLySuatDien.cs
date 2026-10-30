@@ -92,7 +92,16 @@ namespace QuanLySuKienVaBanVe.GUI
                 currentChildForm = null;
             }
 
-            FrmQuanLyKhuVuc frm = new FrmQuanLyKhuVuc();
+            int? maSuat = null;
+            if (dgvSuatDien.CurrentRow != null && dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value != null)
+            {
+                if (int.TryParse(dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value.ToString(), out int parsedMaSuat))
+                {
+                    maSuat = parsedMaSuat;
+                }
+            }
+
+            FrmQuanLyKhuVuc frm = new FrmQuanLyKhuVuc(maSuat);
             currentChildForm = frm;
             frm.TopLevel = false;
             frm.FormBorderStyle = FormBorderStyle.None;
