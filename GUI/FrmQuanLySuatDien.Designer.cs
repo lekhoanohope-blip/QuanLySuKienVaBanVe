@@ -1,4 +1,4 @@
-namespace QuanLySuKienVaBanVe.GUI
+﻿namespace QuanLySuKienVaBanVe.GUI
 {
     partial class FrmQuanLySuatDien
     {
@@ -62,7 +62,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnMenuKhuVuc.Name = "btnMenuKhuVuc";
             this.btnMenuKhuVuc.Size = new System.Drawing.Size(180, 45);
             this.btnMenuKhuVuc.TabIndex = 1;
-            this.btnMenuKhuVuc.Text = "Khu vực & Giá vé";
+            this.btnMenuKhuVuc.Text = "Khu vực && Giá vé";
             this.btnMenuKhuVuc.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnMenuKhuVuc.Click += new System.EventHandler(this.btnMenuKhuVuc_Click);
             // 
@@ -82,9 +82,9 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // pnlMainContent
             // 
-            this.pnlMainContent.Controls.Add(this.pnlHeader);
-            this.pnlMainContent.Controls.Add(this.pnlBottom);
             this.pnlMainContent.Controls.Add(this.dgvSuatDien);
+            this.pnlMainContent.Controls.Add(this.pnlBottom);
+            this.pnlMainContent.Controls.Add(this.pnlHeader);
             this.pnlMainContent.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlMainContent.Location = new System.Drawing.Point(200, 0);
             this.pnlMainContent.Name = "pnlMainContent";
@@ -156,7 +156,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.txtTimKiem.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.txtTimKiem.Location = new System.Drawing.Point(20, 20);
             this.txtTimKiem.Name = "txtTimKiem";
-            this.txtTimKiem.PlaceholderText = "🔍 Tìm kiếm suất diễn...";
+            this.txtTimKiem.PlaceholderText = "Tìm kiếm suất diễn...";
             this.txtTimKiem.SelectedText = "";
             this.txtTimKiem.Size = new System.Drawing.Size(350, 36);
             this.txtTimKiem.TabIndex = 1;

@@ -17,7 +17,14 @@ BEGIN
 END
 GO
 
--- 3. Thêm ràng buộc sức chứa > 0 (tránh nhập số âm)
+-- 3. Thêm cột MaVung vào bảng KhuVuc
+IF COL_LENGTH('KhuVuc', 'MaVung') IS NULL
+BEGIN
+    ALTER TABLE KhuVuc ADD MaVung VARCHAR(20) NULL;
+END
+GO
+
+-- 4. Thêm ràng buộc sức chứa > 0 (tránh nhập số âm)
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_KhuVuc_TongSoGhe')
 BEGIN
     UPDATE KhuVuc SET TongSoGhe = 1 WHERE TongSoGhe <= 0;

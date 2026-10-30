@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
@@ -52,7 +52,9 @@ namespace QuanLySuKienVaBanVe.GUI
             // Ẩn Khu vực (nếu đang mở)
             if (currentChildForm != null)
             {
+                pnlMainContent.Controls.Remove(currentChildForm);
                 currentChildForm.Close();
+                currentChildForm.Dispose();
                 currentChildForm = null;
             }
 
@@ -82,9 +84,24 @@ namespace QuanLySuKienVaBanVe.GUI
             btnMenuSuatDien.ForeColor = Color.Gray;
 
            
-            if (currentChildForm != null) currentChildForm.Close();
+            if (currentChildForm != null)
+            {
+                pnlMainContent.Controls.Remove(currentChildForm);
+                currentChildForm.Close();
+                currentChildForm.Dispose();
+                currentChildForm = null;
+            }
 
-            FrmQuanLyKhuVuc frm = new FrmQuanLyKhuVuc();
+            int? maSuat = null;
+            if (dgvSuatDien.CurrentRow != null && dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value != null)
+            {
+                if (int.TryParse(dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value.ToString(), out int parsedMaSuat))
+                {
+                    maSuat = parsedMaSuat;
+                }
+            }
+
+            FrmQuanLyKhuVuc frm = new FrmQuanLyKhuVuc(maSuat);
             currentChildForm = frm;
             frm.TopLevel = false;
             frm.FormBorderStyle = FormBorderStyle.None;

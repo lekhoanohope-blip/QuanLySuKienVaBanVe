@@ -1,4 +1,4 @@
-namespace QuanLySuKienVaBanVe.GUI
+﻿namespace QuanLySuKienVaBanVe.GUI
 {
     partial class FrmMain
     {
@@ -175,7 +175,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnBaoCao.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnBaoCao.Size = new System.Drawing.Size(312, 62);
             this.btnBaoCao.TabIndex = 8;
-            this.btnBaoCao.Text = "Báo cáo & Thống kê";
+            this.btnBaoCao.Text = "Báo cáo && Thống kê";
             this.btnBaoCao.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnBaoCao.Click += new System.EventHandler(this.btnBaoCao_Click);
             // 
@@ -221,7 +221,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnKhuVuc.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnKhuVuc.Size = new System.Drawing.Size(312, 62);
             this.btnKhuVuc.TabIndex = 8;
-            this.btnKhuVuc.Text = "Khu vực & Giá vé";
+            this.btnKhuVuc.Text = "Khu vực && Giá vé";
             this.btnKhuVuc.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnKhuVuc.Click += new System.EventHandler(this.btnKhuVuc_Click);
             // 
@@ -322,7 +322,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnSuatDien.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnSuatDien.Size = new System.Drawing.Size(312, 62);
             this.btnSuatDien.TabIndex = 3;
-            this.btnSuatDien.Text = "Suất diễn & Khu vực";
+            this.btnSuatDien.Text = "Suất diễn && Khu vực";
             this.btnSuatDien.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnSuatDien.Click += new System.EventHandler(this.btnSuatDien_Click);
             // 
