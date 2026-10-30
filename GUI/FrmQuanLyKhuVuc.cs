@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -15,6 +15,8 @@ namespace QuanLySuKienVaBanVe.GUI
         public int? MaSuatCanChon { get; set; }
 
         private int? _editingMaKV = null;
+        private int? _currentMaSuat = null;
+        private int? _currentMaSK = null;
         private Panel seatMapWrapper;
         private bool _isPopulating = false;
         private bool _isDirty = false;
@@ -244,6 +246,11 @@ namespace QuanLySuKienVaBanVe.GUI
                     cboSuKien.SelectedIndex = 0;
                 }
 
+                if (cboSuKien.SelectedValue != null && int.TryParse(cboSuKien.SelectedValue.ToString(), out int initSK))
+                {
+                    _currentMaSK = initSK;
+                }
+
                 cboSuKien.SelectedIndexChanged += cboSuKien_SelectedIndexChanged;
                 LoadComboBoxSuatDien();
             }
@@ -255,10 +262,29 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void cboSuKien_SelectedIndexChanged(object sender, EventArgs e)
         {
+            if (_isPopulating) return;
+
+            if (cboSuKien.SelectedValue != null && int.TryParse(cboSuKien.SelectedValue.ToString(), out int newMaSK))
+            {
+                if (_currentMaSK.HasValue && newMaSK == _currentMaSK.Value)
+                    return;
+            }
+
             if (!PromptDiscardChanges())
             {
-                // Revert selected index nếu người dùng chọn Cancel
+                // Revert selected index nếu người dùng chọn Cancel (Hủy)
+                _isPopulating = true;
+                if (_currentMaSK.HasValue)
+                {
+                    cboSuKien.SelectedValue = _currentMaSK.Value;
+                }
+                _isPopulating = false;
                 return;
+            }
+
+            if (cboSuKien.SelectedValue != null && int.TryParse(cboSuKien.SelectedValue.ToString(), out int currentSK))
+            {
+                _currentMaSK = currentSK;
             }
             LoadComboBoxSuatDien();
         }
@@ -314,7 +340,26 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void cboSuatDien_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (!PromptDiscardChanges()) return;
+            if (_isPopulating) return;
+
+            if (cboSuatDien.SelectedValue != null && int.TryParse(cboSuatDien.SelectedValue.ToString(), out int newMaSuat))
+            {
+                if (_currentMaSuat.HasValue && newMaSuat == _currentMaSuat.Value)
+                    return;
+            }
+
+            if (!PromptDiscardChanges())
+            {
+                // Người dùng chọn Cancel (Hủy): Khôi phục dropdown về suất diễn đang mở
+                _isPopulating = true;
+                if (_currentMaSuat.HasValue)
+                {
+                    cboSuatDien.SelectedValue = _currentMaSuat.Value;
+                }
+                _isPopulating = false;
+                return;
+            }
+
             LoadData();
         }
 
@@ -346,6 +391,7 @@ namespace QuanLySuKienVaBanVe.GUI
             lblCard3Value.Text = "0";
             lblCard4Value.Text = "0 đ";
 
+            _currentMaSuat = null;
             ClearInput(force: true);
             lblTrangThaiForm.Text = "Sự kiện chưa có suất diễn hợp lệ";
             btnLuu.Enabled = false;
@@ -365,6 +411,11 @@ namespace QuanLySuKienVaBanVe.GUI
             try
             {
                 int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
+                _currentMaSuat = maSuat;
+                if (cboSuKien.SelectedValue != null && int.TryParse(cboSuKien.SelectedValue.ToString(), out int skVal))
+                {
+                    _currentMaSK = skVal;
+                }
 
                 // 1. Lấy thông tin suất diễn để vẽ sơ đồ
                 SuatDienDTO sd = SuatDienBLL.LayTheoMa(maSuat);
@@ -447,30 +498,41 @@ namespace QuanLySuKienVaBanVe.GUI
             DrawStagesAndPassways(loaiSoDo);
 
             // 2. Thêm các nút vùng
+            HashSet<int> matchedMaKVs = new HashSet<int>();
             foreach (var zone in definitions)
             {
-                // Tìm dòng dữ liệu đã cấu hình tương ứng
+                // Ưu tiên tuyệt đối: Khớp chính xác theo mã vùng MaVung đã lưu
                 DataRow matchedRow = null;
                 foreach (DataRow row in dtKhuVuc.Rows)
                 {
-                    string dbMaVung = row["MaVung"]?.ToString() ?? "";
+                    string dbMaVung = row["MaVung"]?.ToString()?.Trim() ?? "";
                     if (!string.IsNullOrEmpty(dbMaVung) && dbMaVung.Equals(zone.Code, StringComparison.OrdinalIgnoreCase))
                     {
                         matchedRow = row;
+                        matchedMaKVs.Add(Convert.ToInt32(row["MaKV"]));
                         break;
                     }
                 }
 
-                // Fallback nếu dữ liệu cũ chưa có MaVung: so sánh tên hoặc hạng vé
+                // Fallback chỉ dành riêng cho dữ liệu cũ hoàn toàn CHƯA CÓ MaVung (NULL/rỗng).
+                // Nếu bản ghi đã có MaVung khác thì tuyệt đối không fallback theo tên để tránh 2 vùng trỏ chung 1 khu vực.
                 if (matchedRow == null)
                 {
                     foreach (DataRow row in dtKhuVuc.Rows)
                     {
-                        string ten = row["TenKV"]?.ToString() ?? "";
-                        if (ten.IndexOf(zone.DisplayName, StringComparison.OrdinalIgnoreCase) >= 0)
+                        int maKV = Convert.ToInt32(row["MaKV"]);
+                        if (matchedMaKVs.Contains(maKV)) continue;
+
+                        string dbMaVung = row["MaVung"]?.ToString()?.Trim() ?? "";
+                        if (string.IsNullOrEmpty(dbMaVung))
                         {
-                            matchedRow = row;
-                            break;
+                            string ten = row["TenKV"]?.ToString() ?? "";
+                            if (ten.IndexOf(zone.DisplayName, StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                matchedRow = row;
+                                matchedMaKVs.Add(maKV);
+                                break;
+                            }
                         }
                     }
                 }
@@ -902,9 +964,17 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void btnLuu_Click(object sender, EventArgs e)
         {
-            if (cboSuatDien.SelectedValue == null || cboSuatDien.SelectedValue is DataRowView)
+            if (!_currentMaSuat.HasValue || _currentMaSuat.Value <= 0)
             {
-                MessageBox.Show("Vui lòng chọn suất diễn.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (cboSuatDien.SelectedValue != null && int.TryParse(cboSuatDien.SelectedValue.ToString(), out int parsed))
+                {
+                    _currentMaSuat = parsed;
+                }
+            }
+
+            if (!_currentMaSuat.HasValue || _currentMaSuat.Value <= 0)
+            {
+                MessageBox.Show("Vui lòng chọn suất diễn hợp lệ.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -934,7 +1004,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
-            int maSuat = Convert.ToInt32(cboSuatDien.SelectedValue);
+            int maSuat = _currentMaSuat.Value;
             bool choPhepBanVe = toggleBanVe.Checked;
 
             KhuVucDTO kv = new KhuVucDTO

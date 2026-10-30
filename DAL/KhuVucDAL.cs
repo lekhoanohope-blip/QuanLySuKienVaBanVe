@@ -33,13 +33,17 @@ namespace QuanLySuKienVaBanVe.DAL
                             cmd.ExecuteNonQuery();
                         }
 
-                        // 2. Gán MaVung mặc định cho dữ liệu mẫu cũ nếu chưa có
+                        // 2. Sửa lỗi gán sai trước đó và gán MaVung cho dữ liệu mẫu cũ theo tên cụ thể
                         string updateMaVungSql = @"
-                            UPDATE KhuVuc SET MaVung = 'VIP_A' WHERE MaVung IS NULL AND (TenKV LIKE '%VIP A%' OR TenKV LIKE N'%Khu VIP%');
-                            UPDATE KhuVuc SET MaVung = 'VIP_B' WHERE MaVung IS NULL AND TenKV LIKE '%VIP B%';
-                            UPDATE KhuVuc SET MaVung = 'GA_A' WHERE MaVung IS NULL AND TenKV LIKE '%GA A%';
-                            UPDATE KhuVuc SET MaVung = 'GA_B' WHERE MaVung IS NULL AND TenKV LIKE '%GA B%';
-                            UPDATE KhuVuc SET MaVung = 'CAT' WHERE MaVung IS NULL AND (TenKV LIKE '%CAT%' OR TenKV LIKE N'%Thường%' OR HangVe = 'Thuong');
+                            -- Sửa lỗi những bản ghi VIP B từng bị gán nhầm thành VIP_A do điều kiện %Khu VIP% cũ
+                            UPDATE KhuVuc SET MaVung = 'VIP_B' WHERE MaVung = 'VIP_A' AND (TenKV LIKE '%VIP B%' OR TenKV LIKE '%VIP_B%');
+
+                            -- Khớp tên cụ thể và chính xác trước; dữ liệu không rõ ràng giữ nguyên NULL để người dùng tự cấu hình
+                            UPDATE KhuVuc SET MaVung = 'VIP_B' WHERE MaVung IS NULL AND (TenKV LIKE '%VIP B%' OR TenKV LIKE '%VIP_B%');
+                            UPDATE KhuVuc SET MaVung = 'VIP_A' WHERE MaVung IS NULL AND (TenKV LIKE '%VIP A%' OR TenKV LIKE '%VIP_A%');
+                            UPDATE KhuVuc SET MaVung = 'GA_B'  WHERE MaVung IS NULL AND (TenKV LIKE '%GA B%'  OR TenKV LIKE '%GA_B%');
+                            UPDATE KhuVuc SET MaVung = 'GA_A'  WHERE MaVung IS NULL AND (TenKV LIKE '%GA A%'  OR TenKV LIKE '%GA_A%');
+                            UPDATE KhuVuc SET MaVung = 'CAT'   WHERE MaVung IS NULL AND (TenKV LIKE '%CAT %'  OR TenKV LIKE '%CAT_%' OR TenKV = 'CAT');
                         ";
                         using (SqlCommand cmd = new SqlCommand(updateMaVungSql, conn))
                         {
@@ -61,23 +65,38 @@ namespace QuanLySuKienVaBanVe.DAL
                             WHILE @@FETCH_STATUS = 0
                             BEGIN
                                 DECLARE @MissingCount INT = @TongSoGhe - @CurrentGheCount;
-                                DECLARE @ColPerRow INT = 10;
-                                IF @TongSoGhe > 260
-                                    SET @ColPerRow = CEILING(@TongSoGhe / 26.0);
+                                DECLARE @ColPerRow INT;
+                                SELECT @ColPerRow = ISNULL(MAX(Cot), 10) FROM Ghe WHERE MaKV = @MaKV;
+                                IF @ColPerRow IS NULL OR @ColPerRow < 10
+                                    SET @ColPerRow = 10;
 
-                                WITH Nbrs AS (
-                                    SELECT TOP (@MissingCount) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 + @CurrentGheCount) AS Idx
+                                WITH Numbers AS (
+                                    SELECT TOP (10000) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1) AS Idx
                                     FROM sys.all_columns a CROSS JOIN sys.all_columns b
+                                ),
+                                Candidates AS (
+                                    SELECT 
+                                        @MaKV AS MaKV,
+                                        CASE 
+                                            WHEN (Idx / @ColPerRow) < 26 THEN CHAR(65 + (Idx / @ColPerRow))
+                                            ELSE CHAR(65 + ((Idx / @ColPerRow) / 26 - 1)) + CHAR(65 + ((Idx / @ColPerRow) % 26))
+                                        END AS Hang,
+                                        (Idx % @ColPerRow) + 1 AS Cot,
+                                        Idx
+                                    FROM Numbers
+                                ),
+                                MissingCandidates AS (
+                                    SELECT c.MaKV, c.Hang, c.Cot, c.Idx
+                                    FROM Candidates c
+                                    WHERE NOT EXISTS (
+                                        SELECT 1 FROM Ghe g 
+                                        WHERE g.MaKV = @MaKV AND g.Hang = c.Hang AND g.Cot = c.Cot
+                                    )
                                 )
                                 INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
-                                SELECT @MaKV,
-                                       CHAR(65 + (Idx / @ColPerRow)),
-                                       (Idx % @ColPerRow) + 1,
-                                       N'Trong'
-                                FROM Nbrs
-                                WHERE NOT EXISTS (
-                                    SELECT 1 FROM Ghe WHERE MaKV = @MaKV AND Hang = CHAR(65 + (Idx / @ColPerRow)) AND Cot = (Idx % @ColPerRow) + 1
-                                );
+                                SELECT TOP (@MissingCount) mc.MaKV, mc.Hang, mc.Cot, N'Trong'
+                                FROM MissingCandidates mc
+                                ORDER BY mc.Idx ASC;
 
                                 FETCH NEXT FROM cur INTO @MaKV, @TongSoGhe, @CurrentGheCount;
                             END;
@@ -210,7 +229,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             newMaKV = (int)cmdKV.ExecuteScalar();
                         }
 
-                        // Sinh ghế đa hàng chuẩn A, B, C... (10 ghế mỗi hàng; tối đa 26 hàng A-Z)
+                        // Sinh ghế đa hàng chuẩn A, B, C... (10 ghế mỗi hàng; hỗ trợ mã hàng mở rộng AA, AB... khi vượt quá 260 ghế)
                         int colPerRow = 10;
                         if (kv.TongSoGhe > 260)
                             colPerRow = (int)Math.Ceiling(kv.TongSoGhe / 26.0);
@@ -222,7 +241,10 @@ namespace QuanLySuKienVaBanVe.DAL
                             )
                             INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
                             SELECT @MaKV,
-                                   CHAR(65 + (Idx / @ColPerRow)),
+                                   CASE 
+                                       WHEN (Idx / @ColPerRow) < 26 THEN CHAR(65 + (Idx / @ColPerRow))
+                                       ELSE CHAR(65 + ((Idx / @ColPerRow) / 26 - 1)) + CHAR(65 + ((Idx / @ColPerRow) % 26))
+                                   END,
                                    (Idx % @ColPerRow) + 1,
                                    N'Trong'
                             FROM Nbrs";
@@ -233,6 +255,19 @@ namespace QuanLySuKienVaBanVe.DAL
                             cmdGhe.Parameters.AddWithValue("@TongSoGhe", kv.TongSoGhe);
                             cmdGhe.Parameters.AddWithValue("@ColPerRow", colPerRow);
                             cmdGhe.ExecuteNonQuery();
+                        }
+
+                        // Kiểm tra tổng ghế thực tế trong CSDL trước khi commit transaction
+                        int finalCount = 0;
+                        using (SqlCommand cmdVerify = new SqlCommand("SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV", conn, trans))
+                        {
+                            cmdVerify.Parameters.AddWithValue("@MaKV", newMaKV);
+                            finalCount = (int)cmdVerify.ExecuteScalar();
+                        }
+                        if (finalCount != kv.TongSoGhe)
+                        {
+                            trans.Rollback();
+                            throw new InvalidOperationException($"Lỗi sinh ghế: Chỉ sinh được {finalCount}/{kv.TongSoGhe} ghế!");
                         }
 
                         trans.Commit();
@@ -313,8 +348,15 @@ namespace QuanLySuKienVaBanVe.DAL
                                 soGheDangBanHoacGiu = (int)cmdTrangThai.ExecuteScalar();
                             }
 
-                            int colPerRow = 10;
-                            if (kv.TongSoGhe > 260)
+                            // Giữ ổn định số cột mỗi hàng theo cấu trúc ghế hiện có (tránh làm lệch vị trí khi tăng/giảm sức chứa)
+                            int maxExistingCot = 0;
+                            using (SqlCommand cmdMaxCol = new SqlCommand("SELECT ISNULL(MAX(Cot), 0) FROM Ghe WHERE MaKV = @MaKV", conn, trans))
+                            {
+                                cmdMaxCol.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                maxExistingCot = Convert.ToInt32(cmdMaxCol.ExecuteScalar());
+                            }
+                            int colPerRow = maxExistingCot > 0 ? maxExistingCot : 10;
+                            if (maxExistingCot == 0 && kv.TongSoGhe > 260)
                                 colPerRow = (int)Math.Ceiling(kv.TongSoGhe / 26.0);
 
                             // Trường hợp 1: Khu vực hoàn toàn chưa có vé và chưa có ghế đang giữ -> Tái tạo sạch ma trận ghế
@@ -333,7 +375,10 @@ namespace QuanLySuKienVaBanVe.DAL
                                     )
                                     INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
                                     SELECT @MaKV,
-                                           CHAR(65 + (Idx / @ColPerRow)),
+                                           CASE 
+                                               WHEN (Idx / @ColPerRow) < 26 THEN CHAR(65 + (Idx / @ColPerRow))
+                                               ELSE CHAR(65 + ((Idx / @ColPerRow) / 26 - 1)) + CHAR(65 + ((Idx / @ColPerRow) % 26))
+                                           END,
                                            (Idx % @ColPerRow) + 1,
                                            N'Trong'
                                     FROM Nbrs";
@@ -348,7 +393,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             }
                             else if (kv.TongSoGhe > oldTongSoGhe)
                             {
-                                // Trường hợp 2: Tăng sức chứa khi đã có vé/ghế giữ -> Sinh bổ sung số ghế còn thiếu
+                                // Trường hợp 2: Tăng sức chứa khi đã có vé/ghế giữ -> Sinh bổ sung đủ các vị trí ghế còn thiếu (kể cả có khoảng trống)
                                 int currentCount = 0;
                                 using (SqlCommand cmdCount = new SqlCommand("SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV", conn, trans))
                                 {
@@ -360,25 +405,38 @@ namespace QuanLySuKienVaBanVe.DAL
                                 if (missingCount > 0)
                                 {
                                     const string sqlAddMore = @"
-                                        WITH Nbrs AS (
-                                            SELECT TOP (@MissingCount) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 + @CurrentCount) AS Idx
+                                        WITH Numbers AS (
+                                            SELECT TOP (10000) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1) AS Idx
                                             FROM sys.all_columns a CROSS JOIN sys.all_columns b
+                                        ),
+                                        Candidates AS (
+                                            SELECT 
+                                                @MaKV AS MaKV,
+                                                CASE 
+                                                    WHEN (Idx / @ColPerRow) < 26 THEN CHAR(65 + (Idx / @ColPerRow))
+                                                    ELSE CHAR(65 + ((Idx / @ColPerRow) / 26 - 1)) + CHAR(65 + ((Idx / @ColPerRow) % 26))
+                                                END AS Hang,
+                                                (Idx % @ColPerRow) + 1 AS Cot,
+                                                Idx
+                                            FROM Numbers
+                                        ),
+                                        MissingCandidates AS (
+                                            SELECT c.MaKV, c.Hang, c.Cot, c.Idx
+                                            FROM Candidates c
+                                            WHERE NOT EXISTS (
+                                                SELECT 1 FROM Ghe g 
+                                                WHERE g.MaKV = @MaKV AND g.Hang = c.Hang AND g.Cot = c.Cot
+                                            )
                                         )
                                         INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
-                                        SELECT @MaKV,
-                                               CHAR(65 + (Idx / @ColPerRow)),
-                                               (Idx % @ColPerRow) + 1,
-                                               N'Trong'
-                                        FROM Nbrs
-                                        WHERE NOT EXISTS (
-                                            SELECT 1 FROM Ghe WHERE MaKV = @MaKV AND Hang = CHAR(65 + (Idx / @ColPerRow)) AND Cot = (Idx % @ColPerRow) + 1
-                                        )";
+                                        SELECT TOP (@MissingCount) mc.MaKV, mc.Hang, mc.Cot, N'Trong'
+                                        FROM MissingCandidates mc
+                                        ORDER BY mc.Idx ASC;";
 
                                     using (SqlCommand cmdAdd = new SqlCommand(sqlAddMore, conn, trans))
                                     {
                                         cmdAdd.Parameters.AddWithValue("@MaKV", kv.MaKV);
                                         cmdAdd.Parameters.AddWithValue("@MissingCount", missingCount);
-                                        cmdAdd.Parameters.AddWithValue("@CurrentCount", currentCount);
                                         cmdAdd.Parameters.AddWithValue("@ColPerRow", colPerRow);
                                         cmdAdd.ExecuteNonQuery();
                                     }
@@ -425,6 +483,21 @@ namespace QuanLySuKienVaBanVe.DAL
                                     cmdDelSafe.ExecuteNonQuery();
                                 }
                             }
+                        }
+
+                        // 4. Kiểm tra đối soát tổng ghế thực tế trong CSDL trước khi commit transaction
+                        int finalGheCount = 0;
+                        using (SqlCommand cmdVerify = new SqlCommand("SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV", conn, trans))
+                        {
+                            cmdVerify.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                            finalGheCount = (int)cmdVerify.ExecuteScalar();
+                        }
+
+                        if (finalGheCount != kv.TongSoGhe)
+                        {
+                            errorMessage = $"Lỗi đồng bộ ghế: Số ghế thực tế trong CSDL ({finalGheCount}) không khớp với sức chứa yêu cầu ({kv.TongSoGhe})!";
+                            trans.Rollback();
+                            return false;
                         }
 
                         trans.Commit();
