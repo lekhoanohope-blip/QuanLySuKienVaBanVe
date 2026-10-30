@@ -155,6 +155,7 @@ namespace QuanLySuKienVaBanVe.DAL
                 FROM Ghe g
                 INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
                 WHERE kv.MaSuat = @MaSuat
+                  AND kv.ChoPhepBanVe = 1
                   AND g.TrangThai = N'Trong'
                 ORDER BY kv.TenKV ASC, g.Hang ASC, g.Cot ASC;";
 
@@ -169,10 +170,10 @@ namespace QuanLySuKienVaBanVe.DAL
         {
             string query = @"
                 SELECT g.MaGhe, g.MaGheHienThi, g.Hang, g.Cot, g.TrangThai,
-                       kv.MaKV, kv.TenKV, kv.HangVe, kv.GiaVe,
+                       kv.MaKV, kv.TenKV, kv.HangVe, kv.GiaVe, kv.ChoPhepBanVe,
                        sd.MaSuat, sd.MaSK, sd.ThoiGianBatDau, sd.TrangThai AS TrangThaiSuat
                 FROM Ghe g WITH (UPDLOCK, ROWLOCK)
-                INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
+                INNER JOIN KhuVuc kv WITH (UPDLOCK, ROWLOCK) ON g.MaKV = kv.MaKV
                 INNER JOIN SuatDien sd ON kv.MaSuat = sd.MaSuat
                 WHERE g.MaGhe = @MaGhe;";
 

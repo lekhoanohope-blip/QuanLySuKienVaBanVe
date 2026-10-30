@@ -323,8 +323,10 @@ namespace QuanLySuKienVaBanVe.BLL
         ///   Đơn cũ chỉ chuyển 'DaDoi' khi toàn bộ vé trong đơn đều đã hủy/đổi.
         /// - Áp dụng Phương án A: Khi đổi sang vé rẻ hơn (Delta &lt; 0), ghi nhận ThanhToan.SoTien = Delta (số âm)
         ///   để ghi nhận khoản tiền hoàn lại cho khách.
+        /// - Chênh lệch phải khớp khoản nhân viên đã xác nhận; giá hoặc quyền bán của khu vực
+        ///   được kiểm tra và giữ khóa trong transaction trước khi thay đổi dữ liệu.
         /// </summary>
-        public static DonVeResult DoiVe(int maDonCu, int maCTCu, int maGheMoi, int maTK = 0, string phuongThuc = "TienMat")
+        public static DonVeResult DoiVe(int maDonCu, int maCTCu, int maGheMoi, decimal chenhLechDaXacNhan, int maTK = 0, string phuongThuc = "TienMat")
         {
             if (maTK <= 0 && PhienDangNhap.DaDangNhap)
             {
@@ -411,6 +413,12 @@ namespace QuanLySuKienVaBanVe.BLL
                             return DonVeResult.Fail($"Vị trí ghế mới ({rowGheMoi["MaGheHienThi"]}) hiện không còn trống (trạng thái: {trangThaiGheMoi}). Vui lòng chọn ghế khác.", maDonCu);
                         }
 
+                        if (!Convert.ToBoolean(rowGheMoi["ChoPhepBanVe"]))
+                        {
+                            tran.Rollback();
+                            return DonVeResult.Fail("Khu vực của ghế mới hiện đã ngừng bán vé. Vui lòng chọn khu vực khác.", maDonCu);
+                        }
+
                         int maSKMoi = Convert.ToInt32(rowGheMoi["MaSK"]);
                         int maSuatMoi = Convert.ToInt32(rowGheMoi["MaSuat"]);
                         decimal giaVeMoi = Convert.ToDecimal(rowGheMoi["GiaVe"]);
@@ -439,6 +447,13 @@ namespace QuanLySuKienVaBanVe.BLL
 
                         // 4. Tính chênh lệch
                         decimal delta = TinhChenhLech(giaVeCu, giaVeMoi);
+                        if (delta != chenhLechDaXacNhan)
+                        {
+                            tran.Rollback();
+                            return DonVeResult.Fail(
+                                $"Giá vé đã thay đổi. Chênh lệch đã xác nhận: {chenhLechDaXacNhan:N0} VNĐ; chênh lệch hiện tại: {delta:N0} VNĐ.\nChưa thực hiện đổi vé. Vui lòng chọn lại ghế, kiểm tra khoản thu/hoàn tiền và xác nhận lại.",
+                                maDonCu);
+                        }
 
                         // 5. Bước 1: UPDATE ChiTietVe cũ -> 'DaHuy'
                         ChiTietVeDAL.CapNhatTrangThaiTheoMaCT(maCTCu, TrangThaiChiTietVe.DaHuy, conn, tran);

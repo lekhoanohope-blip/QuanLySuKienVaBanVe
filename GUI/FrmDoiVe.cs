@@ -318,7 +318,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 cboPhuongThuc.Enabled = false;
 
                 int maTK = PhienDangNhap.DaDangNhap ? PhienDangNhap.TaiKhoan.MaTK : 0;
-                DonVeResult result = await Task.Run(() => DonVeBLL.DoiVe(maDonCu, maCTCu, maGheMoi, maTK, phuongThuc));
+                DonVeResult result = await Task.Run(() => DonVeBLL.DoiVe(maDonCu, maCTCu, maGheMoi, delta, maTK, phuongThuc));
                 if (result.Success)
                 {
                     MaDonMoiDaTao = result.MaDonMoi ?? 0;
