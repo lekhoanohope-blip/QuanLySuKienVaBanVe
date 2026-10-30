@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DTO;
@@ -27,6 +27,15 @@ namespace QuanLySuKienVaBanVe.DAL
             return Database.ExecuteQuery(query);
         }
 
+        private static string EscapeLikeLiteral(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return value
+                .Replace("[", "[[]")
+                .Replace("%", "[%]")
+                .Replace("_", "[_]");
+        }
+
         public static DataTable TimKiemDonVe(string tuKhoa)
         {
             if (string.IsNullOrWhiteSpace(tuKhoa))
@@ -42,6 +51,12 @@ namespace QuanLySuKienVaBanVe.DAL
 
             int maDon = 0;
             int.TryParse(clean, out maDon);
+
+            string rawTienTo = clean.Length > 20 ? clean.Substring(0, 20) : clean;
+            string rawTuKhoa = clean.Length > 200 ? clean.Substring(0, 200) : clean;
+
+            string escapedTienTo = EscapeLikeLiteral(rawTienTo);
+            string escapedTuKhoa = EscapeLikeLiteral(rawTuKhoa);
 
             string query = @"
                 SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT,
@@ -61,8 +76,8 @@ namespace QuanLySuKienVaBanVe.DAL
 
             SqlParameter[] parameters = {
                 new SqlParameter("@MaDon", SqlDbType.Int) { Value = maDon },
-                new SqlParameter("@TienTo", SqlDbType.VarChar, 20) { Value = clean },
-                new SqlParameter("@TuKhoa", SqlDbType.NVarChar, 200) { Value = clean }
+                new SqlParameter("@TienTo", SqlDbType.VarChar, 60) { Value = escapedTienTo },
+                new SqlParameter("@TuKhoa", SqlDbType.NVarChar, 600) { Value = escapedTuKhoa }
             };
 
             return Database.ExecuteQuery(query, parameters);

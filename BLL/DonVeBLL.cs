@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DAL;
@@ -54,12 +54,15 @@ namespace QuanLySuKienVaBanVe.BLL
     public class DonVeBLL
     {
         private static readonly Random RandomGenerator = new Random();
+        private static readonly object RandomLock = new object();
 
         /// <summary>
         /// Cờ giả lập lỗi phát sinh ngay trước lệnh Commit của transaction.
         /// Sử dụng cho kịch bản kiểm thử (TC3 & KT6) để chứng minh rollback sạch sẽ.
         /// </summary>
+#if DEBUG
         public static bool SimulateFailureBeforeCommit { get; set; }
+#endif
 
         public static DataTable LayDanhSachDonVe()
         {
@@ -210,7 +213,11 @@ namespace QuanLySuKienVaBanVe.BLL
             int attempts = 0;
             do
             {
-                int randomNum = RandomGenerator.Next(1000, 9999);
+                int randomNum;
+                lock (RandomLock)
+                {
+                    randomNum = RandomGenerator.Next(1000, 10000);
+                }
                 code = string.Format("SK{0:D2}-SD{1:D2}-{2}-{3}", maSK, maSuat, (maGheHienThi ?? "SEAT").Trim().ToUpper(), randomNum);
                 attempts++;
                 if (attempts > 50)
@@ -291,11 +298,13 @@ namespace QuanLySuKienVaBanVe.BLL
                         }
 
                         // Kiểm tra cờ giả lập lỗi để test rollback
+#if DEBUG
                         if (SimulateFailureBeforeCommit)
                         {
                             throw new InvalidOperationException("Giả lập lỗi hệ thống trước Commit để chứng minh Rollback giao dịch sạch sẽ.");
                         }
 
+#endif
                         tran.Commit();
                         return DonVeResult.Ok($"Đã hủy thành công đơn vé #{maDon}. Toàn bộ ghế trong đơn đã được giải phóng về trạng thái Trống.", maDon);
                     }
@@ -456,7 +465,12 @@ namespace QuanLySuKienVaBanVe.BLL
                         }
 
                         // 8. Bước 4: Sinh mã vé mới duy nhất và INSERT ChiTietVe mới
-                        string maVeCodeMoi = SinhMaVeCode(maSKMoi, maSuatMoi, maGheHienThiMoi, conn, tran);
+                        string maVeCodeMoi = string.Empty;
+                        int maCTMoi = 0;
+                        int maxRetries = 5;
+                        for (int retry = 0; retry < maxRetries; retry++)
+                        {
+                            maVeCodeMoi = SinhMaVeCode(maSKMoi, maSuatMoi, maGheHienThiMoi, conn, tran);
                         ChiTietVeDTO ctMoi = new ChiTietVeDTO
                         {
                             MaDon = maDonMoi,
@@ -465,7 +479,22 @@ namespace QuanLySuKienVaBanVe.BLL
                             MaVeCode = maVeCodeMoi,
                             TrangThai = TrangThaiChiTietVe.HopLe
                         };
-                        int maCTMoi = ChiTietVeDAL.Them(ctMoi, conn, tran);
+                            try
+                            {
+                                maCTMoi = ChiTietVeDAL.Them(ctMoi, conn, tran);
+                                if (maCTMoi > 0)
+                                {
+                                    break;
+                                }
+                            }
+                            catch (SqlException sqlEx) when (sqlEx.Number == 2627 || sqlEx.Number == 2601)
+                            {
+                                if (retry == maxRetries - 1)
+                                {
+                                    throw;
+                                }
+                            }
+                        }
                         if (maCTMoi <= 0)
                         {
                             tran.Rollback();
@@ -477,14 +506,17 @@ namespace QuanLySuKienVaBanVe.BLL
 
                         // 10. Bước 6: INSERT ThanhToan ghi nhận số tiền chênh lệch
                         // Phương án A: Nếu delta < 0 (đổi sang ghế rẻ hơn), lưu SoTien = delta (số âm biểu thị khoản hoàn tiền)
-                        ThanhToanDTO ttMoi = new ThanhToanDTO
+                        if (delta != 0m)
+                        {
+                            ThanhToanDTO ttMoi = new ThanhToanDTO
                         {
                             MaDon = maDonMoi,
                             NgayThanhToan = DateTime.Now,
                             SoTien = delta,
                             PhuongThuc = phuongThuc ?? PhuongThucThanhToan.TienMat
                         };
-                        ThanhToanDAL.Them(ttMoi, conn, tran);
+                            ThanhToanDAL.Them(ttMoi, conn, tran);
+                        }
 
                         // 11. Bước 7: Xử lý trạng thái và tổng tiền của đơn cũ (Cách 2)
                         int soVeHopLeConLai = ChiTietVeDAL.DemSoVeHopLeTheoDon(maDonCu, conn, tran);
@@ -504,17 +536,20 @@ namespace QuanLySuKienVaBanVe.BLL
                         if (maTK > 0)
                         {
                             string chiTietLog = string.Format(
-                                "Đổi vé #{0} (ghế cũ: {1}, giá: {2:N0} đ) từ đơn #{3} sang đơn mới #{4} (ghế mới: {5}, giá: {6:N0} đ). Tiền chênh lệch: {7:N0} đ (Phương thức: {8}).",
-                                maCTCu, veCu.MaGheHienThi, giaVeCu, maDonCu, maDonMoi, maGheHienThiMoi, giaVeMoi, delta, phuongThuc);
+                                "Đổi vé #{0} (ghế cũ: {1}, giá: {2:N0} đ) từ đơn #{3} sang đơn mới #{4} (ghế mới: {5}, giá: {6:N0} đ). Tiền chênh lệch: {7:N0} đ{8}.",
+                                maCTCu, veCu.MaGheHienThi, giaVeCu, maDonCu, maDonMoi, maGheHienThiMoi, giaVeMoi, delta,
+                                delta != 0m ? $" (Phương thức: {phuongThuc})" : " (Đổi ngang giá, không phát sinh thanh toán)");
                             DonVeDAL.GhiNhatKy(maTK, $"Đổi vé #{maCTCu} (Đơn #{maDonCu} -> #{maDonMoi})", chiTietLog, conn, tran);
                         }
 
                         // Kiểm tra cờ giả lập lỗi
+#if DEBUG
                         if (SimulateFailureBeforeCommit)
                         {
                             throw new InvalidOperationException("Giả lập lỗi hệ thống trước Commit để chứng minh Rollback giao dịch sạch sẽ.");
                         }
 
+#endif
                         tran.Commit();
 
                         string thongBao = delta > 0

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using QuanLySuKienVaBanVe.DAL;
 using QuanLySuKienVaBanVe.DTO;
@@ -10,6 +10,8 @@ namespace QuanLySuKienVaBanVe.BLL
         public static DataTable LayDanhSach() => SuatDienDAL.LayDanhSach();
 
         public static SuatDienDTO LayTheoMa(int maSuat) => SuatDienDAL.LayTheoMa(maSuat);
+
+        public static DataTable LayDanhSachTheoSuKien(int maSK) => SuatDienDAL.LayDanhSachTheoSuKien(maSK);
 
         public static string Them(SuatDienDTO sd)
         {

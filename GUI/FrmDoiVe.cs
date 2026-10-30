@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.Threading.Tasks;
@@ -233,6 +233,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 lblGiaMoiHienThi.Text = string.Format("Giá vé mới: {0:N0} VNĐ ({1})", giaVe, tenHienThi);
                 decimal giaVeCu = veCu != null ? veCu.GiaVe : 0;
                 decimal delta = DonVeBLL.TinhChenhLech(giaVeCu, giaVe);
+                cboPhuongThuc.Enabled = !dangDoiVe && delta != 0m;
 
                 if (delta > 0)
                 {
@@ -255,6 +256,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 lblGiaMoiHienThi.Text = "Giá vé mới: Chưa chọn ghế";
                 lblKetQuaChenhLech.ForeColor = Color.FromArgb(71, 85, 105);
                 lblKetQuaChenhLech.Text = "Chênh lệch: Vui lòng chọn ghế mới";
+                cboPhuongThuc.Enabled = !dangDoiVe;
             }
         }
 
@@ -283,12 +285,19 @@ namespace QuanLySuKienVaBanVe.GUI
             string tenGheMoi = maGheHienThiMoi;
             decimal giaMoi = giaVeMoiDuocChon;
 
+            string tenPhuongThuc = ((ComboBoxItem)cboPhuongThuc.SelectedItem)?.Text ?? "Tiền mặt";
+            string thongBaoTaiChinh = delta > 0
+                ? string.Format("Chênh lệch: +{0:N0} VNĐ\n👉 Nhân viên xác nhận ĐÃ THU THÊM số tiền này ({1}) từ khách hàng?", delta, tenPhuongThuc)
+                : delta < 0
+                ? string.Format("Chênh lệch: {0:N0} VNĐ\n👉 Nhân viên xác nhận ĐÃ HOÀN LẠI {1:N0} VNĐ ({2}) cho khách hàng?", delta, Math.Abs(delta), tenPhuongThuc)
+                : "Chênh lệch: 0 VNĐ (Đổi vé ngang giá — không phát sinh thu/hoàn tiền).\n👉 Xác nhận hoàn tất đổi vé?";
+
             string loiNhan = string.Format(
-                "Xác nhận đổi vé #{0} ({1} - {2:N0} VNĐ)\nsang ghế mới: {3} ({4:N0} VNĐ)?\n\nChênh lệch: {5:N0} VNĐ ({6})",
+                "Xác nhận đổi vé #{0} ({1} - {2:N0} VNĐ)\nsang ghế mới: {3} ({4:N0} VNĐ)?\n\n{5}",
                 maCTCu, maGheCuHienThi, giaCu,
                 tenGheMoi, giaMoi,
-                delta,
-                delta > 0 ? "Khách thanh toán thêm" : delta < 0 ? "Hoàn lại cho khách" : "Đổi ngang");
+
+                thongBaoTaiChinh);
 
             if (MessageBox.Show(this, loiNhan, "Xác nhận đổi vé", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) != DialogResult.Yes)
             {
@@ -341,7 +350,7 @@ namespace QuanLySuKienVaBanVe.GUI
                     dgvGheTrong.Enabled = true;
                     cboSuatMoi.Enabled = true;
                     cboKhuVucMoi.Enabled = true;
-                    cboPhuongThuc.Enabled = true;
+                    cboPhuongThuc.Enabled = !maGheMoiDuocChon.HasValue || (veCu != null && DonVeBLL.TinhChenhLech(veCu.GiaVe, giaVeMoiDuocChon) != 0m);
                 }
             }
         }
