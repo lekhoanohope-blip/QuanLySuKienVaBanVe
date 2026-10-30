@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -57,17 +57,20 @@
   <ItemGroup>
     <Compile Include="BLL\PhienDangNhap.cs" />
     <Compile Include="BLL\KhachHangBLL.cs" />
+    <Compile Include="BLL\KhuVucBLL.cs" />
     <Compile Include="BLL\SuatDienBLL.cs" />
     <Compile Include="BLL\SuKienBLL.cs" />
     <Compile Include="BLL\TaiKhoanBLL.cs" />
     <Compile Include="BLL\ThongKeBLL.cs" />
     <Compile Include="DAL\Database.cs" />
     <Compile Include="DAL\KhachHangDAL.cs" />
+    <Compile Include="DAL\KhuVucDAL.cs" />
     <Compile Include="DAL\DatabaseHelper.cs" />
     <Compile Include="DAL\SuatDienDAL.cs" />
     <Compile Include="DAL\SuKienDAL.cs" />
     <Compile Include="DAL\TaiKhoanDAL.cs" />
     <Compile Include="DAL\ThongKeDAL.cs" />
+    <Compile Include="DTO\KhuVucDTO.cs" />
     <Compile Include="DTO\SuatDienDTO.cs" />
     <Compile Include="DTO\KhachHangDTO.cs" />
     <Compile Include="DTO\SuKienDTO.cs" />
@@ -76,6 +79,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="GUI\Forms\FrmDangNhap.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmBaoCao.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\FrmChiTietSuatDien.cs">
@@ -108,6 +114,15 @@
     <Compile Include="GUI\FrmMain.Designer.cs">
       <DependentUpon>FrmMain.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUI\FrmQuanLyDonVe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLyKhuVuc.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLyKhuVuc.Designer.cs">
+      <DependentUpon>FrmQuanLyKhuVuc.cs</DependentUpon>
+    </Compile>
     <Compile Include="GUI\FrmQuanLySuatDien.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -119,6 +134,9 @@
     </Compile>
     <Compile Include="GUI\FrmQuanLySuKien.Designer.cs">
       <DependentUpon>FrmQuanLySuKien.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmQuanLyTaiKhoan.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\Helpers\Fx.cs" />
     <Compile Include="GUI\Helpers\Lang.cs" />
@@ -137,6 +155,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmKhachHang.resx">
       <DependentUpon>FrmKhachHang.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmQuanLyKhuVuc.resx">
+      <DependentUpon>FrmQuanLyKhuVuc.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmQuanLySuatDien.resx">
       <DependentUpon>FrmQuanLySuatDien.cs</DependentUpon>
@@ -174,6 +195,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="database\create_database.sql" />
+    <Content Include="database\dashboard_demo_data.sql" />
+    <Content Include="database\migration_add_columns.sql" />
     <Content Include="database\sample_data.sql" />
     <Content Include="QuanLySuKienVaBanVe.slnx" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
@@ -12,6 +12,8 @@ namespace QuanLySuKienVaBanVe.GUI
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int? MaSKCanLoc { get; set; }
 
+        private Form currentChildForm = null;
+
         public FrmQuanLySuatDien()
         {
             InitializeComponent();
@@ -19,7 +21,10 @@ namespace QuanLySuKienVaBanVe.GUI
             ManagementFormLayout.Attach(pnlHeader, txtTimKiem, btnThem, btnSua, btnXoa);
         }
 
-        private void FrmQuanLySuatDien_Load(object sender, EventArgs e) { LoadData(); }
+        private void FrmQuanLySuatDien_Load(object sender, EventArgs e)
+        {
+            LoadData();
+        }
 
         private void LoadData()
         {
@@ -41,7 +46,70 @@ namespace QuanLySuKienVaBanVe.GUI
             catch (Exception ex) { MessageBox.Show("Lỗi tải danh sách suất diễn: " + ex.Message); }
         }
 
-        // =================== THÊM / SỬA / XÓA ===================
+        // ================= CHUYỂN ĐỔI MENU PHỤ =================
+        private void btnMenuSuatDien_Click(object sender, EventArgs e)
+        {
+            // Ẩn Khu vực (nếu đang mở)
+            if (currentChildForm != null)
+            {
+                pnlMainContent.Controls.Remove(currentChildForm);
+                currentChildForm.Close();
+                currentChildForm.Dispose();
+                currentChildForm = null;
+            }
+
+            pnlHeader.Visible = true;
+            dgvSuatDien.Visible = true;
+            pnlBottom.Visible = true;
+
+            btnMenuSuatDien.FillColor = Color.FromArgb(16, 185, 129);
+            btnMenuSuatDien.ForeColor = Color.White;
+            btnMenuKhuVuc.FillColor = Color.Transparent;
+            btnMenuKhuVuc.ForeColor = Color.Gray;
+
+            LoadData();
+        }
+
+        private void btnMenuKhuVuc_Click(object sender, EventArgs e)
+        {
+            // Ẩn các control của Suất diễn
+            pnlHeader.Visible = false;
+            dgvSuatDien.Visible = false;
+            pnlBottom.Visible = false;
+
+       
+            btnMenuKhuVuc.FillColor = Color.FromArgb(16, 185, 129);
+            btnMenuKhuVuc.ForeColor = Color.White;
+            btnMenuSuatDien.FillColor = Color.Transparent;
+            btnMenuSuatDien.ForeColor = Color.Gray;
+
+           
+            if (currentChildForm != null)
+            {
+                pnlMainContent.Controls.Remove(currentChildForm);
+                currentChildForm.Close();
+                currentChildForm.Dispose();
+                currentChildForm = null;
+            }
+
+            int? maSuat = null;
+            if (dgvSuatDien.CurrentRow != null && dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value != null)
+            {
+                if (int.TryParse(dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value.ToString(), out int parsedMaSuat))
+                {
+                    maSuat = parsedMaSuat;
+                }
+            }
+
+            FrmQuanLyKhuVuc frm = new FrmQuanLyKhuVuc(maSuat);
+            currentChildForm = frm;
+            frm.TopLevel = false;
+            frm.FormBorderStyle = FormBorderStyle.None;
+            frm.Dock = DockStyle.Fill;
+            pnlMainContent.Controls.Add(frm);
+            frm.BringToFront();
+            frm.Show();
+        }
         private void btnThem_Click(object sender, EventArgs e)
         {
             using (FrmChiTietSuatDien frm = new FrmChiTietSuatDien())
@@ -79,7 +147,6 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
-        // Hit-test the same rectangles used for painting, including the vertical position.
         private void dgvSuatDien_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Button != MouseButtons.Left) return;
