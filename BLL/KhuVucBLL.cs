@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DAL;
@@ -43,14 +43,19 @@ namespace QuanLySuKienVaBanVe.BLL
                 return "Tên khu vực không được để trống!";
             }
 
+            if (!string.IsNullOrWhiteSpace(kv.MaVung) && KhuVucDAL.KiemTraMaVungTonTai(kv.MaSuat, kv.MaVung))
+            {
+                return $"Vùng '{kv.MaVung}' đã được thiết lập cho một khu vực khác trong suất diễn này!";
+            }
+
             if (kv.GiaVe < 0)
             {
                 return "Giá vé phải lớn hơn hoặc bằng 0!";
             }
 
-            if (kv.TongSoGhe <= 0 || kv.TongSoGhe > 10000)
+            if (kv.TongSoGhe <= 0 || kv.TongSoGhe > 2600)
             {
-                return "Sức chứa phải là số nguyên dương từ 1 đến 10.000!";
+                return "Sức chứa phải là số nguyên dương từ 1 đến 2.600 ghế!";
             }
 
             if (string.IsNullOrWhiteSpace(kv.HangVe))
@@ -96,9 +101,19 @@ namespace QuanLySuKienVaBanVe.BLL
                 return "Tên khu vực không được để trống!";
             }
 
+            if (!string.IsNullOrWhiteSpace(kv.MaVung) && KhuVucDAL.KiemTraMaVungTonTai(kv.MaSuat, kv.MaVung, kv.MaKV))
+            {
+                return $"Vùng '{kv.MaVung}' đã được thiết lập cho khu vực khác trong suất diễn này!";
+            }
+
             if (kv.GiaVe < 0)
             {
                 return "Giá vé phải lớn hơn hoặc bằng 0!";
+            }
+
+            if (kv.TongSoGhe <= 0 || kv.TongSoGhe > 2600)
+            {
+                return "Sức chứa phải là số nguyên dương từ 1 đến 2.600 ghế!";
             }
 
             if (string.IsNullOrWhiteSpace(kv.HangVe))
@@ -108,7 +123,13 @@ namespace QuanLySuKienVaBanVe.BLL
 
             try
             {
-                return KhuVucDAL.Sua(kv) ? "Success" : "Cập nhật khu vực thất bại!";
+                string errorMessage;
+                bool ok = KhuVucDAL.Sua(kv, out errorMessage);
+                if (ok)
+                {
+                    return "Success";
+                }
+                return !string.IsNullOrEmpty(errorMessage) ? errorMessage : "Cập nhật khu vực thất bại!";
             }
             catch (SqlException ex)
             {

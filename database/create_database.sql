@@ -1,4 +1,4 @@
-﻿﻿-- ==============================================================
+﻿-- ==============================================================
 -- DE TAI 20: QUAN LY SU KIEN VA BAN VE
 -- Script 01: Tao Database, Cac bang va Rang buoc toan ven
 -- ==============================================================
@@ -62,11 +62,13 @@ GO
 -- 4. Bang KhuVuc (Khu vuc khan phong / Hang ve cua tung suat dien)
 --    [FIX-P2-5] Rang buoc TongSoGhe > 0
 --    [FIX-P2-8] Bo sung cot ChoPhepBanVe
+--    [FIX-P1-1] Bo sung cot MaVung
 IF OBJECT_ID('KhuVuc', 'U') IS NULL
 BEGIN
     CREATE TABLE KhuVuc (
         MaKV INT IDENTITY(1,1) PRIMARY KEY,
         MaSuat INT NOT NULL CONSTRAINT FK_KhuVuc_SuatDien FOREIGN KEY REFERENCES SuatDien(MaSuat),
+        MaVung VARCHAR(20) NULL,
         TenKV NVARCHAR(100) NOT NULL,
         HangVe NVARCHAR(50) NOT NULL, -- VIP, Thuong, PhoThong
         GiaVe DECIMAL(18,0) NOT NULL CONSTRAINT CK_KhuVuc_GiaVe CHECK (GiaVe >= 0),
@@ -181,6 +183,12 @@ IF COL_LENGTH('KhuVuc', 'ChoPhepBanVe') IS NULL
 BEGIN
     ALTER TABLE KhuVuc ADD ChoPhepBanVe BIT NOT NULL
         CONSTRAINT DF_KhuVuc_ChoPhepBanVe DEFAULT 1;
+END
+GO
+
+IF COL_LENGTH('KhuVuc', 'MaVung') IS NULL
+BEGIN
+    ALTER TABLE KhuVuc ADD MaVung VARCHAR(20) NULL;
 END
 GO
 

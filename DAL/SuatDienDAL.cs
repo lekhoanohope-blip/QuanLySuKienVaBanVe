@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DTO;
@@ -28,12 +28,34 @@ namespace QuanLySuKienVaBanVe.DAL
         {
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
-                string query = @"SELECT MaSuat, ThoiGianBatDau FROM SuatDien WHERE MaSK = @MaSK ORDER BY ThoiGianBatDau";
+                string query = @"SELECT MaSuat, MaSK, ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, TrangThai, LoaiSoDo 
+                                 FROM SuatDien 
+                                 WHERE MaSK = @MaSK 
+                                 ORDER BY ThoiGianBatDau";
                 using (SqlDataAdapter da = new SqlDataAdapter(query, conn))
                 {
                     da.SelectCommand.Parameters.AddWithValue("@MaSK", maSK);
                     DataTable dt = new DataTable();
                     da.Fill(dt);
+
+                    if (!dt.Columns.Contains("HienThiSuat"))
+                    {
+                        dt.Columns.Add("HienThiSuat", typeof(string));
+                    }
+
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        DateTime tg = Convert.ToDateTime(row["ThoiGianBatDau"]);
+                        string diaDiem = row["DiaDiem"]?.ToString() ?? "";
+                        string trangThai = row["TrangThai"]?.ToString() ?? "";
+                        string ttText = "";
+                        if (trangThai == "MoCuaBanVe") ttText = " (Mở bán)";
+                        else if (trangThai == "DongBanVe") ttText = " (Đóng bán)";
+                        else if (trangThai == "DangDien") ttText = " (Đang diễn)";
+                        else if (trangThai == "DaKetThuc") ttText = " (Đã kết thúc)";
+
+                        row["HienThiSuat"] = $"{tg:dd/MM/yyyy · HH:mm} · {diaDiem}{ttText}";
+                    }
                     return dt;
                 }
             }
@@ -69,6 +91,7 @@ namespace QuanLySuKienVaBanVe.DAL
             }
             return sd;
         }
+
         public static bool Them(SuatDienDTO sd)
         {
             using (SqlConnection conn = DatabaseHelper.GetConnection())

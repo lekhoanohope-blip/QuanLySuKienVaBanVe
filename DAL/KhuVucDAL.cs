@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DTO;
@@ -7,13 +7,106 @@ namespace QuanLySuKienVaBanVe.DAL
 {
     public class KhuVucDAL
     {
+        private static bool _schemaEnsured = false;
+        private static readonly object _schemaLock = new object();
+
+        public static void EnsureSchemaAndSyncSeats()
+        {
+            if (_schemaEnsured) return;
+            lock (_schemaLock)
+            {
+                if (_schemaEnsured) return;
+                try
+                {
+                    using (SqlConnection conn = DatabaseHelper.GetConnection())
+                    {
+                        conn.Open();
+
+                        // 1. Thêm cột MaVung nếu chưa có
+                        string checkColSql = @"
+                            IF COL_LENGTH('KhuVuc', 'MaVung') IS NULL
+                            BEGIN
+                                ALTER TABLE KhuVuc ADD MaVung VARCHAR(20) NULL;
+                            END";
+                        using (SqlCommand cmd = new SqlCommand(checkColSql, conn))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 2. Gán MaVung mặc định cho dữ liệu mẫu cũ nếu chưa có
+                        string updateMaVungSql = @"
+                            UPDATE KhuVuc SET MaVung = 'VIP_A' WHERE MaVung IS NULL AND (TenKV LIKE '%VIP A%' OR TenKV LIKE N'%Khu VIP%');
+                            UPDATE KhuVuc SET MaVung = 'VIP_B' WHERE MaVung IS NULL AND TenKV LIKE '%VIP B%';
+                            UPDATE KhuVuc SET MaVung = 'GA_A' WHERE MaVung IS NULL AND TenKV LIKE '%GA A%';
+                            UPDATE KhuVuc SET MaVung = 'GA_B' WHERE MaVung IS NULL AND TenKV LIKE '%GA B%';
+                            UPDATE KhuVuc SET MaVung = 'CAT' WHERE MaVung IS NULL AND (TenKV LIKE '%CAT%' OR TenKV LIKE N'%Thường%' OR HangVe = 'Thuong');
+                        ";
+                        using (SqlCommand cmd = new SqlCommand(updateMaVungSql, conn))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 3. Đồng bộ ghế bị thiếu cho các khu vực mẫu cũ
+                        string syncMissingSeatsSql = @"
+                            DECLARE @MaKV INT, @TongSoGhe INT, @CurrentGheCount INT;
+                            DECLARE cur CURSOR LOCAL FAST_FORWARD FOR
+                                SELECT kv.MaKV, kv.TongSoGhe, ISNULL(COUNT(g.MaGhe), 0)
+                                FROM KhuVuc kv
+                                LEFT JOIN Ghe g ON kv.MaKV = g.MaKV
+                                GROUP BY kv.MaKV, kv.TongSoGhe
+                                HAVING ISNULL(COUNT(g.MaGhe), 0) < kv.TongSoGhe;
+
+                            OPEN cur;
+                            FETCH NEXT FROM cur INTO @MaKV, @TongSoGhe, @CurrentGheCount;
+                            WHILE @@FETCH_STATUS = 0
+                            BEGIN
+                                DECLARE @MissingCount INT = @TongSoGhe - @CurrentGheCount;
+                                DECLARE @ColPerRow INT = 10;
+                                IF @TongSoGhe > 260
+                                    SET @ColPerRow = CEILING(@TongSoGhe / 26.0);
+
+                                WITH Nbrs AS (
+                                    SELECT TOP (@MissingCount) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 + @CurrentGheCount) AS Idx
+                                    FROM sys.all_columns a CROSS JOIN sys.all_columns b
+                                )
+                                INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
+                                SELECT @MaKV,
+                                       CHAR(65 + (Idx / @ColPerRow)),
+                                       (Idx % @ColPerRow) + 1,
+                                       N'Trong'
+                                FROM Nbrs
+                                WHERE NOT EXISTS (
+                                    SELECT 1 FROM Ghe WHERE MaKV = @MaKV AND Hang = CHAR(65 + (Idx / @ColPerRow)) AND Cot = (Idx % @ColPerRow) + 1
+                                );
+
+                                FETCH NEXT FROM cur INTO @MaKV, @TongSoGhe, @CurrentGheCount;
+                            END;
+                            CLOSE cur;
+                            DEALLOCATE cur;";
+
+                        using (SqlCommand cmd = new SqlCommand(syncMissingSeatsSql, conn))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    _schemaEnsured = true;
+                }
+                catch
+                {
+                    // Tránh crash nếu không có quyền DDL, lần sau thử lại
+                }
+            }
+        }
+
         public static DataTable LayDanhSachTheoSuat(int maSuat)
         {
+            EnsureSchemaAndSyncSeats();
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 string query = @"
-                    SELECT kv.MaKV, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
+                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
+                           (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DangGiu') as DangGiu,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
                     FROM KhuVuc kv
                     WHERE kv.MaSuat = @MaSuat
@@ -31,11 +124,13 @@ namespace QuanLySuKienVaBanVe.DAL
 
         public static KhuVucDTO LayTheoMa(int maKV)
         {
+            EnsureSchemaAndSyncSeats();
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 string query = @"
-                    SELECT kv.MaKV, kv.MaSuat, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
+                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
+                           (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DangGiu') as DangGiu,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
                     FROM KhuVuc kv
                     WHERE kv.MaKV = @MaKV";
@@ -52,12 +147,14 @@ namespace QuanLySuKienVaBanVe.DAL
                             {
                                 MaKV = Convert.ToInt32(reader["MaKV"]),
                                 MaSuat = Convert.ToInt32(reader["MaSuat"]),
+                                MaVung = reader["MaVung"]?.ToString() ?? "",
                                 TenKV = reader["TenKV"].ToString(),
                                 HangVe = reader["HangVe"].ToString(),
                                 TongSoGhe = Convert.ToInt32(reader["TongSoGhe"]),
                                 GiaVe = Convert.ToDecimal(reader["GiaVe"]),
                                 ChoPhepBanVe = Convert.ToBoolean(reader["ChoPhepBanVe"]),
                                 DaBan = Convert.ToInt32(reader["DaBan"]),
+                                DangGiu = Convert.ToInt32(reader["DangGiu"]),
                                 ConLai = Convert.ToInt32(reader["ConLai"])
                             };
                         }
@@ -67,8 +164,27 @@ namespace QuanLySuKienVaBanVe.DAL
             return null;
         }
 
+        public static bool KiemTraMaVungTonTai(int maSuat, string maVung, int excludeMaKV = 0)
+        {
+            if (string.IsNullOrWhiteSpace(maVung)) return false;
+            using (SqlConnection conn = DatabaseHelper.GetConnection())
+            {
+                string query = @"SELECT COUNT(*) FROM KhuVuc 
+                                 WHERE MaSuat = @MaSuat AND MaVung = @MaVung AND MaKV <> @ExcludeMaKV";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@MaSuat", maSuat);
+                    cmd.Parameters.AddWithValue("@MaVung", maVung.Trim());
+                    cmd.Parameters.AddWithValue("@ExcludeMaKV", excludeMaKV);
+                    conn.Open();
+                    return (int)cmd.ExecuteScalar() > 0;
+                }
+            }
+        }
+
         public static int Them(KhuVucDTO kv)
         {
+            EnsureSchemaAndSyncSeats();
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 conn.Open();
@@ -77,14 +193,15 @@ namespace QuanLySuKienVaBanVe.DAL
                     try
                     {
                         const string sqlKV = @"
-                            INSERT INTO KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhepBanVe)
+                            INSERT INTO KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhepBanVe)
                             OUTPUT INSERTED.MaKV
-                            VALUES (@MaSuat, @TenKV, @HangVe, @GiaVe, @TongSoGhe, @ChoPhepBanVe)";
+                            VALUES (@MaSuat, @MaVung, @TenKV, @HangVe, @GiaVe, @TongSoGhe, @ChoPhepBanVe)";
 
                         int newMaKV;
                         using (SqlCommand cmdKV = new SqlCommand(sqlKV, conn, trans))
                         {
                             cmdKV.Parameters.AddWithValue("@MaSuat", kv.MaSuat);
+                            cmdKV.Parameters.AddWithValue("@MaVung", (object)kv.MaVung ?? DBNull.Value);
                             cmdKV.Parameters.AddWithValue("@TenKV", kv.TenKV);
                             cmdKV.Parameters.AddWithValue("@HangVe", kv.HangVe ?? "VIP");
                             cmdKV.Parameters.AddWithValue("@GiaVe", kv.GiaVe);
@@ -93,20 +210,28 @@ namespace QuanLySuKienVaBanVe.DAL
                             newMaKV = (int)cmdKV.ExecuteScalar();
                         }
 
-                        // Tối ưu chèn ghế set-based trong cùng connection và transaction, đảm bảo nguyên tử, đúng số ghế và vị trí
+                        // Sinh ghế đa hàng chuẩn A, B, C... (10 ghế mỗi hàng; tối đa 26 hàng A-Z)
+                        int colPerRow = 10;
+                        if (kv.TongSoGhe > 260)
+                            colPerRow = (int)Math.Ceiling(kv.TongSoGhe / 26.0);
+
                         const string sqlGhe = @"
                             WITH Nbrs AS (
-                                SELECT TOP (@TongSoGhe) ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS Cot
+                                SELECT TOP (@TongSoGhe) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1) AS Idx
                                 FROM sys.all_columns a CROSS JOIN sys.all_columns b
                             )
                             INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
-                            SELECT @MaKV, 'A', Cot, N'Trong'
+                            SELECT @MaKV,
+                                   CHAR(65 + (Idx / @ColPerRow)),
+                                   (Idx % @ColPerRow) + 1,
+                                   N'Trong'
                             FROM Nbrs";
 
                         using (SqlCommand cmdGhe = new SqlCommand(sqlGhe, conn, trans))
                         {
                             cmdGhe.Parameters.AddWithValue("@MaKV", newMaKV);
                             cmdGhe.Parameters.AddWithValue("@TongSoGhe", kv.TongSoGhe);
+                            cmdGhe.Parameters.AddWithValue("@ColPerRow", colPerRow);
                             cmdGhe.ExecuteNonQuery();
                         }
 
@@ -122,31 +247,207 @@ namespace QuanLySuKienVaBanVe.DAL
             }
         }
 
-        public static bool Sua(KhuVucDTO kv)
+        public static bool Sua(KhuVucDTO kv, out string errorMessage)
         {
+            errorMessage = "";
+            EnsureSchemaAndSyncSeats();
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
-                const string sql = @"
-                    UPDATE KhuVuc
-                    SET TenKV = @TenKV, HangVe = @HangVe, GiaVe = @GiaVe, ChoPhepBanVe = @ChoPhepBanVe
-                    WHERE MaKV = @MaKV";
-
-                using (SqlCommand cmd = new SqlCommand(sql, conn))
+                conn.Open();
+                using (SqlTransaction trans = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@TenKV", kv.TenKV);
-                    cmd.Parameters.AddWithValue("@HangVe", kv.HangVe ?? "VIP");
-                    cmd.Parameters.AddWithValue("@GiaVe", kv.GiaVe);
-                    cmd.Parameters.AddWithValue("@ChoPhepBanVe", kv.ChoPhepBanVe);
-                    cmd.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                    try
+                    {
+                        // 1. Lấy thông tin sức chứa hiện tại và số ghế trong CSDL
+                        int oldTongSoGhe = 0;
+                        using (SqlCommand cmdCheck = new SqlCommand("SELECT TongSoGhe FROM KhuVuc WHERE MaKV = @MaKV", conn, trans))
+                        {
+                            cmdCheck.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                            object result = cmdCheck.ExecuteScalar();
+                            if (result == null)
+                            {
+                                errorMessage = "Khu vực không tồn tại.";
+                                trans.Rollback();
+                                return false;
+                            }
+                            oldTongSoGhe = Convert.ToInt32(result);
+                        }
 
-                    conn.Open();
-                    return cmd.ExecuteNonQuery() > 0;
+                        // 2. Cập nhật thông tin KhuVuc
+                        const string sqlUpdateKV = @"
+                            UPDATE KhuVuc
+                            SET MaVung = @MaVung, TenKV = @TenKV, HangVe = @HangVe, GiaVe = @GiaVe, 
+                                TongSoGhe = @TongSoGhe, ChoPhepBanVe = @ChoPhepBanVe
+                            WHERE MaKV = @MaKV";
+
+                        using (SqlCommand cmdUpdate = new SqlCommand(sqlUpdateKV, conn, trans))
+                        {
+                            cmdUpdate.Parameters.AddWithValue("@MaVung", (object)kv.MaVung ?? DBNull.Value);
+                            cmdUpdate.Parameters.AddWithValue("@TenKV", kv.TenKV);
+                            cmdUpdate.Parameters.AddWithValue("@HangVe", kv.HangVe ?? "VIP");
+                            cmdUpdate.Parameters.AddWithValue("@GiaVe", kv.GiaVe);
+                            cmdUpdate.Parameters.AddWithValue("@TongSoGhe", kv.TongSoGhe);
+                            cmdUpdate.Parameters.AddWithValue("@ChoPhepBanVe", kv.ChoPhepBanVe);
+                            cmdUpdate.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                            cmdUpdate.ExecuteNonQuery();
+                        }
+
+                        // 3. Nếu Sức chứa thay đổi -> xử lý đồng bộ ghế an toàn
+                        if (kv.TongSoGhe != oldTongSoGhe)
+                        {
+                            int soVeDaPhatHanh = 0;
+                            using (SqlCommand cmdVe = new SqlCommand(
+                                "SELECT COUNT(*) FROM ChiTietVe ctv INNER JOIN Ghe g ON ctv.MaGhe = g.MaGhe WHERE g.MaKV = @MaKV",
+                                conn, trans))
+                            {
+                                cmdVe.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                soVeDaPhatHanh = (int)cmdVe.ExecuteScalar();
+                            }
+
+                            int soGheDangBanHoacGiu = 0;
+                            using (SqlCommand cmdTrangThai = new SqlCommand(
+                                "SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV AND TrangThai IN (N'DaBan', N'DangGiu')",
+                                conn, trans))
+                            {
+                                cmdTrangThai.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                soGheDangBanHoacGiu = (int)cmdTrangThai.ExecuteScalar();
+                            }
+
+                            int colPerRow = 10;
+                            if (kv.TongSoGhe > 260)
+                                colPerRow = (int)Math.Ceiling(kv.TongSoGhe / 26.0);
+
+                            // Trường hợp 1: Khu vực hoàn toàn chưa có vé và chưa có ghế đang giữ -> Tái tạo sạch ma trận ghế
+                            if (soVeDaPhatHanh == 0 && soGheDangBanHoacGiu == 0)
+                            {
+                                using (SqlCommand cmdDel = new SqlCommand("DELETE FROM Ghe WHERE MaKV = @MaKV", conn, trans))
+                                {
+                                    cmdDel.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                    cmdDel.ExecuteNonQuery();
+                                }
+
+                                const string sqlRebuild = @"
+                                    WITH Nbrs AS (
+                                        SELECT TOP (@TongSoGhe) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1) AS Idx
+                                        FROM sys.all_columns a CROSS JOIN sys.all_columns b
+                                    )
+                                    INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
+                                    SELECT @MaKV,
+                                           CHAR(65 + (Idx / @ColPerRow)),
+                                           (Idx % @ColPerRow) + 1,
+                                           N'Trong'
+                                    FROM Nbrs";
+
+                                using (SqlCommand cmdGen = new SqlCommand(sqlRebuild, conn, trans))
+                                {
+                                    cmdGen.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                    cmdGen.Parameters.AddWithValue("@TongSoGhe", kv.TongSoGhe);
+                                    cmdGen.Parameters.AddWithValue("@ColPerRow", colPerRow);
+                                    cmdGen.ExecuteNonQuery();
+                                }
+                            }
+                            else if (kv.TongSoGhe > oldTongSoGhe)
+                            {
+                                // Trường hợp 2: Tăng sức chứa khi đã có vé/ghế giữ -> Sinh bổ sung số ghế còn thiếu
+                                int currentCount = 0;
+                                using (SqlCommand cmdCount = new SqlCommand("SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV", conn, trans))
+                                {
+                                    cmdCount.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                    currentCount = (int)cmdCount.ExecuteScalar();
+                                }
+
+                                int missingCount = kv.TongSoGhe - currentCount;
+                                if (missingCount > 0)
+                                {
+                                    const string sqlAddMore = @"
+                                        WITH Nbrs AS (
+                                            SELECT TOP (@MissingCount) (ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 + @CurrentCount) AS Idx
+                                            FROM sys.all_columns a CROSS JOIN sys.all_columns b
+                                        )
+                                        INSERT INTO Ghe (MaKV, Hang, Cot, TrangThai)
+                                        SELECT @MaKV,
+                                               CHAR(65 + (Idx / @ColPerRow)),
+                                               (Idx % @ColPerRow) + 1,
+                                               N'Trong'
+                                        FROM Nbrs
+                                        WHERE NOT EXISTS (
+                                            SELECT 1 FROM Ghe WHERE MaKV = @MaKV AND Hang = CHAR(65 + (Idx / @ColPerRow)) AND Cot = (Idx % @ColPerRow) + 1
+                                        )";
+
+                                    using (SqlCommand cmdAdd = new SqlCommand(sqlAddMore, conn, trans))
+                                    {
+                                        cmdAdd.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                        cmdAdd.Parameters.AddWithValue("@MissingCount", missingCount);
+                                        cmdAdd.Parameters.AddWithValue("@CurrentCount", currentCount);
+                                        cmdAdd.Parameters.AddWithValue("@ColPerRow", colPerRow);
+                                        cmdAdd.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // Trường hợp 3: Giảm sức chứa -> Chỉ xóa ghế trống chưa từng có vé
+                                int delta = oldTongSoGhe - kv.TongSoGhe;
+
+                                int safeCount = 0;
+                                using (SqlCommand cmdSafe = new SqlCommand(@"
+                                    SELECT COUNT(*) FROM Ghe g
+                                    WHERE g.MaKV = @MaKV 
+                                      AND g.TrangThai = N'Trong'
+                                      AND NOT EXISTS (SELECT 1 FROM ChiTietVe ctv WHERE ctv.MaGhe = g.MaGhe)", conn, trans))
+                                {
+                                    cmdSafe.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                    safeCount = (int)cmdSafe.ExecuteScalar();
+                                }
+
+                                if (safeCount < delta)
+                                {
+                                    errorMessage = $"Không thể giảm sức chứa xuống {kv.TongSoGhe}! Khu vực này có {soGheDangBanHoacGiu} ghế đang giữ/đã bán và {soVeDaPhatHanh} vé có lịch sử, chỉ có thể giảm tối đa {safeCount} ghế trống an toàn.";
+                                    trans.Rollback();
+                                    return false;
+                                }
+
+                                const string sqlDeleteSafe = @"
+                                    DELETE FROM Ghe
+                                    WHERE MaGhe IN (
+                                        SELECT TOP (@Delta) g.MaGhe
+                                        FROM Ghe g
+                                        WHERE g.MaKV = @MaKV 
+                                          AND g.TrangThai = N'Trong'
+                                          AND NOT EXISTS (SELECT 1 FROM ChiTietVe ctv WHERE ctv.MaGhe = g.MaGhe)
+                                        ORDER BY g.Hang DESC, g.Cot DESC
+                                    )";
+
+                                using (SqlCommand cmdDelSafe = new SqlCommand(sqlDeleteSafe, conn, trans))
+                                {
+                                    cmdDelSafe.Parameters.AddWithValue("@MaKV", kv.MaKV);
+                                    cmdDelSafe.Parameters.AddWithValue("@Delta", delta);
+                                    cmdDelSafe.ExecuteNonQuery();
+                                }
+                            }
+                        }
+
+                        trans.Commit();
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        trans.Rollback();
+                        errorMessage = "Lỗi khi cập nhật khu vực: " + ex.Message;
+                        return false;
+                    }
                 }
             }
         }
 
+        public static bool Sua(KhuVucDTO kv)
+        {
+            return Sua(kv, out _);
+        }
+
         public static bool Xoa(int maKV)
         {
+            EnsureSchemaAndSyncSeats();
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 conn.Open();
