@@ -68,7 +68,10 @@ Phần mềm **Quản lý sự kiện và bán vé** là ứng dụng desktop x�
 2. **Cài đặt Cơ sở dữ liệu:**
    - Mở **SSMS** và kết nối vào SQL Server.
    - Mở và thực thi file script: `database/create_database.sql` để tạo database và các bảng.
+   - Tiếp theo, chạy `database/migrate_tv3_donve.sql` để bổ sung `DonVe.MaDonGoc`, `Ghe.ThoiGianGiu` và ràng buộc chống bán trùng ghế. Đây là bước bắt buộc trước khi mở chức năng **Đơn vé**.
    - Mở và thực thi file script: `database/sample_data.sql` để nạp dữ liệu danh mục ban đầu và tài khoản mẫu.
+
+   **Nâng cấp database đang có:** chạy `database/migration_add_columns.sql` trước, sau đó chạy `database/migrate_tv3_donve.sql`. Hai migration cấu trúc có thể chạy lại; không cần nạp lại `sample_data.sql` và không tự động xóa/nạp dữ liệu demo. Ứng dụng không tự chạy migration khi khởi động.
 
 3. **Cấu hình chuỗi kết nối trong `App.config`:**
    - Mở file `App.config`, kiểm tra và sửa lại `connectionString` cho khớp với tên SQL Server Instance của máy cá nhân:
@@ -87,6 +90,16 @@ Phần mềm **Quản lý sự kiện và bán vé** là ứng dụng desktop x�
    - Nhấn **F5** (hoặc nút **Start**) để khởi chạy chương trình.
 
 ---
+
+### 5.3. Kiểm thử hồi quy hủy/đổi vé
+
+Sau khi build Debug, chạy từ thư mục dự án bằng Windows PowerShell (.NET Framework):
+
+```powershell
+& "$env:WINDIR\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -File .\tests\Test-TicketExchange.ps1 -Configuration Debug
+```
+
+Script tạo database `CodexTest_Ticket_<GUID>` riêng và xóa khi kết thúc, không sửa database của ứng dụng. Tài khoản SQL cần quyền tạo/xóa database. Có thể truyền `-SqlServer '.\SQLEXPRESS'`, `-Configuration Release` hoặc `-AssemblyPath '<đường dẫn exe đã build>'`. Các ca kiểm tra bao gồm thay đổi giá sau xác nhận, khu vực ngừng bán, khóa đồng thời, thu/hoàn tiền và rollback (Debug).
 
 ## 6. Tài khoản Demo
 
