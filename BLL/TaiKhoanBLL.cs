@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,7 +12,9 @@ namespace QuanLySuKienVaBanVe.BLL
 {
     // BLL KHÔNG chứa chuỗi hiển thị: chỉ trả mã kết quả, GUI tự đổi sang tiếng Việt/Anh.
     public enum KetQuaDangNhap { ThanhCong, ThieuThongTin, SaiThongTin, TaiKhoanBiKhoa, TamKhoa, LoiHeThong }
-    public enum KetQuaDangKy { ThanhCong, TenKhongHopLe, MatKhauNgan, XacNhanKhongKhop, TrungTen, LoiHeThong }
+    public enum KetQuaDangKy { ThanhCong, TenKhongHopLe, MatKhauNgan, XacNhanKhongKhop, TrungTen, LoiHeThong, KhongCoQuyen }
+    public enum KetQuaTaiKhoan { ThanhCong, KhongCoQuyen, MatKhauNgan, XacNhanKhongKhop, TuXoaMinh, DaCoDuLieu, LoiHeThong }
+    public enum KetQuaDoiMatKhau { ThanhCong, ThieuThongTin, MatKhauMoiNgan, XacNhanKhongKhop, TrungMatKhauCu, SaiMatKhauCu, TamKhoa, ChuaDangNhap, LoiHeThong }
 
     /// <summary>Nghiệp vụ tài khoản: kiểm tra đầu vào, băm mật khẩu, chống dò mật khẩu.</summary>
     public static class TaiKhoanBLL
@@ -71,6 +74,7 @@ namespace QuanLySuKienVaBanVe.BLL
 
         public static KetQuaDangKy DangKy(string tenDangNhap, string matKhau, string xacNhan)
         {
+            if (!PhienDangNhap.LaQuanLy) return KetQuaDangKy.KhongCoQuyen;
             tenDangNhap = (tenDangNhap ?? "").Trim();
             if (!Regex.IsMatch(tenDangNhap, @"^[A-Za-z0-9_.]{4,30}$")) return KetQuaDangKy.TenKhongHopLe;
             if (matKhau == null || matKhau.Length < 6) return KetQuaDangKy.MatKhauNgan;
@@ -99,6 +103,94 @@ namespace QuanLySuKienVaBanVe.BLL
             {
                 ChiTietLoi = ex.Message;
                 return KetQuaDangKy.LoiHeThong;
+            }
+        }
+
+        public static DataTable LayDanhSachTaiKhoan(string tuKhoa)
+        {
+            if (!PhienDangNhap.LaQuanLy) throw new UnauthorizedAccessException();
+            return TaiKhoanDAL.LayDanhSach((tuKhoa ?? "").Trim());
+        }
+
+        public static KetQuaTaiKhoan DatLaiMatKhau(int maTK, string matKhauMoi, string xacNhan)
+        {
+            if (!PhienDangNhap.LaQuanLy) return KetQuaTaiKhoan.KhongCoQuyen;
+            if (matKhauMoi == null || matKhauMoi.Length < 6) return KetQuaTaiKhoan.MatKhauNgan;
+            if (matKhauMoi != xacNhan) return KetQuaTaiKhoan.XacNhanKhongKhop;
+            try
+            {
+                return TaiKhoanDAL.CapNhatMatKhau(maTK, BamMatKhau(matKhauMoi))
+                    ? KetQuaTaiKhoan.ThanhCong : KetQuaTaiKhoan.LoiHeThong;
+            }
+            catch (Exception ex)
+            {
+                ChiTietLoi = ex.Message;
+                return KetQuaTaiKhoan.LoiHeThong;
+            }
+        }
+
+        public static KetQuaTaiKhoan Xoa(int maTK)
+        {
+            if (!PhienDangNhap.LaQuanLy) return KetQuaTaiKhoan.KhongCoQuyen;
+            if (PhienDangNhap.TaiKhoan.MaTK == maTK) return KetQuaTaiKhoan.TuXoaMinh;
+            try
+            {
+                return TaiKhoanDAL.Xoa(maTK) ? KetQuaTaiKhoan.ThanhCong : KetQuaTaiKhoan.LoiHeThong;
+            }
+            catch (SqlException ex)
+            {
+                ChiTietLoi = ex.Message;
+                return ex.Number == 547 ? KetQuaTaiKhoan.DaCoDuLieu : KetQuaTaiKhoan.LoiHeThong;
+            }
+            catch (Exception ex)
+            {
+                ChiTietLoi = ex.Message;
+                return KetQuaTaiKhoan.LoiHeThong;
+            }
+        }
+
+        public static KetQuaDoiMatKhau DoiMatKhau(string matKhauCu, string matKhauMoi, string xacNhan)
+        {
+            if (!PhienDangNhap.DaDangNhap) return KetQuaDoiMatKhau.ChuaDangNhap;
+            if (string.IsNullOrEmpty(matKhauCu) || string.IsNullOrEmpty(matKhauMoi) || string.IsNullOrEmpty(xacNhan))
+                return KetQuaDoiMatKhau.ThieuThongTin;
+            if (matKhauMoi.Length < 6) return KetQuaDoiMatKhau.MatKhauMoiNgan;
+            if (matKhauMoi != xacNhan) return KetQuaDoiMatKhau.XacNhanKhongKhop;
+
+            TaiKhoanDTO hienTai = PhienDangNhap.TaiKhoan;
+            string key = "doimk:" + hienTai.TenDangNhap.ToLowerInvariant();
+
+            lock (khoa)
+            {
+                LanSai ls;
+                if (dsSai.TryGetValue(key, out ls) && ls.KhoaDen > DateTime.Now)
+                {
+                    GiayKhoaConLai = (int)Math.Ceiling((ls.KhoaDen - DateTime.Now).TotalSeconds);
+                    return KetQuaDoiMatKhau.TamKhoa;
+                }
+            }
+
+            try
+            {
+                TaiKhoanDTO tk = TaiKhoanDAL.LayTheoTenDangNhap(hienTai.TenDangNhap);
+                if (tk == null || tk.MaTK != hienTai.MaTK) return KetQuaDoiMatKhau.ChuaDangNhap;
+
+                if (!KiemTraMatKhau(matKhauCu, tk.MatKhau))
+                {
+                    if (GhiNhanSai(key)) return KetQuaDoiMatKhau.TamKhoa;
+                    return KetQuaDoiMatKhau.SaiMatKhauCu;
+                }
+                if (matKhauMoi == matKhauCu) return KetQuaDoiMatKhau.TrungMatKhauCu;
+
+                bool ok = TaiKhoanDAL.CapNhatMatKhau(tk.MaTK, BamMatKhau(matKhauMoi));
+                if (!ok) return KetQuaDoiMatKhau.LoiHeThong;
+                XoaSai(key);
+                return KetQuaDoiMatKhau.ThanhCong;
+            }
+            catch (Exception ex)
+            {
+                ChiTietLoi = ex.Message;
+                return KetQuaDoiMatKhau.LoiHeThong;
             }
         }
 
