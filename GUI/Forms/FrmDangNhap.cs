@@ -11,40 +11,30 @@ using QuanLySuKienVaBanVe.DTO;
 namespace QuanLySuKienVaBanVe.GUI
 {
     /// <summary>
-    /// Màn hình Đăng nhập + Đăng ký (cùng 1 form, chuyển qua lại bằng link).
+    /// Màn hình Đăng nhập.
     /// Giao diện được dựng hoàn toàn bằng code (không dùng Designer) để cả nhóm copy là chạy.
     /// Đăng nhập thành công: DialogResult = OK và PhienDangNhap đã có thông tin người dùng.
     /// </summary>
     public class FrmDangNhap : Form
     {
         // Kích thước vùng nội dung của thẻ (chưa tính phần đệm bóng đổ)
-        private const int W = 460, H = 490, FIELD_X = 40, FIELD_W = 380;
+        private const int W = 460, H = 470, FIELD_X = 40, FIELD_W = 380;
 
-        private enum Mode { Login, Register }
         private enum Anim { None, Drop, Shake }
-
-        private Mode mode = Mode.Login;
 
         // --- khung ---
         private CardPanel card;
-        private Panel layerLogin, layerReg;
+        private Panel layerLogin;
         private LangChip chip;
         private ContextMenuStrip langMenu;
         private ToolTip tip = new ToolTip();
 
         // --- đăng nhập ---
-        private Label lblLoginTitle, lblLoginMsg, lblNoAcc;
+        private Label lblLoginTitle, lblLoginMsg, lblContactAdmin;
         private RoundedTextBox txtUser, txtPass;
         private FxCheck chkRemember;
-        private FxLink lnkForgot, lnkToReg;
+        private FxLink lnkForgot;
         private FxButton btnLogin;
-
-        // --- đăng ký ---
-        private Label lblRegTitle, lblRegMsg, lblHaveAcc;
-        private RoundedTextBox txtRegUser, txtRegPass, txtRegConfirm;
-        private FxCheck chkAgree;
-        private FxLink lnkTerms, lnkToLogin;
-        private FxButton btnRegister;
 
         // --- nền + animation ---
         private Bitmap bg;
@@ -69,7 +59,7 @@ namespace QuanLySuKienVaBanVe.GUI
             Lang.Changed += OnLangChanged;
 
             ApplyLanguage();
-            ShowMode(Mode.Login, false);
+            ShowMode();
             LoadRemembered();
         }
 
@@ -101,9 +91,7 @@ namespace QuanLySuKienVaBanVe.GUI
             card = new CardPanel { Size = new Size(W + 2 * CardPanel.Pad, H + 2 * CardPanel.Pad) };
             Controls.Add(card);
             layerLogin = MakeLayer();
-            layerReg = MakeLayer();
             BuildLoginLayer();
-            BuildRegisterLayer();
         }
 
         private void BuildLoginLayer()
@@ -124,52 +112,15 @@ namespace QuanLySuKienVaBanVe.GUI
             btnLogin = new FxButton { Location = new Point(FIELD_X - 4, 336), Enabled = false };
             btnLogin.Click += delegate { DoLogin(); };
 
-            lblNoAcc = MakeLabel(10f, FontStyle.Regular, Fx.Ink, ContentAlignment.MiddleLeft);
-            lnkToReg = new FxLink();
-            lnkToReg.Click += delegate { ShowMode(Mode.Register, true); };
+            lblContactAdmin = MakeLabel(10f, FontStyle.Regular, Fx.Ink, ContentAlignment.MiddleCenter);
+            lblContactAdmin.SetBounds(0, 420, W, 26);
 
             txtUser.ValueChanged += delegate { lblLoginMsg.Text = ""; UpdateButtons(); };
             txtPass.ValueChanged += delegate { lblLoginMsg.Text = ""; UpdateButtons(); };
 
             layerLogin.Controls.AddRange(new Control[]
             {
-                lblLoginTitle, txtUser, txtPass, lblLoginMsg, chkRemember, lnkForgot, btnLogin, lblNoAcc, lnkToReg
-            });
-        }
-
-        private void BuildRegisterLayer()
-        {
-            lblRegTitle = MakeLabel(22f, FontStyle.Bold, Fx.Ink, ContentAlignment.MiddleCenter);
-            lblRegTitle.SetBounds(0, 36, W, 52);
-
-            txtRegUser = new RoundedTextBox(FxIcon.User, false) { Location = new Point(FIELD_X, 106) };
-            txtRegPass = new RoundedTextBox(FxIcon.Lock, true) { Location = new Point(FIELD_X, 174) };
-            txtRegConfirm = new RoundedTextBox(FxIcon.Lock, true) { Location = new Point(FIELD_X, 242) };
-
-            lblRegMsg = MakeLabel(9.5f, FontStyle.Regular, Fx.Danger, ContentAlignment.MiddleLeft);
-            lblRegMsg.SetBounds(FIELD_X + 4, 302, FIELD_W - 8, 34);
-
-            chkAgree = new FxCheck { Location = new Point(FIELD_X, 342) };
-            lnkTerms = new FxLink { Top = 344 };
-            lnkTerms.Click += delegate { MessageBox.Show(Lang.T("terms_text"), Lang.T("terms"), MessageBoxButtons.OK, MessageBoxIcon.Information); };
-
-            btnRegister = new FxButton { Location = new Point(FIELD_X - 4, 380), Enabled = false };
-            btnRegister.Click += delegate { DoRegister(); };
-
-            lblHaveAcc = MakeLabel(10f, FontStyle.Regular, Fx.Ink, ContentAlignment.MiddleLeft);
-            lnkToLogin = new FxLink();
-            lnkToLogin.Click += delegate { ShowMode(Mode.Login, true); };
-
-            EventHandler changed = delegate { lblRegMsg.Text = ""; UpdateButtons(); };
-            txtRegUser.ValueChanged += changed;
-            txtRegPass.ValueChanged += changed;
-            txtRegConfirm.ValueChanged += changed;
-            chkAgree.CheckedChanged += changed;
-
-            layerReg.Controls.AddRange(new Control[]
-            {
-                lblRegTitle, txtRegUser, txtRegPass, txtRegConfirm, lblRegMsg,
-                chkAgree, lnkTerms, btnRegister, lblHaveAcc, lnkToLogin
+                lblLoginTitle, txtUser, txtPass, lblLoginMsg, chkRemember, lnkForgot, btnLogin, lblContactAdmin
             });
         }
 
@@ -214,34 +165,9 @@ namespace QuanLySuKienVaBanVe.GUI
             lnkForgot.Text = Lang.T("forgot");
             lnkForgot.Left = FIELD_X + FIELD_W - lnkForgot.Width;
             btnLogin.Text = Lang.T("btn_login");
-            lblNoAcc.Text = Lang.T("no_acc");
-            lnkToReg.Text = Lang.T("reg_now");
-            CenterPair(lblNoAcc, lnkToReg, 428);
-
-            lblRegTitle.Text = Lang.T("reg_title");
-            txtRegUser.Cue = Lang.T("ph_user");
-            txtRegPass.Cue = Lang.T("ph_pass");
-            txtRegConfirm.Cue = Lang.T("ph_confirm");
-            chkAgree.Text = Lang.T("agree");
-            lnkTerms.Text = Lang.T("terms");
-            lnkTerms.Left = chkAgree.Right + 1;
-            btnRegister.Text = Lang.T("btn_register");
-            lblHaveAcc.Text = Lang.T("have_acc");
-            lnkToLogin.Text = Lang.T("login_link");
-            CenterPair(lblHaveAcc, lnkToLogin, 454);
+            lblContactAdmin.Text = Lang.T("contact_admin");
 
             lblLoginMsg.Text = "";
-            lblRegMsg.Text = "";
-        }
-
-        /// <summary>Đặt 1 nhãn + 1 link nằm cạnh nhau và canh giữa thẻ.</summary>
-        private void CenterPair(Label lbl, FxLink lnk, int y)
-        {
-            Size sz = TextRenderer.MeasureText(lbl.Text, lbl.Font);
-            int total = sz.Width + 6 + lnk.Width;
-            int x = (W - total) / 2;
-            lbl.SetBounds(x, y, sz.Width + 2, 26);
-            lnk.Location = new Point(x + sz.Width + 6, y + (26 - lnk.Height) / 2 + 1);
         }
 
         // =================================================================
@@ -250,8 +176,6 @@ namespace QuanLySuKienVaBanVe.GUI
         private void UpdateButtons()
         {
             btnLogin.Enabled = txtUser.Value.Trim().Length > 0 && txtPass.Value.Length > 0;
-            btnRegister.Enabled = txtRegUser.Value.Trim().Length > 0 && txtRegPass.Value.Length > 0 &&
-                                  txtRegConfirm.Value.Length > 0 && chkAgree.Checked;
         }
 
         private void ShowMsg(Label lbl, string text, bool ok)
@@ -262,7 +186,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void DoLogin()
         {
-            if (!btnLogin.Enabled || mode != Mode.Login) return;
+            if (!btnLogin.Enabled) return;
 
             TaiKhoanDTO tk;
             KetQuaDangNhap kq = TaiKhoanBLL.DangNhap(txtUser.Value, txtPass.Value, out tk);
@@ -290,50 +214,14 @@ namespace QuanLySuKienVaBanVe.GUI
             txtPass.FocusInput();
         }
 
-        private void DoRegister()
+        private void ShowMode()
         {
-            if (!btnRegister.Enabled || mode != Mode.Register) return;
-
-            KetQuaDangKy kq = TaiKhoanBLL.DangKy(txtRegUser.Value, txtRegPass.Value, txtRegConfirm.Value);
-            if (kq == KetQuaDangKy.ThanhCong)
-            {
-                string ten = txtRegUser.Value.Trim();
-                txtRegUser.Value = ""; txtRegPass.Value = ""; txtRegConfirm.Value = ""; chkAgree.Checked = false;
-                ShowMode(Mode.Login, true);
-                txtUser.Value = ten;
-                txtPass.Value = "";
-                ShowMsg(lblLoginMsg, Lang.T("reg_ok"), true);
-                txtPass.FocusInput();
-                return;
-            }
-
-            txtRegUser.HasError = kq == KetQuaDangKy.TenKhongHopLe || kq == KetQuaDangKy.TrungTen;
-            txtRegPass.HasError = kq == KetQuaDangKy.MatKhauNgan;
-            txtRegConfirm.HasError = kq == KetQuaDangKy.XacNhanKhongKhop;
-
-            switch (kq)
-            {
-                case KetQuaDangKy.TenKhongHopLe: ShowMsg(lblRegMsg, Lang.T("err_user_fmt"), false); break;
-                case KetQuaDangKy.MatKhauNgan: ShowMsg(lblRegMsg, Lang.T("err_pass_short"), false); break;
-                case KetQuaDangKy.XacNhanKhongKhop: ShowMsg(lblRegMsg, Lang.T("err_confirm"), false); break;
-                case KetQuaDangKy.TrungTen: ShowMsg(lblRegMsg, Lang.T("err_exists"), false); break;
-                default:
-                    ShowMsg(lblRegMsg, Lang.T("err_sys"), false);
-                    // Khong lo thong tin loi noi bo he thong ra UI
-                    break;
-            }
-        }
-
-        private void ShowMode(Mode m, bool animate)
-        {
-            mode = m;
-            layerLogin.Visible = m == Mode.Login;
-            layerReg.Visible = m == Mode.Register;
-            lblLoginMsg.Text = ""; lblRegMsg.Text = "";
+            layerLogin.Visible = true;
+            lblLoginMsg.Text = "";
             txtPass.HasError = false;
             UpdateButtons();
             CenterCard();
-            if (m == Mode.Login) txtUser.FocusInput(); else txtRegUser.FocusInput();
+            txtUser.FocusInput();
         }
 
         // Ghi nhớ tên đăng nhập (KHÔNG lưu mật khẩu - lưu mật khẩu vào file là lỗi bảo mật)
@@ -482,7 +370,7 @@ namespace QuanLySuKienVaBanVe.GUI
             if (e.KeyCode == Keys.Enter)
             {
                 e.Handled = e.SuppressKeyPress = true;
-                if (mode == Mode.Login) DoLogin(); else DoRegister();
+                DoLogin();
                 return;
             }
             base.OnKeyDown(e);
