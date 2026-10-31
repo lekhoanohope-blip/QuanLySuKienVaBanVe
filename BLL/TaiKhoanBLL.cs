@@ -13,7 +13,7 @@ namespace QuanLySuKienVaBanVe.BLL
     // BLL KHÔNG chứa chuỗi hiển thị: chỉ trả mã kết quả, GUI tự đổi sang tiếng Việt/Anh.
     public enum KetQuaDangNhap { ThanhCong, ThieuThongTin, SaiThongTin, TaiKhoanBiKhoa, TamKhoa, LoiHeThong }
     public enum KetQuaDangKy { ThanhCong, TenKhongHopLe, MatKhauNgan, XacNhanKhongKhop, TrungTen, LoiHeThong, KhongCoQuyen }
-    public enum KetQuaTaiKhoan { ThanhCong, KhongCoQuyen, MatKhauNgan, XacNhanKhongKhop, TuXoaMinh, DaCoDuLieu, LoiHeThong }
+    public enum KetQuaTaiKhoan { ThanhCong, KhongCoQuyen, MatKhauNgan, XacNhanKhongKhop, TuXoaMinh, TuKhoaMinh, DaCoDuLieu, LoiHeThong }
     public enum KetQuaDoiMatKhau { ThanhCong, ThieuThongTin, MatKhauMoiNgan, XacNhanKhongKhop, TrungMatKhauCu, SaiMatKhauCu, TamKhoa, ChuaDangNhap, LoiHeThong }
 
     /// <summary>Nghiệp vụ tài khoản: kiểm tra đầu vào, băm mật khẩu, chống dò mật khẩu.</summary>
@@ -121,6 +121,21 @@ namespace QuanLySuKienVaBanVe.BLL
             {
                 return TaiKhoanDAL.CapNhatMatKhau(maTK, BamMatKhau(matKhauMoi))
                     ? KetQuaTaiKhoan.ThanhCong : KetQuaTaiKhoan.LoiHeThong;
+            }
+            catch (Exception ex)
+            {
+                ChiTietLoi = ex.Message;
+                return KetQuaTaiKhoan.LoiHeThong;
+            }
+        }
+
+        public static KetQuaTaiKhoan DatTrangThai(int maTK, bool hoatDong)
+        {
+            if (!PhienDangNhap.LaQuanLy) return KetQuaTaiKhoan.KhongCoQuyen;
+            if (!hoatDong && PhienDangNhap.TaiKhoan.MaTK == maTK) return KetQuaTaiKhoan.TuKhoaMinh;
+            try
+            {
+                return TaiKhoanDAL.DatTrangThai(maTK, hoatDong) ? KetQuaTaiKhoan.ThanhCong : KetQuaTaiKhoan.LoiHeThong;
             }
             catch (Exception ex)
             {

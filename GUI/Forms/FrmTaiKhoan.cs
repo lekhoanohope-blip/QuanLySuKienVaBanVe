@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using QuanLySuKienVaBanVe.BLL;
 using QuanLySuKienVaBanVe.DTO;
@@ -11,8 +12,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private const int W = 460, H = 430, FIELD_X = 40, FIELD_W = 380;
 
         private readonly TaiKhoanDTO editing;
-        private Bitmap bg;
-        private CardPanel card;
+        
         private Label lblTitle, lblMsg;
         private RoundedTextBox txtUser, txtPass, txtConfirm;
         private FxButton btnSubmit;
@@ -25,14 +25,13 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             editing = taiKhoan;
             Font = new Font("Segoe UI", 9f);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            MinimizeBox = false;
+            FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.CenterParent;
             KeyPreview = true;
             DoubleBuffered = true;
-            ClientSize = new Size(W + 2 * CardPanel.Pad, H + 2 * CardPanel.Pad);
+            BackColor = Color.FromArgb(55, 65, 81);
+            ClientSize = new Size(W, H);
 
             BuildCard();
             ApplyMode();
@@ -55,15 +54,13 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void BuildCard()
         {
-            card = new CardPanel { Size = ClientSize, Location = Point.Empty };
-            Controls.Add(card);
             Panel layer = new Panel
             {
                 BackColor = Color.White,
-                Location = new Point(CardPanel.Pad, CardPanel.Pad),
-                Size = new Size(W, H)
+                Location = new Point(1, 1),
+                Size = new Size(W - 3, H - 3)
             };
-            card.Controls.Add(layer);
+            Controls.Add(layer);
 
             lblTitle = MakeLabel(22f, FontStyle.Bold, Fx.Ink, ContentAlignment.MiddleCenter);
             lblTitle.SetBounds(0, 36, W, 52);
@@ -84,6 +81,13 @@ namespace QuanLySuKienVaBanVe.GUI
             txtConfirm.ValueChanged += changed;
 
             layer.Controls.AddRange(new Control[] { lblTitle, txtUser, txtPass, txtConfirm, lblMsg, btnSubmit });
+            Label btnClose = MakeLabel(18f, FontStyle.Regular, Fx.Muted, ContentAlignment.MiddleCenter);
+            btnClose.Text = "×";
+            btnClose.Cursor = Cursors.Hand;
+            btnClose.SetBounds(W - 50, 10, 36, 36);
+            btnClose.Click += delegate { DialogResult = DialogResult.Cancel; };
+            layer.Controls.Add(btnClose);
+            btnClose.BringToFront();
         }
 
         private void ApplyMode()
@@ -174,10 +178,11 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
-        protected override void OnPaintBackground(PaintEventArgs e)
+        protected override void OnLoad(EventArgs e)
         {
-            if (bg == null) bg = Fx.CreateBackground(ClientSize.Width, ClientSize.Height);
-            if (bg != null) e.Graphics.DrawImageUnscaled(bg, 0, 0); else base.OnPaintBackground(e);
+            base.OnLoad(e);
+            using (GraphicsPath path = Fx.RoundRect(new RectangleF(0, 0, Width, Height), 18))
+                Region = new Region(path);
         }
 
         protected override void OnShown(EventArgs e)
@@ -203,10 +208,6 @@ namespace QuanLySuKienVaBanVe.GUI
             base.OnKeyDown(e);
         }
 
-        protected override void OnFormClosed(FormClosedEventArgs e)
-        {
-            if (bg != null) bg.Dispose();
-            base.OnFormClosed(e);
-        }
+        
     }
 }

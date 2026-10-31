@@ -84,12 +84,26 @@ namespace QuanLySuKienVaBanVe.DAL
         {
             const string sql =
                 "SELECT MaTK, TenDangNhap, VaiTro, " +
-                "CASE VaiTro WHEN N'QuanLy' THEN N'Quản lý' ELSE N'Nhân viên' END AS ChucVu, MatKhau " +
+                "CASE VaiTro WHEN N'QuanLy' THEN N'Quản lý' ELSE N'Nhân viên' END AS ChucVu, " +
+                "CASE WHEN TrangThai = 1 THEN N'Hoạt động' ELSE N'Đã khóa' END AS TrangThaiText, TrangThai " +
                 "FROM TaiKhoan WHERE TenDangNhap LIKE @kw ESCAPE '\\' ORDER BY MaTK DESC";
 
             string escaped = (tuKhoa ?? "").Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_").Replace("[", "\\[");
             SqlParameter[] parameters = { new SqlParameter("@kw", SqlDbType.NVarChar, 100) { Value = "%" + escaped + "%" } };
             return Database.ExecuteQuery(sql, parameters);
+        }
+
+        public static bool DatTrangThai(int maTK, bool hoatDong)
+        {
+            const string sql = "UPDATE TaiKhoan SET TrangThai = @tt WHERE MaTK = @ma";
+            using (SqlConnection conn = Database.GetConnection())
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.Add("@tt", SqlDbType.Bit).Value = hoatDong;
+                cmd.Parameters.Add("@ma", SqlDbType.Int).Value = maTK;
+                conn.Open();
+                return cmd.ExecuteNonQuery() == 1;
+            }
         }
 
         public static bool Xoa(int maTK)

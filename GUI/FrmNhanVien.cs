@@ -1,8 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
-using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using QuanLySuKienVaBanVe.BLL;
@@ -12,18 +11,43 @@ namespace QuanLySuKienVaBanVe.GUI
 {
     public partial class FrmNhanVien : Form
     {
-        private const string Mask = "********";
-
-        private readonly HashSet<int> revealed = new HashSet<int>();
         private int requestVersion;
         private bool loading;
-        private bool deleting;
+        private bool busy;
 
         public FrmNhanVien()
         {
             InitializeComponent();
             DoubleBuffered = true;
-            ManagementFormLayout.Attach(pnlHeader, txtTimKiem, btnThem, btnSua, btnXoa);
+            foreach (Control control in new Control[] { txtTimKiem, btnThem, btnSua, btnKhoa, btnXoa })
+                control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            pnlHeader.SizeChanged += delegate { LayoutHeader(); };
+            LayoutHeader();
+        }
+
+        private void LayoutHeader()
+        {
+            float scale = pnlHeader.DeviceDpi / 96f;
+            Func<int, int> px = value => (int)Math.Round(value * scale);
+            Control[] actions = { btnThem, btnSua, btnKhoa, btnXoa };
+            int gap = px(10);
+            int actionsWidth = actions.Sum(control => control.Width) + gap * (actions.Length - 1);
+            int availableWidth = pnlHeader.ClientSize.Width;
+            bool stacked = availableWidth < actionsWidth + px(190);
+            int headerHeight = stacked ? px(112) : px(72);
+            if (pnlHeader.Height != headerHeight) pnlHeader.Height = headerHeight;
+
+            txtTimKiem.Location = new Point(0, stacked ? px(12) : px(20));
+            txtTimKiem.Width = Math.Max(px(120), Math.Min(px(350),
+                availableWidth - (stacked ? 0 : actionsWidth + px(20))));
+
+            int x = Math.Max(0, availableWidth - actionsWidth);
+            int y = stacked ? px(66) : px(20);
+            foreach (Control control in actions)
+            {
+                control.Location = new Point(x, y);
+                x += control.Width + gap;
+            }
         }
 
         private async void FrmNhanVien_Load(object sender, EventArgs e)
@@ -50,7 +74,6 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 DataTable data = await Task.Run(() => TaiKhoanBLL.LayDanhSachTaiKhoan(keyword));
                 if (IsDisposed || version != requestVersion) return;
-                revealed.Clear();
                 dgvNhanVien.DataSource = data;
                 lblCount.Text = string.Format(keyword.Length == 0
                     ? "Tổng: {0:N0} tài khoản" : "Kết quả: {0:N0} tài khoản", data.Rows.Count);
@@ -101,39 +124,37 @@ namespace QuanLySuKienVaBanVe.GUI
             pnlMessage.BringToFront();
         }
 
+        private static bool IsLocked(DataGridViewRow row)
+        {
+            DataRowView view = row == null ? null : row.DataBoundItem as DataRowView;
+            return view != null && !Convert.ToBoolean(view["TrangThai"]);
+        }
+
         private void UpdateActions()
         {
-            bool hasSelection = !loading && !deleting && dgvNhanVien.CurrentRow != null;
-            btnThem.Enabled = !loading && !deleting;
+            bool hasSelection = !loading && !busy && dgvNhanVien.CurrentRow != null;
+            btnThem.Enabled = !loading && !busy;
             btnSua.Enabled = hasSelection;
+            btnKhoa.Enabled = hasSelection;
             btnXoa.Enabled = hasSelection;
-            btnLamMoi.Enabled = !deleting;
-            txtTimKiem.Enabled = !deleting;
-            dgvNhanVien.Enabled = !loading && !deleting;
+            btnKhoa.Text = IsLocked(dgvNhanVien.CurrentRow) ? "Mở khóa" : "Khóa";
+            btnLamMoi.Enabled = !busy;
+            txtTimKiem.Enabled = !busy;
+            dgvNhanVien.Enabled = !loading && !busy;
         }
 
         private TaiKhoanDTO SelectedAccount()
         {
             var row = dgvNhanVien.CurrentRow;
-            if (row == null || loading || deleting) return null;
+            if (row == null || loading || busy) return null;
             DataRowView view = row.DataBoundItem as DataRowView;
             return new TaiKhoanDTO
             {
                 MaTK = Convert.ToInt32(row.Cells["colMaTK"].Value),
                 TenDangNhap = Convert.ToString(row.Cells["colTenTK"].Value),
-                VaiTro = view == null ? VaiTro.NhanVien : Convert.ToString(view["VaiTro"])
+                VaiTro = view == null ? VaiTro.NhanVien : Convert.ToString(view["VaiTro"]),
+                TrangThai = !IsLocked(row)
             };
-        }
-
-        private int Scale(int pixels)
-        {
-            return (int)Math.Round(pixels * DeviceDpi / 96f);
-        }
-
-        private Rectangle EyeBounds(Rectangle cell)
-        {
-            int size = Scale(28);
-            return new Rectangle(cell.Right - Scale(12) - size, cell.Top + (cell.Height - size) / 2, size, size);
         }
 
         private void txtTimKiem_TextChanged(object sender, EventArgs e)
@@ -150,7 +171,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private async void btnThem_Click(object sender, EventArgs e)
         {
-            if (loading || deleting) return;
+            if (loading || busy) return;
             using (var dialog = new FrmTaiKhoan())
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
@@ -168,14 +189,61 @@ namespace QuanLySuKienVaBanVe.GUI
                     await LoadDanhSachAsync(dialog.TenDaLuu);
         }
 
+        private async void btnKhoa_Click(object sender, EventArgs e)
+        {
+            TaiKhoanDTO account = SelectedAccount();
+            if (account == null) return;
+            bool target = !account.TrangThai;
+            string message = target
+                ? string.Format("Mở khóa tài khoản “{0}”?\nNgười dùng sẽ đăng nhập lại được.", account.TenDangNhap)
+                : string.Format("Khóa tài khoản “{0}”?\nNgười dùng sẽ không đăng nhập được cho đến khi được mở khóa.", account.TenDangNhap);
+            if (MessageBox.Show(this, message, target ? "Xác nhận mở khóa" : "Xác nhận khóa tài khoản",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            busy = true;
+            UpdateActions();
+            try
+            {
+                KetQuaTaiKhoan result = await Task.Run(() => TaiKhoanBLL.DatTrangThai(account.MaTK, target));
+                if (IsDisposed) return;
+                switch (result)
+                {
+                    case KetQuaTaiKhoan.ThanhCong:
+                        await LoadDanhSachAsync(account.TenDangNhap);
+                        break;
+                    case KetQuaTaiKhoan.TuKhoaMinh:
+                        MessageBox.Show(this, "Bạn không thể khóa tài khoản đang đăng nhập.", "Không thể khóa",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        break;
+                    case KetQuaTaiKhoan.KhongCoQuyen:
+                        MessageBox.Show(this, "Chỉ Quản lý mới được khóa hoặc mở khóa tài khoản.", "Từ chối truy cập",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        break;
+                    default:
+                        MessageBox.Show(this, "Không thể cập nhật trạng thái tài khoản. Vui lòng kiểm tra kết nối và thử lại.",
+                            "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        break;
+                }
+            }
+            catch (Exception)
+            {
+                if (!IsDisposed) MessageBox.Show(this, "Không thể cập nhật trạng thái tài khoản. Vui lòng kiểm tra kết nối và thử lại.",
+                    "Lỗi kết nối", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                busy = false;
+                if (!IsDisposed) UpdateActions();
+            }
+        }
+
         private async void btnXoa_Click(object sender, EventArgs e)
         {
             TaiKhoanDTO account = SelectedAccount();
             if (account == null) return;
-            if (MessageBox.Show(this, string.Format("Xóa tài khoản “{0}”?\nTài khoản đã có đơn vé hoặc nhật ký sẽ không thể xóa.",
+            if (MessageBox.Show(this, string.Format("Xóa tài khoản “{0}”?\nTài khoản đã có đơn vé hoặc nhật ký sẽ không xóa được, hãy dùng chức năng Khóa.",
                 account.TenDangNhap), "Xác nhận xóa tài khoản", MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
-            deleting = true;
+            busy = true;
             UpdateActions();
             try
             {
@@ -191,7 +259,7 @@ namespace QuanLySuKienVaBanVe.GUI
                             MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         break;
                     case KetQuaTaiKhoan.DaCoDuLieu:
-                        MessageBox.Show(this, "Tài khoản này đã phát sinh đơn vé hoặc nhật ký nên không thể xóa.", "Không thể xóa",
+                        MessageBox.Show(this, "Tài khoản này đã phát sinh đơn vé hoặc nhật ký nên không thể xóa.\nHãy chọn “Khóa” để vô hiệu hóa tài khoản.", "Không thể xóa",
                             MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         break;
                     case KetQuaTaiKhoan.KhongCoQuyen:
@@ -211,7 +279,7 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             finally
             {
-                deleting = false;
+                busy = false;
                 if (!IsDisposed) UpdateActions();
             }
         }
@@ -229,100 +297,41 @@ namespace QuanLySuKienVaBanVe.GUI
                 string role = Convert.ToString(e.Value) ?? "";
                 bool admin = role == "Quản lý";
                 ManagementGridRenderer.PaintStatus(dgvNhanVien, e, role,
-                    admin ? Color.FromArgb(237, 233, 254) : Color.FromArgb(209, 250, 229),
-                    admin ? Color.FromArgb(91, 33, 182) : Color.FromArgb(6, 95, 70));
+                    admin ? Color.FromArgb(237, 233, 254) : Color.FromArgb(219, 234, 254),
+                    admin ? Color.FromArgb(91, 33, 182) : Color.FromArgb(30, 64, 175));
             }
-            else if (column == colMatKhau)
-                PaintPassword(e);
-        }
-
-        private void PaintPassword(DataGridViewCellPaintingEventArgs e)
-        {
-            e.Paint(e.ClipBounds, DataGridViewPaintParts.Background |
-                DataGridViewPaintParts.SelectionBackground | DataGridViewPaintParts.Border);
-
-            int maTK = Convert.ToInt32(dgvNhanVien.Rows[e.RowIndex].Cells["colMaTK"].Value);
-            bool visible = revealed.Contains(maTK);
-            string text = visible ? (Convert.ToString(e.Value) ?? "") : Mask;
-            Rectangle eye = EyeBounds(e.CellBounds);
-            Rectangle textBounds = new Rectangle(e.CellBounds.Left + Scale(16), e.CellBounds.Top,
-                Math.Max(0, eye.Left - e.CellBounds.Left - Scale(24)), e.CellBounds.Height);
-            bool selected = (e.State & DataGridViewElementStates.Selected) != 0;
-            Color foreground = selected ? e.CellStyle.SelectionForeColor : e.CellStyle.ForeColor;
-
-            GraphicsState state = e.Graphics.Save();
-            try
+            else if (column == colTrangThai)
             {
-                e.Graphics.SetClip(Rectangle.Intersect(e.CellBounds, e.ClipBounds), CombineMode.Intersect);
-                TextRenderer.DrawText(e.Graphics, text, e.CellStyle.Font, textBounds, foreground,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine |
-                    TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                Fx.IconEye(e.Graphics, new RectangleF(eye.X + 3, eye.Y + 3, eye.Width - 6, eye.Height - 6),
-                    visible ? Fx.Blue : Fx.Muted, !visible);
+                string status = Convert.ToString(e.Value) ?? "";
+                bool active = status == "Hoạt động";
+                ManagementGridRenderer.PaintStatus(dgvNhanVien, e, status,
+                    active ? Color.FromArgb(209, 250, 229) : Color.FromArgb(254, 226, 226),
+                    active ? Color.FromArgb(6, 95, 70) : Color.FromArgb(153, 27, 27));
             }
-            finally
-            {
-                e.Graphics.Restore(state);
-                e.Handled = true;
-            }
-        }
-
-        private Rectangle CellOrigin(int columnIndex, int rowIndex)
-        {
-            return new Rectangle(Point.Empty, dgvNhanVien.GetCellDisplayRectangle(columnIndex, rowIndex, false).Size);
         }
 
         private void dgvNhanVien_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Button != MouseButtons.Left || loading || deleting) return;
-            DataGridViewColumn column = dgvNhanVien.Columns[e.ColumnIndex];
-            Rectangle cell = CellOrigin(e.ColumnIndex, e.RowIndex);
-
-            if (column == colMatKhau)
-            {
-                if (!EyeBounds(cell).Contains(e.X, e.Y)) return;
-                int maTK = Convert.ToInt32(dgvNhanVien.Rows[e.RowIndex].Cells["colMaTK"].Value);
-                if (!revealed.Remove(maTK)) revealed.Add(maTK);
-                dgvNhanVien.InvalidateCell(e.ColumnIndex, e.RowIndex);
-                return;
-            }
-
-            if (column != colThaoTac) return;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Button != MouseButtons.Left ||
+                dgvNhanVien.Columns[e.ColumnIndex] != colThaoTac || loading || busy) return;
             dgvNhanVien.CurrentCell = dgvNhanVien.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            Rectangle cell = new Rectangle(Point.Empty, dgvNhanVien.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false).Size);
             if (ManagementGridRenderer.GetActionBounds(dgvNhanVien, cell, false).Contains(e.X, e.Y))
                 btnSua.PerformClick();
             else if (ManagementGridRenderer.GetActionBounds(dgvNhanVien, cell, true).Contains(e.X, e.Y))
                 btnXoa.PerformClick();
         }
 
-        private void dgvNhanVien_CellMouseMove(object sender, DataGridViewCellMouseEventArgs e)
-        {
-            bool overEye = e.RowIndex >= 0 && e.ColumnIndex >= 0 && dgvNhanVien.Columns[e.ColumnIndex] == colMatKhau &&
-                EyeBounds(CellOrigin(e.ColumnIndex, e.RowIndex)).Contains(e.X, e.Y);
-            dgvNhanVien.Cursor = overEye ? Cursors.Hand : Cursors.Default;
-        }
-
-        private void dgvNhanVien_CellMouseLeave(object sender, DataGridViewCellEventArgs e)
-        {
-            dgvNhanVien.Cursor = Cursors.Default;
-        }
-
         private void dgvNhanVien_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0 && e.ColumnIndex >= 0 &&
-                dgvNhanVien.Columns[e.ColumnIndex] != colThaoTac && dgvNhanVien.Columns[e.ColumnIndex] != colMatKhau)
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && dgvNhanVien.Columns[e.ColumnIndex] != colThaoTac)
                 btnSua.PerformClick();
         }
 
         private void dgvNhanVien_CellToolTipTextNeeded(object sender, DataGridViewCellToolTipTextNeededEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            DataGridViewColumn column = dgvNhanVien.Columns[e.ColumnIndex];
-            if (column == colThaoTac)
+            if (e.RowIndex >= 0 && e.ColumnIndex >= 0 && dgvNhanVien.Columns[e.ColumnIndex] == colThaoTac)
                 e.ToolTipText = "Đặt lại mật khẩu (bên trái) · Xóa tài khoản (bên phải)";
-            else if (column == colMatKhau)
-                e.ToolTipText = "Bấm biểu tượng mắt để hiện hoặc ẩn mật khẩu";
         }
 
         private void FrmNhanVien_KeyDown(object sender, KeyEventArgs e)
@@ -339,7 +348,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (deleting) e.Cancel = true;
+            if (busy) e.Cancel = true;
             base.OnFormClosing(e);
         }
     }

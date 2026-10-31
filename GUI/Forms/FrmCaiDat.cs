@@ -133,22 +133,15 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
-        private void RebuildBackground()
-        {
-            if (bg != null) { bg.Dispose(); bg = null; }
-            bg = Fx.CreateBackground(ClientSize.Width, ClientSize.Height);
-        }
-
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            if (bg == null) RebuildBackground();
-            if (bg != null) e.Graphics.DrawImageUnscaled(bg, 0, 0); else base.OnPaintBackground(e);
+            if (bg == null) bg = Fx.CreateBackground(1280, 800);
+            if (bg != null) e.Graphics.DrawImage(bg, ClientRectangle); else base.OnPaintBackground(e);
         }
 
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            RebuildBackground();
             LayoutCard();
             Invalidate();
         }
