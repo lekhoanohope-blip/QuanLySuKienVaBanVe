@@ -73,6 +73,28 @@ namespace QuanLySuKienVaBanVe.GUI
             { "reg_ok",      new[] { "Tạo tài khoản thành công. Hãy đăng nhập.", "Account created. Please sign in." } },
             { "forgot_msg",  new[] { "Vui lòng liên hệ Quản lý để được cấp lại mật khẩu.", "Please contact the Manager to reset your password." } },
 
+            // ---- Đăng nhập: không cho tự đăng ký ----
+            { "contact_admin", new[] { "Vui lòng liên hệ Admin để được cấp tài khoản", "Please contact the Admin to get an account" } },
+
+            // ---- Cài đặt (Tạo tài khoản + Đổi mật khẩu) ----
+            { "m_settings",   new[] { "Cài đặt", "Settings" } },
+            { "set_create",   new[] { "Tạo tài khoản", "Create account" } },
+            { "set_changepw", new[] { "Đổi mật khẩu", "Change password" } },
+            { "reg_ok_admin", new[] { "Đã tạo tài khoản \"{0}\" (vai trò Nhân viên).", "Account \"{0}\" created (Ticket staff role)." } },
+            { "err_no_perm",  new[] { "Chỉ Quản lý mới được tạo tài khoản.", "Only the Manager can create accounts." } },
+            { "emp_add_title", new[] { "Tạo tài khoản nhân viên", "Create staff account" } },
+            { "emp_edit_title", new[] { "Đặt lại mật khẩu", "Reset password" } },
+            { "btn_save",     new[] { "Lưu thay đổi", "Save changes" } },
+            { "cp_title",     new[] { "Đổi mật khẩu", "Change password" } },
+            { "ph_old",       new[] { "Nhập mật khẩu hiện tại", "Enter current password" } },
+            { "ph_new",       new[] { "Nhập mật khẩu mới", "Enter new password" } },
+            { "ph_new_confirm", new[] { "Xác nhận mật khẩu mới", "Confirm new password" } },
+            { "btn_changepw", new[] { "Đổi mật khẩu", "Change password" } },
+            { "cp_ok",        new[] { "Đổi mật khẩu thành công.", "Password changed successfully." } },
+            { "err_old_wrong", new[] { "Mật khẩu hiện tại không đúng.", "Current password is incorrect." } },
+            { "err_new_same", new[] { "Mật khẩu mới phải khác mật khẩu hiện tại.", "New password must differ from the current one." } },
+            { "err_not_login", new[] { "Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.", "Session expired. Please sign in again." } },
+
             // ---- Form chính ----
             { "m_system",    new[] { "Hệ thống", "System" } },
             { "m_changepw",  new[] { "Đổi mật khẩu", "Change password" } },

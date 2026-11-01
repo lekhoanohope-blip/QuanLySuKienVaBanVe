@@ -27,6 +27,7 @@
             this.btnDonVe = new Guna.UI2.WinForms.Guna2Button();
             this.btnTaiKhoan = new Guna.UI2.WinForms.Guna2Button();
             this.btnBaoCao = new Guna.UI2.WinForms.Guna2Button();
+            this.btnNhatKy = new Guna.UI2.WinForms.Guna2Button();
             this.btnDangXuat = new Guna.UI2.WinForms.Guna2Button();
             this.btnCaiDat = new Guna.UI2.WinForms.Guna2Button();
             this.btnKhuVuc = new Guna.UI2.WinForms.Guna2Button();
@@ -110,6 +111,7 @@
             this.pnlSidebar.Controls.Add(this.btnDonVe);
             this.pnlSidebar.Controls.Add(this.btnTaiKhoan);
             this.pnlSidebar.Controls.Add(this.btnBaoCao);
+            this.pnlSidebar.Controls.Add(this.btnNhatKy);
             this.pnlSidebar.Controls.Add(this.btnDangXuat);
             this.pnlSidebar.Controls.Add(this.btnCaiDat);
             this.pnlSidebar.Controls.Add(this.btnKhuVuc);
@@ -170,6 +172,21 @@
             this.btnBaoCao.Text = "Báo cáo && Thống kê";
             this.btnBaoCao.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnBaoCao.Click += new System.EventHandler(this.btnBaoCao_Click);
+            // 
+            // btnNhatKy
+            // 
+            this.btnNhatKy.FillColor = System.Drawing.Color.Transparent;
+            this.btnNhatKy.Font = new System.Drawing.Font("Segoe UI", 11F);
+            this.btnNhatKy.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnNhatKy.Location = new System.Drawing.Point(0, 700);
+            this.btnNhatKy.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.btnNhatKy.Name = "btnNhatKy";
+            this.btnNhatKy.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
+            this.btnNhatKy.Size = new System.Drawing.Size(312, 62);
+            this.btnNhatKy.TabIndex = 11;
+            this.btnNhatKy.Text = "Nhật ký";
+            this.btnNhatKy.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.btnNhatKy.Click += new System.EventHandler(this.btnNhatKy_Click);
             // 
             // btnDangXuat
             // 
@@ -1092,5 +1109,6 @@
         private Guna.UI2.WinForms.Guna2Button btnDonVe;
         private Guna.UI2.WinForms.Guna2Button btnTaiKhoan;
         private Guna.UI2.WinForms.Guna2Button btnBaoCao;
+        private Guna.UI2.WinForms.Guna2Button btnNhatKy;
     }
 }

@@ -44,6 +44,41 @@ namespace QuanLySuKienVaBanVe.GUI
             return p;
         }
 
+        public static Bitmap CreateBackground(int width, int height)
+        {
+            if (width < 10 || height < 10) return null;
+            Bitmap bmp = new Bitmap(width, height);
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                Rectangle r = new Rectangle(0, 0, width, height);
+                using (LinearGradientBrush br = new LinearGradientBrush(r, Color.White, Color.White, 20f))
+                {
+                    br.InterpolationColors = new ColorBlend
+                    {
+                        Positions = new[] { 0f, 0.3f, 0.65f, 1f },
+                        Colors = new[]
+                        {
+                            Color.FromArgb(255, 255, 255), Color.FromArgb(255, 222, 242),
+                            Color.FromArgb(255, 140, 203), Color.FromArgb(255, 20, 147)
+                        }
+                    };
+                    g.FillRectangle(br, r);
+                }
+                const int cell = 128;
+                Random rnd = new Random(7);
+                using (SolidBrush sq = new SolidBrush(Color.FromArgb(34, 255, 255, 255)))
+                using (Pen line = new Pen(Color.FromArgb(46, 255, 255, 255), 1f))
+                {
+                    for (int x = 0; x < width; x += cell)
+                        for (int y = 0; y < height; y += cell)
+                            if (rnd.Next(5) == 0) g.FillRectangle(sq, x, y, cell, cell);
+                    for (int x = 0; x < width; x += cell) g.DrawLine(line, x, 0, x, height);
+                    for (int y = 0; y < height; y += cell) g.DrawLine(line, 0, y, width, y);
+                }
+            }
+            return bmp;
+        }
+
         // ---- Hàm easing (t chạy từ 0 đến 1) ----
 
         /// <summary>Rơi xuống rồi nảy vài lần rồi nằm yên: dùng cho "bounce".</summary>

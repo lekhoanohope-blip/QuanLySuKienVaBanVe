@@ -38,6 +38,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.DoubleBuffered = true;
             resizeBox.BringToFront();
             if (btnDangXuat != null) btnDangXuat.Click += btnDangXuat_Click;
+            if (btnCaiDat != null) btnCaiDat.Click += btnCaiDat_Click;
             ApplyPhanQuyen();
 
             Shown += FrmMain_Shown;
@@ -141,17 +142,17 @@ namespace QuanLySuKienVaBanVe.GUI
             pnlSidebar.AutoScroll = true;
             btnDangXuat.Dock = DockStyle.None;
             btnCaiDat.Dock = DockStyle.None;
-            int linkTop = Math.Max(Px(520), pnlSidebar.ClientSize.Height - Px(140));
+            // Cập nhật mảng này để bao gồm tất cả các nút có thể hiển thị
+            Control[] navButtons = new Control[] {
+                btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnTaiKhoan, btnBaoCao,
+                btnNhatKy, btnBanVe, btnDonVe
+            };
+            int navBottom = Px(140) + navButtons.Count(b => b != null && b.Visible) * Px(60) + Px(10);
+            int linkTop = Math.Max(Math.Max(Px(520), navBottom), pnlSidebar.ClientSize.Height - Px(140));
             pnlSidebar.AutoScrollMinSize = new Size(0, linkTop + Px(140));
             int viewportWidth = sidebarWidth -
                 (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
             int currentY = Px(140);
-
-            // Cập nhật mảng này để bao gồm tất cả các nút có thể hiển thị
-            Control[] navButtons = new Control[] {
-                btnTrangChu, btnSuKien, btnSuatDien, btnKhachHang, btnTaiKhoan, btnBaoCao,
-                btnBanVe, btnDonVe
-            };
 
             foreach (Control btn in navButtons)
             {
@@ -416,6 +417,8 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnDonVe != null) { btnDonVe.FillColor = defaultColor; btnDonVe.ForeColor = defaultTextColor; }
             if (btnTaiKhoan != null) { btnTaiKhoan.FillColor = defaultColor; btnTaiKhoan.ForeColor = defaultTextColor; }
             if (btnBaoCao != null) { btnBaoCao.FillColor = defaultColor; btnBaoCao.ForeColor = defaultTextColor; }
+            if (btnNhatKy != null) { btnNhatKy.FillColor = defaultColor; btnNhatKy.ForeColor = defaultTextColor; }
+            if (btnCaiDat != null) { btnCaiDat.FillColor = defaultColor; btnCaiDat.ForeColor = defaultTextColor; }
         }
 
         private void btnTrangChu_Click(object sender, EventArgs e)
@@ -482,13 +485,25 @@ namespace QuanLySuKienVaBanVe.GUI
         private void btnTaiKhoan_Click(object sender, EventArgs e)
         {
             if (pnlDashboard != null) pnlDashboard.Visible = false;
-            OpenChildForm(new FrmQuanLyTaiKhoan(), btnTaiKhoan);
+            OpenChildForm(new FrmNhanVien(), btnTaiKhoan);
         }
 
         private void btnBaoCao_Click(object sender, EventArgs e)
         {
             if (pnlDashboard != null) pnlDashboard.Visible = false;
             OpenChildForm(new FrmBaoCao(), btnBaoCao);
+        }
+
+        private void btnNhatKy_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmNhatKy(), btnNhatKy);
+        }
+
+        private void btnCaiDat_Click(object sender, EventArgs e)
+        {
+            if (pnlDashboard != null) pnlDashboard.Visible = false;
+            OpenChildForm(new FrmCaiDat(), btnCaiDat);
         }
 
         private void chartDoanhThu_Click(object sender, EventArgs e) { }
@@ -511,6 +526,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (btnKhachHang != null) btnKhachHang.Visible = isAdmin;
                 if (btnTaiKhoan != null) btnTaiKhoan.Visible = isAdmin;
                 if (btnBaoCao != null) btnBaoCao.Visible = isAdmin;
+                if (btnNhatKy != null) btnNhatKy.Visible = isAdmin;
 
                 // 2. STAFF
                 if (btnBanVe != null) btnBanVe.Visible = !isAdmin;
