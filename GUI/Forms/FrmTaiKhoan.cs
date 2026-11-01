@@ -82,7 +82,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
             layer.Controls.AddRange(new Control[] { lblTitle, txtUser, txtPass, txtConfirm, lblMsg, btnSubmit });
             Label btnClose = MakeLabel(18f, FontStyle.Regular, Fx.Muted, ContentAlignment.MiddleCenter);
-            btnClose.Text = "×";
+            btnClose.Text = "\u00D7";
             btnClose.Cursor = Cursors.Hand;
             btnClose.SetBounds(W - 50, 10, 36, 36);
             btnClose.Click += delegate { DialogResult = DialogResult.Cancel; };
