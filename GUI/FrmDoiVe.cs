@@ -23,6 +23,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmDoiVe(DataRow donVeRow, ChiTietVeDTO veCu)
         {
             InitializeComponent();
+            HieuUng.GanChoForm(this);
             dgvGheTrong.AutoGenerateColumns = false;
             this.donVeRow = donVeRow;
             this.veCu = veCu;

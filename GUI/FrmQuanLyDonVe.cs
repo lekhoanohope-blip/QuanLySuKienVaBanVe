@@ -22,6 +22,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmQuanLyDonVe()
         {
             InitializeComponent();
+            HieuUng.GanChoForm(this);
             DoubleBuffered = true;
             dgvDonVe.AutoGenerateColumns = false;
             dgvChiTietVe.AutoGenerateColumns = false;

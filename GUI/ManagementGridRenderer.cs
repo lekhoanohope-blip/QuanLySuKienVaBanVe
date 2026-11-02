@@ -51,8 +51,11 @@ namespace QuanLySuKienVaBanVe.GUI
             try
             {
                 PaintBackground(e);
-                DrawAction(e.Graphics, GetActionBounds(grid, e.CellBounds, false), false);
-                DrawAction(e.Graphics, GetActionBounds(grid, e.CellBounds, true), true);
+                Point chuot = grid.PointToClient(Cursor.Position);
+                Rectangle nutSua = GetActionBounds(grid, e.CellBounds, false);
+                Rectangle nutXoa = GetActionBounds(grid, e.CellBounds, true);
+                DrawAction(e.Graphics, nutSua, false, nutSua.Contains(chuot));
+                DrawAction(e.Graphics, nutXoa, true, nutXoa.Contains(chuot));
             }
             finally
             {
@@ -75,40 +78,44 @@ namespace QuanLySuKienVaBanVe.GUI
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         }
 
-        private static void DrawAction(Graphics graphics, Rectangle bounds, bool delete)
+        private static void DrawAction(Graphics graphics, Rectangle bounds, bool delete, bool hot)
         {
             if (bounds.IsEmpty) return;
-            Color background = delete ? Color.FromArgb(254, 242, 242) : Color.FromArgb(239, 246, 255);
-            Color foreground = delete ? Color.FromArgb(185, 28, 28) : Color.FromArgb(37, 99, 235);
-            FillRoundedRectangle(graphics, bounds, Math.Max(1, bounds.Height / 5), background);
 
-            GraphicsState state = graphics.Save();
-            try
+            // Nút Sửa/Xóa "nổi lên" khi rê chuột: vẽ cao hơn ~2px + bóng đổ
+            // mờ bên dưới. Chỉ thay đổi chỗ VẼ, vùng bắt chuột (bounds gốc)
+            // giữ nguyên nên không bị nhấp nháy khi rê ở mép nút.
+            int noi = hot ? Math.Max(1, bounds.Height / 11) : 0;
+            Rectangle rectVe = new Rectangle(bounds.X, bounds.Y - noi, bounds.Width, bounds.Height);
+            int radius = Math.Max(1, bounds.Height / 5);
+            if (hot)
             {
-                float iconSize = bounds.Height / 2f;
-                graphics.TranslateTransform(bounds.Left + (bounds.Width - iconSize) / 2,
-                    bounds.Top + (bounds.Height - iconSize) / 2);
-                graphics.ScaleTransform(iconSize / 16f, iconSize / 16f);
-                using (Pen pen = new Pen(foreground, 1.5f))
-                {
-                    pen.LineJoin = LineJoin.Round;
-                    if (delete)
-                    {
-                        graphics.DrawLine(pen, 3, 4, 13, 4);
-                        graphics.DrawLine(pen, 6, 2, 10, 2);
-                        graphics.DrawRectangle(pen, 4, 4, 8, 10);
-                        graphics.DrawLine(pen, 7, 7, 7, 11);
-                        graphics.DrawLine(pen, 10, 7, 10, 11);
-                    }
-                    else
-                    {
-                        graphics.DrawPolygon(pen, new[] { new Point(3, 10), new Point(10, 3),
-                            new Point(13, 6), new Point(6, 13), new Point(3, 13) });
-                        graphics.DrawLine(pen, 9, 4, 12, 7);
-                    }
-                }
+                FillRoundedRectangle(graphics,
+                    new Rectangle(rectVe.X, rectVe.Y + 2, rectVe.Width, rectVe.Height),
+                    radius, Color.FromArgb(35, 0, 0, 0));
+                FillRoundedRectangle(graphics,
+                    new Rectangle(rectVe.X, rectVe.Y + 4, rectVe.Width, rectVe.Height),
+                    radius, Color.FromArgb(18, 0, 0, 0));
             }
-            finally { graphics.Restore(state); }
+
+            Color background = delete
+                ? (hot ? Color.FromArgb(254, 226, 226) : Color.FromArgb(254, 242, 242))
+                : (hot ? Color.FromArgb(219, 234, 254) : Color.FromArgb(239, 246, 255));
+            FillRoundedRectangle(graphics, rectVe, radius, background);
+
+            // Icon thật trong Resources (icon_sua.png / icon_xoa.png, nền trong suốt),
+            // vẽ vừa khung, giữ nét ở DPI cao nhờ ảnh gốc 64x64.
+            Image icon = delete
+                ? global::QuanLySuKienVaBanVe.Properties.Resources.icon_xoa
+                : global::QuanLySuKienVaBanVe.Properties.Resources.icon_sua;
+            if (icon == null) return;
+            float iconSize = rectVe.Height / 2f;
+            RectangleF dich = new RectangleF(
+                rectVe.Left + (rectVe.Width - iconSize) / 2f,
+                rectVe.Top + (rectVe.Height - iconSize) / 2f,
+                iconSize, iconSize);
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.DrawImage(icon, dich);
         }
 
         private static void FillRoundedRectangle(Graphics graphics, Rectangle bounds, int radius, Color color)
