@@ -15,6 +15,7 @@ namespace QuanLySuKienVaBanVe.DTO
         public decimal GiaVe { get; set; }
         public int TongSoGhe { get; set; }
         public bool ChoPhepBanVe { get; set; } = true;
+        public string MauSac { get; set; } = "#D97706"; // Mã màu Hex cấu hình bởi Admin
 
         // Dữ liệu mở rộng phục vụ hiển thị thống kê / ma trận ghế
         public int DaBan { get; set; }
