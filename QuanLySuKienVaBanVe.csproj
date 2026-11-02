@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -55,7 +55,30 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BLL\PhienDangNhap.cs" />
+        <Compile Include="BLL\GheBLL.cs" />
+    <Compile Include="BLL\BanVeBLL.cs" />
+    <Compile Include="DAL\GheDAL.cs" />
+    <Compile Include="DTO\GheDTO.cs" />
+    <Compile Include="DTO\ThongTinDatVeDTO.cs" />
+    <Compile Include="GUI\FrmBanVe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmBanVe.Designer.cs">
+      <DependentUpon>FrmBanVe.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmChonSoLuongVe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmChonSoLuongVe.Designer.cs">
+      <DependentUpon>FrmChonSoLuongVe.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmThanhToan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmThanhToan.Designer.cs">
+      <DependentUpon>FrmThanhToan.cs</DependentUpon>
+    </Compile>
+<Compile Include="BLL\PhienDangNhap.cs" />
     <Compile Include="BLL\DonVeBLL.cs" />
     <Compile Include="BLL\KhachHangBLL.cs" />
     <Compile Include="BLL\KhuVucBLL.cs" />
@@ -171,11 +194,18 @@
     </Compile>
     <Compile Include="GUI\Helpers\Fx.cs" />
     <Compile Include="GUI\Helpers\Lang.cs" />
+    <Compile Include="GUI\Helpers\IconHelper.cs" />
     <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\ManagementGridRenderer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="GUI\FrmChiTietSuatDien.resx">
+        <EmbeddedResource Include="GUI\FrmBanVe.resx">
+      <DependentUpon>FrmBanVe.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmThanhToan.resx">
+      <DependentUpon>FrmThanhToan.cs</DependentUpon>
+    </EmbeddedResource>
+<EmbeddedResource Include="GUI\FrmChiTietSuatDien.resx">
       <DependentUpon>FrmChiTietSuatDien.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmChiTietSuKien.resx">
@@ -239,4 +269,9 @@
     <Content Include="QuanLySuKienVaBanVe.slnx" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Content Include="Resources\Icons\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

@@ -473,7 +473,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private void btnBanVe_Click(object sender, EventArgs e)
         {
             if (pnlDashboard != null) pnlDashboard.Visible = false;
-            OpenChildForm(new FrmQuanLyKhuVuc(), btnBanVe);
+            OpenChildForm(new FrmBanVe(), btnBanVe);
         }
 
         private void btnDonVe_Click(object sender, EventArgs e)
