@@ -33,6 +33,17 @@ namespace QuanLySuKienVaBanVe.DAL
                             cmd.ExecuteNonQuery();
                         }
 
+                        // 1b. Thêm cột MauSac nếu chưa có
+                        string checkMauSacSql = @"
+                            IF COL_LENGTH('KhuVuc', 'MauSac') IS NULL
+                            BEGIN
+                                ALTER TABLE KhuVuc ADD MauSac VARCHAR(20) NULL;
+                            END";
+                        using (SqlCommand cmd = new SqlCommand(checkMauSacSql, conn))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+
                         // 2. Sửa lỗi gán sai trước đó và gán MaVung cho dữ liệu mẫu cũ theo tên cụ thể
                         string updateMaVungSql = @"
                             -- Sửa lỗi những bản ghi VIP B từng bị gán nhầm thành VIP_A do điều kiện %Khu VIP% cũ
@@ -44,6 +55,20 @@ namespace QuanLySuKienVaBanVe.DAL
                             UPDATE KhuVuc SET MaVung = 'GA_B'  WHERE MaVung IS NULL AND (TenKV LIKE '%GA B%'  OR TenKV LIKE '%GA_B%');
                             UPDATE KhuVuc SET MaVung = 'GA_A'  WHERE MaVung IS NULL AND (TenKV LIKE '%GA A%'  OR TenKV LIKE '%GA_A%');
                             UPDATE KhuVuc SET MaVung = 'CAT'   WHERE MaVung IS NULL AND (TenKV LIKE '%CAT %'  OR TenKV LIKE '%CAT_%' OR TenKV = 'CAT');
+
+                            -- Gán màu mặc định cho các vùng nếu chưa có màu
+                            UPDATE KhuVuc SET MauSac = '#D97706' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_A' OR TenKV LIKE '%VIP A%');
+                            UPDATE KhuVuc SET MauSac = '#CA8A04' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_B' OR TenKV LIKE '%VIP B%');
+                            UPDATE KhuVuc SET MauSac = '#DC2626' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_C' OR TenKV LIKE '%VIP C%');
+                            UPDATE KhuVuc SET MauSac = '#DB2777' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_D' OR TenKV LIKE '%VIP D%');
+                            UPDATE KhuVuc SET MauSac = '#2563EB' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_A' OR TenKV LIKE '%GA A%');
+                            UPDATE KhuVuc SET MauSac = '#0D9488' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_B' OR TenKV LIKE '%GA B%');
+                            UPDATE KhuVuc SET MauSac = '#6366F1' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_C' OR TenKV LIKE '%GA C%');
+                            UPDATE KhuVuc SET MauSac = '#0284C7' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_D' OR TenKV LIKE '%GA D%');
+                            UPDATE KhuVuc SET MauSac = '#059669' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_E' OR TenKV LIKE '%GA E%');
+                            UPDATE KhuVuc SET MauSac = '#7C3AED' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'CAT' OR MaVung = 'CAT_A' OR TenKV LIKE '%CAT A%' OR TenKV = 'CAT');
+                            UPDATE KhuVuc SET MauSac = '#78350F' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'CAT_B' OR TenKV LIKE '%CAT B%');
+                            UPDATE KhuVuc SET MauSac = '#D97706' WHERE MauSac IS NULL OR MauSac = '';
                         ";
                         using (SqlCommand cmd = new SqlCommand(updateMaVungSql, conn))
                         {
@@ -123,7 +148,7 @@ namespace QuanLySuKienVaBanVe.DAL
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 string query = @"
-                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
+                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '#D97706') AS MauSac,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DangGiu') as DangGiu,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
@@ -147,7 +172,7 @@ namespace QuanLySuKienVaBanVe.DAL
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 string query = @"
-                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe,
+                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '#D97706') AS MauSac,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DangGiu') as DangGiu,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
@@ -174,7 +199,8 @@ namespace QuanLySuKienVaBanVe.DAL
                                 ChoPhepBanVe = Convert.ToBoolean(reader["ChoPhepBanVe"]),
                                 DaBan = Convert.ToInt32(reader["DaBan"]),
                                 DangGiu = Convert.ToInt32(reader["DangGiu"]),
-                                ConLai = Convert.ToInt32(reader["ConLai"])
+                                ConLai = Convert.ToInt32(reader["ConLai"]),
+                                MauSac = reader["MauSac"] != DBNull.Value && !string.IsNullOrWhiteSpace(reader["MauSac"].ToString()) ? reader["MauSac"].ToString() : "#D97706"
                             };
                         }
                     }
@@ -212,9 +238,9 @@ namespace QuanLySuKienVaBanVe.DAL
                     try
                     {
                         const string sqlKV = @"
-                            INSERT INTO KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhepBanVe)
+                            INSERT INTO KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhepBanVe, MauSac)
                             OUTPUT INSERTED.MaKV
-                            VALUES (@MaSuat, @MaVung, @TenKV, @HangVe, @GiaVe, @TongSoGhe, @ChoPhepBanVe)";
+                            VALUES (@MaSuat, @MaVung, @TenKV, @HangVe, @GiaVe, @TongSoGhe, @ChoPhepBanVe, @MauSac)";
 
                         int newMaKV;
                         using (SqlCommand cmdKV = new SqlCommand(sqlKV, conn, trans))
@@ -226,6 +252,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             cmdKV.Parameters.AddWithValue("@GiaVe", kv.GiaVe);
                             cmdKV.Parameters.AddWithValue("@TongSoGhe", kv.TongSoGhe);
                             cmdKV.Parameters.AddWithValue("@ChoPhepBanVe", kv.ChoPhepBanVe);
+                            cmdKV.Parameters.AddWithValue("@MauSac", string.IsNullOrWhiteSpace(kv.MauSac) ? (object)DBNull.Value : kv.MauSac.Trim());
                             newMaKV = (int)cmdKV.ExecuteScalar();
                         }
 
@@ -312,7 +339,7 @@ namespace QuanLySuKienVaBanVe.DAL
                         const string sqlUpdateKV = @"
                             UPDATE KhuVuc
                             SET MaVung = @MaVung, TenKV = @TenKV, HangVe = @HangVe, GiaVe = @GiaVe, 
-                                TongSoGhe = @TongSoGhe, ChoPhepBanVe = @ChoPhepBanVe
+                                TongSoGhe = @TongSoGhe, ChoPhepBanVe = @ChoPhepBanVe, MauSac = @MauSac
                             WHERE MaKV = @MaKV";
 
                         using (SqlCommand cmdUpdate = new SqlCommand(sqlUpdateKV, conn, trans))
@@ -323,6 +350,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             cmdUpdate.Parameters.AddWithValue("@GiaVe", kv.GiaVe);
                             cmdUpdate.Parameters.AddWithValue("@TongSoGhe", kv.TongSoGhe);
                             cmdUpdate.Parameters.AddWithValue("@ChoPhepBanVe", kv.ChoPhepBanVe);
+                            cmdUpdate.Parameters.AddWithValue("@MauSac", string.IsNullOrWhiteSpace(kv.MauSac) ? (object)DBNull.Value : kv.MauSac.Trim());
                             cmdUpdate.Parameters.AddWithValue("@MaKV", kv.MaKV);
                             cmdUpdate.ExecuteNonQuery();
                         }

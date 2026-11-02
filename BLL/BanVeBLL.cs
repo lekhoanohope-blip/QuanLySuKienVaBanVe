@@ -1,0 +1,323 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using QuanLySuKienVaBanVe.DAL;
+using QuanLySuKienVaBanVe.DTO;
+
+namespace QuanLySuKienVaBanVe.BLL
+{
+    public class KetQuaThanhToan
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public int MaDon { get; set; }
+        public int MaKH { get; set; }
+        public decimal TongTien { get; set; }
+        public List<ChiTietVeDTO> DanhSachVePhatHanh { get; set; } = new List<ChiTietVeDTO>();
+
+        public static KetQuaThanhToan Ok(string message, int maDon, int maKH, decimal tongTien, List<ChiTietVeDTO> dsVe)
+        {
+            return new KetQuaThanhToan
+            {
+                Success = true,
+                Message = message,
+                MaDon = maDon,
+                MaKH = maKH,
+                TongTien = tongTien,
+                DanhSachVePhatHanh = dsVe ?? new List<ChiTietVeDTO>()
+            };
+        }
+
+        public static KetQuaThanhToan Fail(string message)
+        {
+            return new KetQuaThanhToan
+            {
+                Success = false,
+                Message = message
+            };
+        }
+    }
+
+    public class BanVeBLL
+    {
+        /// <summary>
+        /// Cờ giả lập lỗi phát sinh ngay trước trans.Commit() để kiểm thử Rollback (TC3).
+        /// </summary>
+        public static bool SimulateFailureBeforeCommit { get; set; } = false;
+
+        private static string ChuanHoaPhuongThucThanhToan(string pt)
+        {
+            if (string.IsNullOrWhiteSpace(pt)) return PhuongThucThanhToan.TienMat;
+            string clean = pt.Trim();
+            if (clean.IndexOf("ChuyenKhoan", StringComparison.OrdinalIgnoreCase) >= 0)
+                return PhuongThucThanhToan.ChuyenKhoan;
+            if (clean.IndexOf("The", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                clean.IndexOf("ATM", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                clean.IndexOf("Visa", StringComparison.OrdinalIgnoreCase) >= 0)
+                return PhuongThucThanhToan.TheNganHang;
+            return PhuongThucThanhToan.TienMat;
+        }
+
+        private static int XuLyKhachHangTrongTransaction(ThongTinDatVeDTO booking, SqlConnection conn, SqlTransaction trans)
+        {
+            // 1. Nếu đã có MaKH hợp lệ, kiểm tra tồn tại
+            if (booking.MaKH.HasValue && booking.MaKH.Value > 0)
+            {
+                KhachHangDTO khExist = KhachHangDAL.LayTheoMa(booking.MaKH.Value, conn, trans);
+                if (khExist != null)
+                {
+                    return khExist.MaKH;
+                }
+            }
+
+            // 2. Tra cứu theo SĐT nếu có
+            string sdt = booking.SDT?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(sdt))
+            {
+                KhachHangDTO khExistByPhone = KhachHangDAL.LayTheoSDT(sdt, conn, trans);
+                if (khExistByPhone != null)
+                {
+                    // Nếu tên khách hàng được cập nhật thì đồng bộ
+                    if (!string.IsNullOrWhiteSpace(booking.TenKH) && booking.TenKH.Trim() != khExistByPhone.TenKH)
+                    {
+                        khExistByPhone.TenKH = booking.TenKH.Trim();
+                        if (!string.IsNullOrWhiteSpace(booking.Email))
+                            khExistByPhone.Email = booking.Email.Trim();
+                        KhachHangDAL.Sua(khExistByPhone, conn, trans);
+                    }
+                    return khExistByPhone.MaKH;
+                }
+            }
+
+            // 3. Nếu chưa có -> Tạo khách hàng mới ngay trong transaction
+            string tenKH = !string.IsNullOrWhiteSpace(booking.TenKH) ? booking.TenKH.Trim() : "Khách Lẻ Mua Vé";
+            if (string.IsNullOrEmpty(sdt))
+            {
+                sdt = "09" + DateTime.Now.ToString("yyMMddHHmm").Substring(2, 8);
+            }
+
+            KhachHangDTO khMoi = new KhachHangDTO
+            {
+                TenKH = tenKH,
+                SDT = sdt,
+                Email = booking.Email?.Trim()
+            };
+
+            int newMaKH = KhachHangDAL.Them(khMoi, conn, trans);
+            return newMaKH;
+        }
+
+        /// <summary>
+        /// Thực thi chuỗi nghiệp vụ Bán vé an toàn tuyệt đối trong 1 SqlTransaction duy nhất:
+        /// Bước 0: Upsert thông tin khách hàng trong transaction.
+        /// Bước 1: Kiểm tra lại hiệu lực giữ ghế bằng khóa vi-mô WITH (UPDLOCK, ROWLOCK).
+        /// Bước 2: INSERT DonVe và lấy MaDon sinh qua OUTPUT INSERTED.MaDon.
+        /// Bước 3: Sinh MaVeCode duy nhất và INSERT ChiTietVe cho từng ghế.
+        /// Bước 4: UPDATE Ghe sang trạng thái 'DaBan' và giải phóng ThoiGianGiu.
+        /// Bước 5: INSERT ThanhToan và ghi nhật ký hệ thống.
+        /// Cơ chế Fault Tolerance: lỗi ở bất kỳ bước nào, transaction tự động Rollback() sạch sẽ 100%.
+        /// </summary>
+        public static KetQuaThanhToan XuLyThanhToan(ThongTinDatVeDTO booking, int maTK = 0)
+        {
+            if (booking == null || booking.DanhSachMaGhe == null || booking.DanhSachMaGhe.Count == 0)
+            {
+                return KetQuaThanhToan.Fail("Danh sách ghế đặt đang trống. Vui lòng chọn ghế trước khi thanh toán.");
+            }
+
+            if (maTK <= 0 && PhienDangNhap.DaDangNhap)
+            {
+                maTK = PhienDangNhap.TaiKhoan.MaTK;
+            }
+            if (maTK <= 0)
+            {
+                maTK = 1; // Fallback nhân viên mặc định nếu chạy độc lập
+            }
+
+            string phuongThuc = ChuanHoaPhuongThucThanhToan(booking.PhuongThucThanhToan);
+
+            using (SqlConnection conn = Database.GetConnection())
+            {
+                conn.Open();
+                using (SqlTransaction trans = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+                {
+                    try
+                    {
+                        // -------------------------------------------------------------
+                        // Bước 0: Upsert Khách hàng an toàn trong Transaction
+                        // -------------------------------------------------------------
+                        int maKH = XuLyKhachHangTrongTransaction(booking, conn, trans);
+                        if (maKH <= 0)
+                        {
+                            trans.Rollback();
+                            return KetQuaThanhToan.Fail("Không thể khởi tạo hoặc xác thực thông tin khách hàng.");
+                        }
+
+                        // -------------------------------------------------------------
+                        // Bước 1: Kiểm tra lại hiệu lực giữ ghế với khóa dòng (UPDLOCK, ROWLOCK)
+                        // Sắp xếp MaGhe tăng dần để khóa theo thứ tự cố định -> Chống Deadlock!
+                        // -------------------------------------------------------------
+                        List<int> sortedSeatIds = booking.DanhSachMaGhe.Distinct().OrderBy(id => id).ToList();
+                        var lockedSeats = new List<(int MaGhe, string MaGheHienThi, decimal GiaVe, int MaSK, int MaSuat, string TenKV, string HangVe)>();
+                        decimal tongTienThucTe = 0m;
+
+                        foreach (int maGhe in sortedSeatIds)
+                        {
+                            DataRow rowGhe = GheDAL.KiemTraVaKhoaGheTrongGiaoDich(maGhe, conn, trans);
+                            if (rowGhe == null)
+                            {
+                                trans.Rollback();
+                                return KetQuaThanhToan.Fail($"Ghế mã #{maGhe} không tồn tại trong cơ sở dữ liệu.");
+                            }
+
+                            string maGheHienThi = rowGhe["MaGheHienThi"]?.ToString() ?? maGhe.ToString();
+                            string trangThai = rowGhe["TrangThai"]?.ToString() ?? string.Empty;
+                            int soGiayDaGiu = Convert.ToInt32(rowGhe["SoGiayDaGiu"]);
+                            bool choPhepBanVe = Convert.ToBoolean(rowGhe["ChoPhepBanVe"]);
+                            string trangThaiSuat = rowGhe["TrangThaiSuat"]?.ToString() ?? string.Empty;
+                            int maSuatDB = Convert.ToInt32(rowGhe["MaSuat"]);
+                            int maSKDB = Convert.ToInt32(rowGhe["MaSK"]);
+                            decimal giaVeDB = Convert.ToDecimal(rowGhe["GiaVe"]);
+
+                            if (maSuatDB != booking.MaSuat)
+                            {
+                                trans.Rollback();
+                                return KetQuaThanhToan.Fail($"Ghế {maGheHienThi} không thuộc suất diễn #{booking.MaSuat}.");
+                            }
+
+                            if (!choPhepBanVe || trangThaiSuat != "MoCuaBanVe")
+                            {
+                                trans.Rollback();
+                                return KetQuaThanhToan.Fail($"Khu vực hoặc suất diễn của ghế {maGheHienThi} hiện đã đóng bán vé.");
+                            }
+
+                            if (trangThai != TrangThaiGhe.DangGiu || soGiayDaGiu > GheDAL.ThoiGianGiuToiDaGiay)
+                            {
+                                trans.Rollback();
+                                return KetQuaThanhToan.Fail(
+                                    $"Ghế {maGheHienThi} đã hết thời gian giữ tạm (10 phút) hoặc trạng thái không hợp lệ ({trangThai}). Vui lòng chọn lại ghế!");
+                            }
+
+                            tongTienThucTe += giaVeDB;
+                            lockedSeats.Add((maGhe, maGheHienThi, giaVeDB, maSKDB, maSuatDB,
+                                rowGhe["TenKV"]?.ToString(), rowGhe["HangVe"]?.ToString()));
+                        }
+
+                        // -------------------------------------------------------------
+                        // Bước 2: INSERT DonVe (Lấy mã đơn vừa sinh qua OUTPUT INSERTED.MaDon)
+                        // -------------------------------------------------------------
+                        DonVeDTO donMoi = new DonVeDTO
+                        {
+                            MaKH = maKH,
+                            MaSuat = booking.MaSuat,
+                            MaTK = maTK,
+                            MaDonGoc = null,
+                            NgayDat = DateTime.Now,
+                            TongTien = tongTienThucTe,
+                            TrangThai = TrangThaiDonVe.DaThanhToan
+                        };
+
+                        int maDonMoi = DonVeDAL.Them(donMoi, conn, trans);
+                        if (maDonMoi <= 0)
+                        {
+                            trans.Rollback();
+                            return KetQuaThanhToan.Fail("Không thể tạo đơn vé trong cơ sở dữ liệu.");
+                        }
+
+                        // -------------------------------------------------------------
+                        // Bước 3 & Bước 4: Sinh mã vé duy nhất, INSERT ChiTietVe & UPDATE Ghe sang 'DaBan'
+                        // -------------------------------------------------------------
+                        var dsVePhatHanh = new List<ChiTietVeDTO>();
+
+                        foreach (var seat in lockedSeats)
+                        {
+                            string maVeCode = DonVeBLL.SinhMaVeCode(seat.MaSK, seat.MaSuat, seat.MaGheHienThi, conn, trans);
+                            ChiTietVeDTO ct = new ChiTietVeDTO
+                            {
+                                MaDon = maDonMoi,
+                                MaGhe = seat.MaGhe,
+                                MaGheHienThi = seat.MaGheHienThi,
+                                TenKV = seat.TenKV,
+                                HangVe = seat.HangVe,
+                                GiaVe = seat.GiaVe,
+                                MaVeCode = maVeCode,
+                                TrangThai = TrangThaiChiTietVe.HopLe
+                            };
+
+                            int maCT = ChiTietVeDAL.Them(ct, conn, trans);
+                            if (maCT <= 0)
+                            {
+                                trans.Rollback();
+                                return KetQuaThanhToan.Fail($"Không thể tạo chi tiết vé cho vị trí {seat.MaGheHienThi}.");
+                            }
+                            ct.MaCT = maCT;
+                            dsVePhatHanh.Add(ct);
+
+                            // Bước 4: UPDATE Ghe -> 'DaBan', ThoiGianGiu = NULL
+                            bool okGhe = GheDAL.CapNhatTrangThai(seat.MaGhe, TrangThaiGhe.DaBan, conn, trans);
+                            if (!okGhe)
+                            {
+                                trans.Rollback();
+                                return KetQuaThanhToan.Fail($"Không thể cập nhật trạng thái Đã bán cho ghế {seat.MaGheHienThi}.");
+                            }
+                        }
+
+                        // -------------------------------------------------------------
+                        // Bước 5: INSERT ThanhToan & Ghi nhật ký kiểm toán
+                        // -------------------------------------------------------------
+                        ThanhToanDTO tt = new ThanhToanDTO
+                        {
+                            MaDon = maDonMoi,
+                            NgayThanhToan = DateTime.Now,
+                            SoTien = tongTienThucTe,
+                            PhuongThuc = phuongThuc
+                        };
+
+                        int maTT = ThanhToanDAL.Them(tt, conn, trans);
+                        if (maTT <= 0)
+                        {
+                            trans.Rollback();
+                            return KetQuaThanhToan.Fail("Không thể ghi nhận giao dịch thanh toán.");
+                        }
+
+                        string dsGheStr = string.Join(", ", lockedSeats.Select(s => s.MaGheHienThi));
+                        string chiTietLog = $"Bán vé thành công đơn #{maDonMoi} ({dsVePhatHanh.Count} vé). " +
+                                            $"Khách hàng: {booking.TenKH} (SĐT: {booking.SDT}). Ghế: [{dsGheStr}]. Tổng tiền: {tongTienThucTe:N0} đ.";
+                        DonVeDAL.GhiNhatKy(maTK, $"Bán vé đơn #{maDonMoi}", chiTietLog, conn, trans);
+
+                        // Giả lập lỗi để test Rollback (TC3)
+                        if (SimulateFailureBeforeCommit
+#if DEBUG
+                            || DonVeBLL.SimulateFailureBeforeCommit
+#endif
+                        )
+                        {
+                            throw new InvalidOperationException("Giả lập sự cố ngắt kết nối trước Commit để kiểm thử tính năng Rollback giao dịch sạch sẽ.");
+                        }
+
+                        trans.Commit();
+
+                        return KetQuaThanhToan.Ok(
+                            $"Thanh toán thành công đơn vé #{maDonMoi}!\nTổng tiền: {tongTienThucTe:N0} VNĐ ({dsVePhatHanh.Count} vé).\nCác vị trí ghế: {dsGheStr}.",
+                            maDonMoi, maKH, tongTienThucTe, dsVePhatHanh);
+                    }
+                    catch (SqlException sqlEx)
+                    {
+                        try { trans.Rollback(); } catch { }
+                        if (sqlEx.Number == 2601 || sqlEx.Number == 2627)
+                        {
+                            return KetQuaThanhToan.Fail("Xung đột dữ liệu: Một trong các ghế hoặc mã vé vừa được xử lý ở giao dịch khác. Toàn bộ thao tác đã được Rollback an toàn.");
+                        }
+                        return KetQuaThanhToan.Fail("Lỗi cơ sở dữ liệu khi thanh toán (Đã Rollback hoàn toàn): " + sqlEx.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        try { trans.Rollback(); } catch { }
+                        return KetQuaThanhToan.Fail("Giao dịch bị hủy và đã Rollback toàn bộ dữ liệu sạch sẽ: " + ex.Message);
+                    }
+                }
+            }
+        }
+    }
+}
