@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BLL\BaoCaoBLL.cs" />
     <Compile Include="BLL\PhienDangNhap.cs" />
     <Compile Include="BLL\DonVeBLL.cs" />
     <Compile Include="BLL\KhachHangBLL.cs" />
@@ -63,6 +64,7 @@
     <Compile Include="BLL\SuKienBLL.cs" />
     <Compile Include="BLL\TaiKhoanBLL.cs" />
     <Compile Include="BLL\ThongKeBLL.cs" />
+    <Compile Include="DAL\BaoCaoDAL.cs" />
     <Compile Include="DAL\Database.cs" />
     <Compile Include="DAL\DonVeDAL.cs" />
     <Compile Include="DAL\ChiTietVeDAL.cs" />
@@ -96,6 +98,9 @@
     </Compile>
     <Compile Include="GUI\Forms\FrmTaiKhoan.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmBaoCao.Designer.cs">
+      <DependentUpon>FrmBaoCao.cs</DependentUpon>
     </Compile>
     <Compile Include="GUI\FrmNhanVien.cs">
       <SubType>Form</SubType>
@@ -171,10 +176,14 @@
     </Compile>
     <Compile Include="GUI\Helpers\Fx.cs" />
     <Compile Include="GUI\Helpers\Lang.cs" />
+    <Compile Include="GUI\InDanhSachKhach.cs" />
     <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\ManagementGridRenderer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="GUI\FrmBaoCao.resx">
+      <DependentUpon>FrmBaoCao.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmChiTietSuatDien.resx">
       <DependentUpon>FrmChiTietSuatDien.cs</DependentUpon>
     </EmbeddedResource>
