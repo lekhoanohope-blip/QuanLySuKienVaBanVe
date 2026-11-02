@@ -74,6 +74,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblSucChuaHint = new System.Windows.Forms.Label();
             this.lblGiaVe = new System.Windows.Forms.Label();
             this.txtGiaVe = new Guna.UI2.WinForms.Guna2TextBox();
+            this.lblMauSac = new System.Windows.Forms.Label();
+            this.pnlMauSacPreview = new Guna.UI2.WinForms.Guna2Panel();
+            this.txtMauSac = new Guna.UI2.WinForms.Guna2TextBox();
+            this.btnChonMau = new Guna.UI2.WinForms.Guna2Button();
             this.toggleBanVe = new Guna.UI2.WinForms.Guna2ToggleSwitch();
             this.lblChoPhepBan = new System.Windows.Forms.Label();
             this.btnLuu = new Guna.UI2.WinForms.Guna2Button();
@@ -646,6 +650,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlRightInfo.Controls.Add(this.lblSucChuaHint);
             this.pnlRightInfo.Controls.Add(this.lblGiaVe);
             this.pnlRightInfo.Controls.Add(this.txtGiaVe);
+            this.pnlRightInfo.Controls.Add(this.lblMauSac);
+            this.pnlRightInfo.Controls.Add(this.pnlMauSacPreview);
+            this.pnlRightInfo.Controls.Add(this.txtMauSac);
+            this.pnlRightInfo.Controls.Add(this.btnChonMau);
             this.pnlRightInfo.Controls.Add(this.toggleBanVe);
             this.pnlRightInfo.Controls.Add(this.lblChoPhepBan);
             this.pnlRightInfo.Controls.Add(this.btnLuu);
@@ -828,16 +836,67 @@ namespace QuanLySuKienVaBanVe.GUI
             this.txtGiaVe.Size = new System.Drawing.Size(340, 32);
             this.txtGiaVe.TabIndex = 12;
             // 
+            // lblMauSac
+            // 
+            this.lblMauSac.AutoSize = true;
+            this.lblMauSac.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.lblMauSac.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
+            this.lblMauSac.Location = new System.Drawing.Point(20, 390);
+            this.lblMauSac.Name = "lblMauSac";
+            this.lblMauSac.Size = new System.Drawing.Size(125, 20);
+            this.lblMauSac.TabIndex = 13;
+            this.lblMauSac.Text = "Màu sắc khu vực:";
+            // 
+            // pnlMauSacPreview
+            // 
+            this.pnlMauSacPreview.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.pnlMauSacPreview.BorderRadius = 6;
+            this.pnlMauSacPreview.BorderThickness = 1;
+            this.pnlMauSacPreview.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(217)))), ((int)(((byte)(119)))), ((int)(((byte)(6)))));
+            this.pnlMauSacPreview.Location = new System.Drawing.Point(20, 412);
+            this.pnlMauSacPreview.Name = "pnlMauSacPreview";
+            this.pnlMauSacPreview.Size = new System.Drawing.Size(32, 32);
+            this.pnlMauSacPreview.TabIndex = 14;
+            // 
+            // txtMauSac
+            // 
+            this.txtMauSac.BorderRadius = 6;
+            this.txtMauSac.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtMauSac.DefaultText = "#D97706";
+            this.txtMauSac.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.txtMauSac.Location = new System.Drawing.Point(58, 412);
+            this.txtMauSac.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.txtMauSac.Name = "txtMauSac";
+            this.txtMauSac.PlaceholderText = "#D97706";
+            this.txtMauSac.SelectedText = "";
+            this.txtMauSac.Size = new System.Drawing.Size(176, 32);
+            this.txtMauSac.TabIndex = 15;
+            // 
+            // btnChonMau
+            // 
+            this.btnChonMau.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
+            this.btnChonMau.BorderRadius = 6;
+            this.btnChonMau.BorderThickness = 1;
+            this.btnChonMau.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(241)))), ((int)(((byte)(245)))), ((int)(((byte)(249)))));
+            this.btnChonMau.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.btnChonMau.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(51)))), ((int)(((byte)(65)))), ((int)(((byte)(85)))));
+            this.btnChonMau.Location = new System.Drawing.Point(240, 412);
+            this.btnChonMau.Name = "btnChonMau";
+            this.btnChonMau.Size = new System.Drawing.Size(120, 32);
+            this.btnChonMau.TabIndex = 16;
+            this.btnChonMau.Text = "Chọn màu...";
+            this.btnChonMau.Click += new System.EventHandler(this.btnChonMau_Click);
+            // 
             // toggleBanVe
             // 
             this.toggleBanVe.CheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.toggleBanVe.CheckedState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.toggleBanVe.CheckedState.InnerColor = System.Drawing.Color.White;
-            this.toggleBanVe.Location = new System.Drawing.Point(20, 390);
+            this.toggleBanVe.Location = new System.Drawing.Point(20, 458);
             this.toggleBanVe.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.toggleBanVe.Name = "toggleBanVe";
             this.toggleBanVe.Size = new System.Drawing.Size(45, 22);
-            this.toggleBanVe.TabIndex = 13;
+            this.toggleBanVe.TabIndex = 17;
             this.toggleBanVe.UncheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.toggleBanVe.UncheckedState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
             this.toggleBanVe.UncheckedState.InnerColor = System.Drawing.Color.White;
@@ -847,10 +906,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblChoPhepBan.AutoSize = true;
             this.lblChoPhepBan.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblChoPhepBan.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(41)))), ((int)(((byte)(59)))));
-            this.lblChoPhepBan.Location = new System.Drawing.Point(75, 391);
+            this.lblChoPhepBan.Location = new System.Drawing.Point(75, 459);
             this.lblChoPhepBan.Name = "lblChoPhepBan";
             this.lblChoPhepBan.Size = new System.Drawing.Size(121, 20);
-            this.lblChoPhepBan.TabIndex = 14;
+            this.lblChoPhepBan.TabIndex = 18;
             this.lblChoPhepBan.Text = "Cho phép bán vé";
             // 
             // btnLuu
@@ -859,11 +918,11 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnLuu.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.btnLuu.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnLuu.ForeColor = System.Drawing.Color.White;
-            this.btnLuu.Location = new System.Drawing.Point(20, 432);
+            this.btnLuu.Location = new System.Drawing.Point(20, 498);
             this.btnLuu.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnLuu.Name = "btnLuu";
             this.btnLuu.Size = new System.Drawing.Size(215, 38);
-            this.btnLuu.TabIndex = 15;
+            this.btnLuu.TabIndex = 19;
             this.btnLuu.Text = "Tạo khu vực và sinh ghế";
             this.btnLuu.Click += new System.EventHandler(this.btnLuu_Click);
             // 
@@ -875,11 +934,11 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnHuy.FillColor = System.Drawing.Color.White;
             this.btnHuy.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnHuy.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
-            this.btnHuy.Location = new System.Drawing.Point(245, 432);
+            this.btnHuy.Location = new System.Drawing.Point(245, 498);
             this.btnHuy.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnHuy.Name = "btnHuy";
             this.btnHuy.Size = new System.Drawing.Size(115, 38);
-            this.btnHuy.TabIndex = 16;
+            this.btnHuy.TabIndex = 20;
             this.btnHuy.Text = "Hủy";
             this.btnHuy.Click += new System.EventHandler(this.btnHuy_Click);
             // 
@@ -1016,6 +1075,10 @@ namespace QuanLySuKienVaBanVe.GUI
         private System.Windows.Forms.Label lblSucChuaHint;
         private System.Windows.Forms.Label lblGiaVe;
         private Guna.UI2.WinForms.Guna2TextBox txtGiaVe;
+        private System.Windows.Forms.Label lblMauSac;
+        private Guna.UI2.WinForms.Guna2Panel pnlMauSacPreview;
+        private Guna.UI2.WinForms.Guna2TextBox txtMauSac;
+        private Guna.UI2.WinForms.Guna2Button btnChonMau;
         private System.Windows.Forms.Label lblChoPhepBan;
         private Guna.UI2.WinForms.Guna2ToggleSwitch toggleBanVe;
         private Guna.UI2.WinForms.Guna2Button btnLuu;

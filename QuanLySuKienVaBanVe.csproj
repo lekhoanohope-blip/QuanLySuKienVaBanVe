@@ -56,6 +56,29 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BLL\BaoCaoBLL.cs" />
+    <Compile Include="BLL\GheBLL.cs" />
+    <Compile Include="BLL\BanVeBLL.cs" />
+    <Compile Include="DAL\GheDAL.cs" />
+    <Compile Include="DTO\GheDTO.cs" />
+    <Compile Include="DTO\ThongTinDatVeDTO.cs" />
+    <Compile Include="GUI\FrmBanVe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmBanVe.Designer.cs">
+      <DependentUpon>FrmBanVe.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmChonSoLuongVe.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmChonSoLuongVe.Designer.cs">
+      <DependentUpon>FrmChonSoLuongVe.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\FrmThanhToan.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FrmThanhToan.Designer.cs">
+      <DependentUpon>FrmThanhToan.cs</DependentUpon>
+    </Compile>
     <Compile Include="BLL\PhienDangNhap.cs" />
     <Compile Include="BLL\DonVeBLL.cs" />
     <Compile Include="BLL\KhachHangBLL.cs" />
@@ -177,11 +200,18 @@
     <Compile Include="GUI\Helpers\Fx.cs" />
     <Compile Include="GUI\Helpers\Lang.cs" />
     <Compile Include="GUI\HieuUng.cs" />
+    <Compile Include="GUI\Helpers\IconHelper.cs" />
     <Compile Include="GUI\InDanhSachKhach.cs" />
     <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\ManagementGridRenderer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="GUI\FrmBanVe.resx">
+      <DependentUpon>FrmBanVe.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FrmThanhToan.resx">
+      <DependentUpon>FrmThanhToan.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GUI\FrmBaoCao.resx">
       <DependentUpon>FrmBaoCao.cs</DependentUpon>
     </EmbeddedResource>
@@ -248,6 +278,11 @@
     <Content Include="database\migrate_tv3_donve.sql" />
     <Content Include="database\sample_data.sql" />
     <Content Include="QuanLySuKienVaBanVe.slnx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\Icons\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

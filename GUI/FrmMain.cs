@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -286,7 +286,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void btnBanVe_Click(object sender, EventArgs e)
         {
-            OpenChildForm(new FrmQuanLyKhuVuc(), btnBanVe);
+            OpenChildForm(new FrmBanVe(), btnBanVe);
         }
 
         private void btnDonVe_Click(object sender, EventArgs e)
