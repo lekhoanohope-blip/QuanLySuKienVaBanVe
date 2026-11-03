@@ -60,12 +60,12 @@ namespace QuanLySuKienVaBanVe.BLL
             DateTime denTruoc = tuNgay.Date.AddDays(-1);
             DateTime tuTruoc = denTruoc.AddDays(-(soNgay - 1));
 
-            decimal doanhThu = BaoCaoDAL.TongDoanhThu(maSK, maSuat, tuNgay, denNgay);
-            int soVe = BaoCaoDAL.TongVeDaBan(maSK, maSuat, tuNgay, denNgay);
-            decimal doanhThuTruoc = BaoCaoDAL.TongDoanhThu(maSK, maSuat, tuTruoc, denTruoc);
-            int soVeTruoc = BaoCaoDAL.TongVeDaBan(maSK, maSuat, tuTruoc, denTruoc);
-            decimal? lapDay = BaoCaoDAL.TyLeLapDayBinhQuan(maSK, maSuat, tuNgay, denNgay);
-            decimal? lapDayTruoc = BaoCaoDAL.TyLeLapDayBinhQuan(maSK, maSuat, tuTruoc, denTruoc);
+            decimal doanhThu, doanhThuTruoc;
+            int soVe, soVeTruoc;
+            decimal? lapDay, lapDayTruoc;
+
+            BaoCaoDAL.LayChiSoKpi(maSK, maSuat, tuNgay, denNgay, out doanhThu, out soVe, out lapDay);
+            BaoCaoDAL.LayChiSoKpi(maSK, maSuat, tuTruoc, denTruoc, out doanhThuTruoc, out soVeTruoc, out lapDayTruoc);
 
             return new KpiBaoCao
             {

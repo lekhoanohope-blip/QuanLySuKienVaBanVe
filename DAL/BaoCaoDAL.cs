@@ -184,7 +184,7 @@ WHERE (@maSK = 0 OR sd.MaSK = @maSK)
 SELECT dv.MaDon AS [Mã đơn], dv.NgayDat AS [Ngày đặt],
        kh.TenKH AS [Khách hàng], kh.SDT AS [SĐT],
        sk.TenSK AS [Sự kiện], sd.ThoiGianBatDau AS [Suất diễn],
-       (SELECT COUNT(*) FROM ChiTietVe ct WHERE ct.MaDon = dv.MaDon) AS [Số vé],
+       (SELECT COUNT(*) FROM ChiTietVe ct WHERE ct.MaDon = dv.MaDon AND (dv.TrangThai <> N'DaThanhToan' OR ct.TrangThai = N'HopLe')) AS [Số vé],
        dv.TongTien AS [Tổng tiền],
        CASE dv.TrangThai
            WHEN N'DaThanhToan' THEN N'Đã thanh toán'
@@ -224,6 +224,54 @@ ORDER BY kv.TenKV, g.Hang, g.Cot";
                 new SqlParameter("@maSuat", SqlDbType.Int) { Value = maSuat }
             };
             return Database.ExecuteQuery(sql, prm);
+        }
+
+        /// <summary>
+        /// Lấy 3 chỉ số KPI (Doanh thu, Vé đã bán, Tỷ lệ lấp đầy bình quân)
+        /// trong 1 truy vấn duy nhất thay vì gọi 3 lần ExecuteScalar riêng lẻ.
+        /// </summary>
+        public static void LayChiSoKpi(int maSK, int maSuat, DateTime tuNgay, DateTime denNgay,
+            out decimal doanhThu, out int soVe, out decimal? lapDay)
+        {
+            const string sql = @"
+SELECT
+   (SELECT COALESCE(SUM(tt.SoTien), 0)
+    FROM DonVe dv
+    INNER JOIN ThanhToan tt ON tt.MaDon = dv.MaDon
+    WHERE dv.TrangThai IN (N'DaThanhToan', N'DaDoi')
+      AND tt.NgayThanhToan >= @tu AND tt.NgayThanhToan < @denSau
+      AND (@maSuat = 0 OR dv.MaSuat = @maSuat)
+      AND (@maSK = 0 OR dv.MaSuat IN (SELECT MaSuat FROM SuatDien WHERE MaSK = @maSK))) AS DoanhThu,
+   (SELECT COUNT(*)
+    FROM DonVe dv
+    INNER JOIN ChiTietVe ct ON ct.MaDon = dv.MaDon
+    WHERE dv.TrangThai = N'DaThanhToan' AND ct.TrangThai = N'HopLe'
+      AND dv.NgayDat >= @tu AND dv.NgayDat < @denSau
+      AND (@maSuat = 0 OR dv.MaSuat = @maSuat)
+      AND (@maSK = 0 OR dv.MaSuat IN (SELECT MaSuat FROM SuatDien WHERE MaSK = @maSK))) AS SoVe,
+   (SELECT CAST(100.0 * SUM(CASE WHEN g.TrangThai = N'DaBan' THEN 1 ELSE 0 END)
+         / NULLIF(COUNT(g.MaGhe), 0) AS DECIMAL(5, 2))
+    FROM KhuVuc kv
+    INNER JOIN SuatDien sd ON sd.MaSuat = kv.MaSuat
+    LEFT JOIN Ghe g ON g.MaKV = kv.MaKV
+    WHERE (@maSK = 0 OR sd.MaSK = @maSK)
+      AND (@maSuat = 0 OR kv.MaSuat = @maSuat)
+      AND sd.ThoiGianBatDau >= @tu AND sd.ThoiGianBatDau < @denSau) AS LapDay";
+
+            DataTable dt = Database.ExecuteQuery(sql, ThamSoLoc(maSK, maSuat, tuNgay, denNgay));
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                DataRow r = dt.Rows[0];
+                doanhThu = r["DoanhThu"] != DBNull.Value ? Convert.ToDecimal(r["DoanhThu"]) : 0m;
+                soVe = r["SoVe"] != DBNull.Value ? Convert.ToInt32(r["SoVe"]) : 0;
+                lapDay = r["LapDay"] != DBNull.Value ? (decimal?)Convert.ToDecimal(r["LapDay"]) : null;
+            }
+            else
+            {
+                doanhThu = 0m;
+                soVe = 0;
+                lapDay = null;
+            }
         }
 
         /// <summary>Tổng doanh thu (KPI). Dùng ExecuteScalar, NULL thành 0.</summary>
