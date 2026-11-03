@@ -53,7 +53,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.lblHeaderQty = new System.Windows.Forms.Label();
             this.lblHeaderTicketType = new System.Windows.Forms.Label();
             this.pnlRightCardHeader = new System.Windows.Forms.Panel();
-            this.lblChonLaiVe = new System.Windows.Forms.Label();
+            this.lblChonLaiVe = new System.Windows.Forms.LinkLabel();
             this.lblSummaryTitle = new System.Windows.Forms.Label();
             this.pnlLeftColumn = new System.Windows.Forms.Panel();
             this.pnlPaymentMethodCard = new Guna.UI2.WinForms.Guna2Panel();
@@ -332,7 +332,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnThanhToan.Location = new System.Drawing.Point(20, 552);
             this.btnThanhToan.Name = "btnThanhToan";
             this.btnThanhToan.Size = new System.Drawing.Size(456, 48);
-            this.btnThanhToan.TabIndex = 7;
+            this.btnThanhToan.TabIndex = 9;
             this.btnThanhToan.Text = "Thanh toán";
             this.btnThanhToan.Click += new System.EventHandler(this.btnThanhToan_Click);
             // 
@@ -547,18 +547,23 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // lblChonLaiVe
             // 
+            this.lblChonLaiVe.ActiveLinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(29)))), ((int)(((byte)(78)))), ((int)(((byte)(216)))));
             this.lblChonLaiVe.AutoSize = true;
             this.lblChonLaiVe.Cursor = System.Windows.Forms.Cursors.Hand;
             this.lblChonLaiVe.Dock = System.Windows.Forms.DockStyle.Right;
-            this.lblChonLaiVe.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Underline);
-            this.lblChonLaiVe.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
+            this.lblChonLaiVe.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F);
+            this.lblChonLaiVe.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
+            this.lblChonLaiVe.LinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
             this.lblChonLaiVe.Location = new System.Drawing.Point(359, 0);
             this.lblChonLaiVe.Name = "lblChonLaiVe";
             this.lblChonLaiVe.Padding = new System.Windows.Forms.Padding(0, 10, 8, 0);
             this.lblChonLaiVe.Size = new System.Drawing.Size(97, 31);
-            this.lblChonLaiVe.TabIndex = 1;
+            this.lblChonLaiVe.TabIndex = 8;
+            this.lblChonLaiVe.TabStop = true;
             this.lblChonLaiVe.Text = "Chọn lại vé";
             this.lblChonLaiVe.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.lblChonLaiVe.VisitedLinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
+            this.lblChonLaiVe.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblChonLaiVe_LinkClicked);
             this.lblChonLaiVe.Click += new System.EventHandler(this.lblChonLaiVe_Click);
             // 
             // lblSummaryTitle
@@ -616,7 +621,8 @@ namespace QuanLySuKienVaBanVe.GUI
             this.radTheNganHang.Location = new System.Drawing.Point(24, 164);
             this.radTheNganHang.Name = "radTheNganHang";
             this.radTheNganHang.Size = new System.Drawing.Size(20, 20);
-            this.radTheNganHang.TabIndex = 3;
+            this.radTheNganHang.TabIndex = 7;
+            this.radTheNganHang.TabStop = true;
             this.radTheNganHang.UncheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
             this.radTheNganHang.UncheckedState.BorderThickness = 2;
             this.radTheNganHang.UncheckedState.FillColor = System.Drawing.Color.White;
@@ -654,7 +660,8 @@ namespace QuanLySuKienVaBanVe.GUI
             this.radTienMat.Location = new System.Drawing.Point(24, 117);
             this.radTienMat.Name = "radTienMat";
             this.radTienMat.Size = new System.Drawing.Size(20, 20);
-            this.radTienMat.TabIndex = 2;
+            this.radTienMat.TabIndex = 6;
+            this.radTienMat.TabStop = true;
             this.radTienMat.UncheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
             this.radTienMat.UncheckedState.BorderThickness = 2;
             this.radTienMat.UncheckedState.FillColor = System.Drawing.Color.White;
@@ -693,7 +700,8 @@ namespace QuanLySuKienVaBanVe.GUI
             this.radChuyenKhoan.Location = new System.Drawing.Point(24, 71);
             this.radChuyenKhoan.Name = "radChuyenKhoan";
             this.radChuyenKhoan.Size = new System.Drawing.Size(20, 20);
-            this.radChuyenKhoan.TabIndex = 1;
+            this.radChuyenKhoan.TabIndex = 5;
+            this.radChuyenKhoan.TabStop = true;
             this.radChuyenKhoan.UncheckedState.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
             this.radChuyenKhoan.UncheckedState.BorderThickness = 2;
             this.radChuyenKhoan.UncheckedState.FillColor = System.Drawing.Color.White;
@@ -755,17 +763,19 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // chkAgreePolicy
             // 
-            this.chkAgreePolicy.AutoSize = true;
+            this.chkAgreePolicy.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.chkAgreePolicy.AutoSize = false;
             this.chkAgreePolicy.Checked = true;
             this.chkAgreePolicy.CheckedState.BorderRadius = 0;
             this.chkAgreePolicy.CheckedState.BorderThickness = 0;
             this.chkAgreePolicy.CheckState = System.Windows.Forms.CheckState.Checked;
             this.chkAgreePolicy.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.chkAgreePolicy.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(71)))), ((int)(((byte)(85)))), ((int)(((byte)(105)))));
-            this.chkAgreePolicy.Location = new System.Drawing.Point(24, 298);
+            this.chkAgreePolicy.Location = new System.Drawing.Point(24, 294);
             this.chkAgreePolicy.Name = "chkAgreePolicy";
-            this.chkAgreePolicy.Size = new System.Drawing.Size(558, 24);
-            this.chkAgreePolicy.TabIndex = 7;
+            this.chkAgreePolicy.Size = new System.Drawing.Size(588, 42);
+            this.chkAgreePolicy.TabIndex = 4;
             this.chkAgreePolicy.Text = "Tôi đồng ý sử dụng thông tin đặt vé nhằm mục đích vận hành sự kiện và xuất vé.";
             this.chkAgreePolicy.UncheckedState.BorderRadius = 0;
             this.chkAgreePolicy.UncheckedState.BorderThickness = 0;
@@ -785,8 +795,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.txtEmail.PlaceholderForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.txtEmail.PlaceholderText = "Điền câu trả lời của bạn";
             this.txtEmail.SelectedText = "";
+            this.txtEmail.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtEmail.Size = new System.Drawing.Size(588, 38);
-            this.txtEmail.TabIndex = 6;
+            this.txtEmail.TabIndex = 3;
             // 
             // lblEmail
             // 
@@ -814,8 +826,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.txtSDT.PlaceholderForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.txtSDT.PlaceholderText = "Điền câu trả lời của bạn";
             this.txtSDT.SelectedText = "";
+            this.txtSDT.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtSDT.Size = new System.Drawing.Size(588, 38);
-            this.txtSDT.TabIndex = 4;
+            this.txtSDT.TabIndex = 2;
             // 
             // lblSDT
             // 
@@ -843,8 +857,10 @@ namespace QuanLySuKienVaBanVe.GUI
             this.txtTenKH.PlaceholderForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.txtTenKH.PlaceholderText = "Điền câu trả lời của bạn";
             this.txtTenKH.SelectedText = "";
+            this.txtTenKH.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtTenKH.Size = new System.Drawing.Size(588, 38);
-            this.txtTenKH.TabIndex = 2;
+            this.txtTenKH.TabIndex = 1;
             // 
             // lblTenKH
             // 
@@ -960,7 +976,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private Guna.UI2.WinForms.Guna2Panel pnlRightCard;
         private System.Windows.Forms.Panel pnlRightCardHeader;
         private System.Windows.Forms.Label lblSummaryTitle;
-        private System.Windows.Forms.Label lblChonLaiVe;
+        private System.Windows.Forms.LinkLabel lblChonLaiVe;
         private System.Windows.Forms.Panel pnlTicketHeaderRow;
         private System.Windows.Forms.Label lblHeaderTicketType;
         private System.Windows.Forms.Label lblHeaderQty;
