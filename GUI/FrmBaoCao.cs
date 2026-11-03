@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -22,6 +23,9 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private DataTable bangHienTai;
         private bool dangNap;
+        private int phienTaiDuLieu;
+        private DataTable bangSuatDienGoc;
+        private static readonly Color MauKhac = Color.FromArgb(148, 163, 184);
 
         // Nút in danh sách khách: tạo bằng code (không sửa Designer) để khỏi
         // đụng file Designer, vị trí do SapXepHangLoc sắp xếp cùng hàng lọc.
@@ -77,14 +81,7 @@ namespace QuanLySuKienVaBanVe.GUI
             DatChipIcon(iconVe, picIconVe, Color.FromArgb(253, 238, 221));
             DatChipIcon(iconLapDay, picIconLapDay, Color.FromArgb(239, 233, 253));
 
-            foreach (var khungBieuDo in new Control[] { chartDuong, chartTron, dgv })
-            {
-                var elipKhung = new Guna.UI2.WinForms.Guna2Elipse
-                {
-                    TargetControl = khungBieuDo,
-                    BorderRadius = 14
-                };
-            }
+
 
             foreach (var t in new[] { lblTieuDeDuong, lblTieuDeTron, lblChiTiet })
             {
@@ -214,31 +211,122 @@ namespace QuanLySuKienVaBanVe.GUI
             try
             {
                 dangNap = true;
+                dtpTu.MaxDate = DateTimePicker.MaximumDateTime;
+                dtpDen.MinDate = DateTimePicker.MinimumDateTime;
                 dtpTu.Value = DateTime.Today.AddDays(-30);
                 dtpDen.Value = DateTime.Today;
+
+                dtpDen.MinDate = dtpTu.Value.Date;
+                dtpTu.MaxDate = dtpDen.Value.Date;
+
                 cboBang.SelectedIndex = 0;
-                NapSuKien();
-                NapSuatDien();
             }
             finally
             {
                 dangNap = false;
             }
-            TaiDuLieu();
             SapXepHangLoc();
             SapXepCacKhoi();
+            // Mọi truy vấn DB (kể cả danh sách sự kiện/suất diễn) chạy sau khi
+            // form đã vẽ xong khung, để không chặn luồng UI lúc FrmMain.Show().
+            BeginInvoke(new Action(() => _ = KhoiTaoDuLieuAsync()));
         }
 
-        private void dtpTu_ValueChanged(object sender, EventArgs e) => TaiDuLieu();
-        private void dtpDen_ValueChanged(object sender, EventArgs e) => TaiDuLieu();
+        private async Task KhoiTaoDuLieuAsync()
+        {
+            try
+            {
+                var tKien = Task.Run(() => SuKienBLL.LayDanhSach());
+                var tSuat = Task.Run(() => SuatDienBLL.LayDanhSach());
+                await Task.WhenAll(tKien, tSuat);
+                if (IsDisposed || Disposing) return;
+
+                dangNap = true;
+                try
+                {
+                    DataTable dt = tKien.Result;
+                    DataRow tatCa = dt.NewRow();
+                    tatCa["MaSK"] = 0;
+                    tatCa["TenSK"] = "Tất cả sự kiện";
+                    dt.Rows.InsertAt(tatCa, 0);
+                    cboSuKien.DisplayMember = "TenSK";
+                    cboSuKien.ValueMember = "MaSK";
+                    cboSuKien.DataSource = dt;
+                    bangSuatDienGoc = tSuat.Result;
+                }
+                finally
+                {
+                    dangNap = false;
+                }
+                NapSuatDien();
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed && !Disposing)
+                    MessageBox.Show(this, "Lỗi tải bộ lọc: " + ex.Message,
+                        "Báo cáo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            await TaiDuLieuAsync();
+        }
+
+        private void DongBoGioiHanNgay(bool tuThayDoi)
+        {
+            bool coCu = dangNap;
+            dangNap = true;
+            try
+            {
+                dtpTu.MaxDate = DateTimePicker.MaximumDateTime;
+                dtpDen.MinDate = DateTimePicker.MinimumDateTime;
+
+                if (tuThayDoi)
+                {
+                    if (dtpTu.Value.Date > dtpDen.Value.Date)
+                        dtpDen.Value = dtpTu.Value.Date;
+                }
+                else
+                {
+                    if (dtpDen.Value.Date < dtpTu.Value.Date)
+                        dtpTu.Value = dtpDen.Value.Date;
+                }
+
+                dtpDen.MinDate = dtpTu.Value.Date;
+                dtpTu.MaxDate = dtpDen.Value.Date;
+            }
+            finally
+            {
+                dangNap = coCu;
+            }
+        }
+
+        private void dtpTu_ValueChanged(object sender, EventArgs e)
+        {
+            if (dangNap) return;
+            DongBoGioiHanNgay(true);
+            _ = TaiDuLieuAsync();
+        }
+        private void dtpDen_ValueChanged(object sender, EventArgs e)
+        {
+            if (dangNap) return;
+            DongBoGioiHanNgay(false);
+            _ = TaiDuLieuAsync();
+        }
         private void cboSuKien_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (dangNap) return;
             NapSuatDien();
-            TaiDuLieu();
+            _ = TaiDuLieuAsync();
         }
-        private void cboSuatDien_SelectedIndexChanged(object sender, EventArgs e) => TaiDuLieu();
-        private void cboBang_SelectedIndexChanged(object sender, EventArgs e) => NapBangChiTiet();
+        private void cboSuatDien_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (dangNap) return;
+            _ = TaiDuLieuAsync();
+        }
+        private void cboBang_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (dangNap) return;
+            _ = NapBangChiTietAsync();
+        }
         private void btnXuat_Click(object sender, EventArgs e) => XuatExcel();
 
         private void TaoNutInDsKhach()
@@ -367,34 +455,34 @@ namespace QuanLySuKienVaBanVe.GUI
             cboBang.Location = new Point(pnlDauLuoi.Width - 192, (pnlDauLuoi.Height - cboBang.Height) / 2);
         }
 
-        private void NapSuKien()
-        {
-            DataTable dt = SuKienBLL.LayDanhSach();
-            DataRow tatCa = dt.NewRow();
-            tatCa["MaSK"] = 0;
-            tatCa["TenSK"] = "Tất cả sự kiện";
-            dt.Rows.InsertAt(tatCa, 0);
-            cboSuKien.DisplayMember = "TenSK";
-            cboSuKien.ValueMember = "MaSK";
-            cboSuKien.DataSource = dt;
-        }
-
         private void NapSuatDien()
         {
             int maSK = LayMaChon(cboSuKien);
-            DataTable tatCaSuat = SuatDienBLL.LayDanhSach();
+            if (bangSuatDienGoc == null)
+            {
+                bangSuatDienGoc = SuatDienBLL.LayDanhSach();
+            }
+
             var bang = new DataTable();
             bang.Columns.Add("MaSuat", typeof(int));
             bang.Columns.Add("HienThi", typeof(string));
             bang.Rows.Add(0, "Tất cả");
-            foreach (DataRow row in tatCaSuat.Rows)
+
+            if (bangSuatDienGoc != null)
             {
-                if (maSK != 0 && Convert.ToInt32(row["MaSK"]) != maSK) continue;
-                DateTime batDau = Convert.ToDateTime(row["ThoiGianBatDau"]);
-                bang.Rows.Add(
-                    Convert.ToInt32(row["MaSuat"]),
-                    string.Format("{0:dd/MM/yyyy HH:mm} — {1}", batDau, row["TenSK"]));
+                foreach (DataRow row in bangSuatDienGoc.Rows)
+                {
+                    if (maSK != 0 && Convert.ToInt32(row["MaSK"]) != maSK) continue;
+                    DateTime batDau = Convert.ToDateTime(row["ThoiGianBatDau"]);
+                    string tenSK = row.Table.Columns.Contains("TenSK")
+                        ? Convert.ToString(row["TenSK"])
+                        : cboSuKien.Text;
+                    bang.Rows.Add(
+                        Convert.ToInt32(row["MaSuat"]),
+                        string.Format("{0:dd/MM/yyyy HH:mm} — {1}", batDau, tenSK));
+                }
             }
+
             bool coCu = dangNap;
             dangNap = true;
             try
@@ -415,18 +503,43 @@ namespace QuanLySuKienVaBanVe.GUI
             return int.TryParse(cbo.SelectedValue.ToString(), out int v) ? v : 0;
         }
 
-        private void TaiDuLieu()
+        private async Task TaiDuLieuAsync()
         {
             if (dangNap) return;
+            int phienHienTai = ++phienTaiDuLieu;
+            int maSK = LayMaChon(cboSuKien);
+            int maSuat = LayMaChon(cboSuatDien);
+            DateTime tu = dtpTu.Value.Date;
+            DateTime den = dtpDen.Value.Date;
+            if (tu > den)
+            {
+                DateTime tam = tu;
+                tu = den;
+                den = tam;
+            }
+            int soNgay = (den - tu).Days + 1;
+            string cheDo = soNgay <= 45 ? "Ngay" : "Thang";
+            int kieuBang = cboBang.SelectedIndex;
+
+            Cursor = Cursors.WaitCursor;
             try
             {
-                Cursor = Cursors.WaitCursor;
-                int maSK = LayMaChon(cboSuKien);
-                int maSuat = LayMaChon(cboSuatDien);
-                DateTime tu = dtpTu.Value.Date;
-                DateTime den = dtpDen.Value.Date;
+                var taskKpi = Task.Run(() => BaoCaoBLL.LayKpi(maSK, maSuat, tu, den));
+                var taskDuong = Task.Run(() => BaoCaoBLL.DoanhThuTheoThoiGian(maSK, maSuat, tu, den, cheDo));
+                var taskTron = Task.Run(() => BaoCaoBLL.DoanhThuTheoSuKien(maSK, maSuat, tu, den));
+                var taskBang = Task.Run(() => kieuBang == 1
+                    ? BaoCaoBLL.TyLeLapDayTheoKhuVuc(maSK, maSuat, tu, den)
+                    : BaoCaoBLL.DanhSachDonVe(maSK, maSuat, tu, den));
 
-                KpiBaoCao kpi = BaoCaoBLL.LayKpi(maSK, maSuat, tu, den);
+                await Task.WhenAll(taskKpi, taskDuong, taskTron, taskBang);
+
+                if (phienHienTai != phienTaiDuLieu || IsDisposed || Disposing) return;
+
+                KpiBaoCao kpi = taskKpi.Result;
+                DataTable dtDuong = taskDuong.Result;
+                DataTable dtTron = taskTron.Result;
+                DataTable dtBang = taskBang.Result;
+
                 lblDoanhThu.Text = string.Format("{0:N0} đ", kpi.TongDoanhThu);
                 lblVe.Text = kpi.TongVeDaBan.ToString("N0");
                 lblLapDay.Text = kpi.TyLeLapDay.HasValue
@@ -436,23 +549,38 @@ namespace QuanLySuKienVaBanVe.GUI
                 DatXuHuong(lblTrendVe, kpi.TangTruongVe);
                 DatXuHuong(lblTrendLapDay, kpi.ChenhLechLapDay);
 
-                int soNgay = (den - tu).Days + 1;
-                string cheDo = soNgay <= 45 ? "Ngay" : "Thang";
                 lblTieuDeDuong.Text = cheDo == "Ngay" ? "Doanh thu theo ngày" : "Doanh thu theo tháng";
-                VeDuongDoanhThu(BaoCaoBLL.DoanhThuTheoThoiGian(maSK, maSuat, tu, den, cheDo), cheDo);
+                VeDuongDoanhThu(dtDuong, cheDo);
+                VeBanhTron(dtTron);
 
-                VeBanhTron(BaoCaoBLL.DoanhThuTheoSuKien(maSK, maSuat, tu, den));
-
-                NapBangChiTiet();
+                bangHienTai = dtBang;
+                dgv.DataSource = bangHienTai;
+                foreach (DataGridViewColumn col in dgv.Columns)
+                {
+                    if (col.HeaderText.Contains("Tỷ lệ"))
+                        col.DefaultCellStyle.Format = @"0.0""%""";
+                    else if (col.ValueType == typeof(DateTime))
+                        col.DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
+                    else if (col.ValueType == typeof(decimal))
+                        col.DefaultCellStyle.Format = "#,##0";
+                }
+                DinhDangCotLuoi();
+                lblDem.Text = string.Format("Tổng: {0:N0} dòng", bangHienTai.Rows.Count);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Lỗi tải báo cáo: " + ex.Message,
-                    "Báo cáo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (!IsDisposed && !Disposing && phienHienTai == phienTaiDuLieu)
+                {
+                    MessageBox.Show(this, "Lỗi tải báo cáo: " + ex.Message,
+                        "Báo cáo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
             finally
             {
-                Cursor = Cursors.Default;
+                if (phienHienTai == phienTaiDuLieu && !IsDisposed && !Disposing)
+                {
+                    Cursor = Cursors.Default;
+                }
             }
         }
 
@@ -583,28 +711,60 @@ namespace QuanLySuKienVaBanVe.GUI
             SapXepCacKhoi();
         }
 
-        private void NapBangChiTiet()
+        private async Task NapBangChiTietAsync()
         {
             if (dangNap) return;
+            int phienHienTai = ++phienTaiDuLieu;
             int maSK = LayMaChon(cboSuKien);
             int maSuat = LayMaChon(cboSuatDien);
-            if (cboBang.SelectedIndex == 1)
-                bangHienTai = BaoCaoBLL.TyLeLapDayTheoKhuVuc(maSK, maSuat, dtpTu.Value.Date, dtpDen.Value.Date);
-            else
-                bangHienTai = BaoCaoBLL.DanhSachDonVe(maSK, maSuat, dtpTu.Value.Date, dtpDen.Value.Date);
-
-            dgv.DataSource = bangHienTai;
-            foreach (DataGridViewColumn col in dgv.Columns)
+            DateTime tu = dtpTu.Value.Date;
+            DateTime den = dtpDen.Value.Date;
+            if (tu > den)
             {
-                if (col.HeaderText.Contains("Tỷ lệ"))
-                    col.DefaultCellStyle.Format = "0.0\"%\"";
-                else if (col.ValueType == typeof(DateTime))
-                    col.DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
-                else if (col.ValueType == typeof(decimal))
-                    col.DefaultCellStyle.Format = "#,##0";
+                DateTime tam = tu;
+                tu = den;
+                den = tam;
             }
-            DinhDangCotLuoi();
-            lblDem.Text = string.Format("Tổng: {0:N0} dòng", bangHienTai.Rows.Count);
+            int kieuBang = cboBang.SelectedIndex;
+
+            Cursor = Cursors.WaitCursor;
+            try
+            {
+                DataTable dt = await Task.Run(() => kieuBang == 1
+                    ? BaoCaoBLL.TyLeLapDayTheoKhuVuc(maSK, maSuat, tu, den)
+                    : BaoCaoBLL.DanhSachDonVe(maSK, maSuat, tu, den));
+
+                if (phienHienTai != phienTaiDuLieu || IsDisposed || Disposing) return;
+
+                bangHienTai = dt;
+                dgv.DataSource = bangHienTai;
+                foreach (DataGridViewColumn col in dgv.Columns)
+                {
+                    if (col.HeaderText.Contains("Tỷ lệ"))
+                        col.DefaultCellStyle.Format = @"0.0""%""";
+                    else if (col.ValueType == typeof(DateTime))
+                        col.DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
+                    else if (col.ValueType == typeof(decimal))
+                        col.DefaultCellStyle.Format = "#,##0";
+                }
+                DinhDangCotLuoi();
+                lblDem.Text = string.Format("Tổng: {0:N0} dòng", bangHienTai.Rows.Count);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed && !Disposing && phienHienTai == phienTaiDuLieu)
+                {
+                    MessageBox.Show(this, "Lỗi tải dữ liệu bảng: " + ex.Message,
+                        "Báo cáo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            finally
+            {
+                if (phienHienTai == phienTaiDuLieu && !IsDisposed && !Disposing)
+                {
+                    Cursor = Cursors.Default;
+                }
+            }
         }
 
         private static Dictionary<string, double> DocGiaTriHienTai(Chart chart)
@@ -724,16 +884,35 @@ namespace QuanLySuKienVaBanVe.GUI
             return s;
         }
 
+        private void XoaChuThichTron()
+        {
+            if (pnlChuThichTron == null) return;
+            while (pnlChuThichTron.Controls.Count > 0)
+            {
+                Control c = pnlChuThichTron.Controls[0];
+                pnlChuThichTron.Controls.RemoveAt(0);
+                c.Dispose();
+            }
+        }
+
         private void VeBanhTron(DataTable dt)
         {
             Dictionary<string, double> giaTriCu = DocGiaTriHienTai(chartTron);
             chartTron.Series.Clear();
             chartTron.Titles.Clear();
             chuoiTron = null;
-            if (pnlChuThichTron != null) pnlChuThichTron.Controls.Clear();
+            XoaChuThichTron();
             if (dt.Rows.Count == 0)
             {
                 chartTron.Titles.Add("Chưa có dữ liệu trong khoảng đã chọn");
+                return;
+            }
+
+            // Chỉ lấy các sự kiện có DoanhThu > 0 (loại bỏ hoàn toàn các sự kiện 0%)
+            DataRow[] hang = dt.Select("DoanhThu > 0", "DoanhThu DESC");
+            if (hang.Length == 0)
+            {
+                chartTron.Titles.Add("Chưa có dữ liệu doanh thu trong khoảng đã chọn");
                 return;
             }
 
@@ -746,49 +925,71 @@ namespace QuanLySuKienVaBanVe.GUI
             s["DoughnutRadius"] = "55";
             s["PieLabelStyle"] = "Disabled";
             chartTron.Series.Add(s);
-            chartTron.Palette = ChartColorPalette.None;
-            chartTron.PaletteCustomColors = MauTron;
-            DataRow[] hang = dt.Select(string.Empty, "DoanhThu DESC");
+
             const int gioiHan = 5;
-            int soLat = Math.Min(hang.Length, gioiHan) + (hang.Length > gioiHan ? 1 : 0);
+            bool coGomKhac = hang.Length > gioiHan;
+            int soLat = Math.Min(hang.Length, gioiHan) + (coGomKhac ? 1 : 0);
             string[] nhan = new string[soLat];
             double[] dich = new double[soLat];
+            Color[] mauCacLat = new Color[soLat];
+
             for (int i = 0; i < hang.Length && i < gioiHan; i++)
             {
                 nhan[i] = Convert.ToString(hang[i]["TenSK"]);
                 dich[i] = Convert.ToDouble(hang[i]["DoanhThu"]);
+                mauCacLat[i] = MauTron[i % MauTron.Length];
             }
-            if (hang.Length > gioiHan)
+
+            if (coGomKhac)
             {
                 decimal conLai = 0m;
                 for (int i = gioiHan; i < hang.Length; i++)
                     conLai += Convert.ToDecimal(hang[i]["DoanhThu"]);
                 nhan[gioiHan] = "Khác (" + (hang.Length - gioiHan) + " sự kiện)";
                 dich[gioiHan] = Convert.ToDouble(conLai);
+                // Dùng màu xám Slate riêng biệt cho lát "Khác" để không trùng với Top 1
+                mauCacLat[gioiHan] = MauKhac;
             }
+
+            double tongDoanhThu = 0.0;
+            for (int i = 0; i < dich.Length; i++) tongDoanhThu += dich[i];
+
             double[] tu = new double[dich.Length];
             for (int i = 0; i < dich.Length; i++)
             {
                 tu[i] = giaTriCu.TryGetValue(nhan[i], out double cu) ? cu : 0.0;
-                s.Points.AddXY(nhan[i], tu[i]);
+                int idx = s.Points.AddXY(nhan[i], tu[i]);
+                s.Points[idx].Color = mauCacLat[i];
+                double pt = tongDoanhThu > 0 ? (dich[i] / tongDoanhThu * 100.0) : 0.0;
+                s.Points[idx].ToolTip = string.Format("{0}: {1:N0} đ ({2:N1}%)", nhan[i], dich[i], pt);
             }
-            CapNhatChuThichTron(nhan, dich);
+
+            CapNhatChuThichTron(nhan, dich, mauCacLat);
             BatDauHoatHinh(s, tu, dich, false);
         }
 
-        private void CapNhatChuThichTron(string[] nhan, double[] giaTri)
+        private void CapNhatChuThichTron(string[] nhan, double[] giaTri, Color[] mauCacLat)
         {
             if (pnlChuThichTron == null) return;
-            pnlChuThichTron.Controls.Clear();
+            XoaChuThichTron();
             decimal tong = 0m;
             foreach (double g in giaTri) tong += Convert.ToDecimal(g);
             int y = 10;
             int rong = pnlChuThichTron.ClientSize.Width - 12 - SystemInformation.VerticalScrollBarWidth;
             if (rong < 120) rong = 120;
+            var tt = new ToolTip();
+
             for (int i = 0; i < nhan.Length; i++)
             {
-                int phanTram = tong > 0 ? (int)Math.Round(100m * Convert.ToDecimal(giaTri[i]) / tong) : 0;
-                string chu = nhan[i] + "  " + phanTram + "%";
+                decimal g = Convert.ToDecimal(giaTri[i]);
+                decimal tileExact = tong > 0 ? (g / tong * 100m) : 0m;
+                int phanTram = (int)Math.Round(tileExact);
+                // Với sự kiện có doanh thu nhưng tỷ trọng < 1%, hiển thị "<1%" thay vì 0%
+                string strPhanTram;
+                if (tileExact > 0m && tileExact < 1m) strPhanTram = "<1%";
+                else strPhanTram = phanTram + "%";
+
+                string chu = nhan[i] + "  " + strPhanTram;
                 var lbl = new Label
                 {
                     Text = chu,
@@ -796,15 +997,22 @@ namespace QuanLySuKienVaBanVe.GUI
                     ForeColor = ChuDam,
                     AutoSize = true,
                     MaximumSize = new Size(rong - 26, 0),
-                    Location = new Point(26, 3)
+                    Location = new Point(26, 3),
+                    Cursor = Cursors.Hand
                 };
+                string tooltipText = string.Format("{0}\nDoanh thu: {1:N0} đ ({2:N1}%)", nhan[i], g, tileExact);
+                tt.SetToolTip(lbl, tooltipText);
+
                 int caoHang = Math.Max(22, lbl.PreferredSize.Height + 6);
                 var mau = new Panel
                 {
-                    BackColor = MauTron[i % MauTron.Length],
+                    BackColor = mauCacLat[i],
                     Location = new Point(6, (caoHang - 14) / 2),
-                    Size = new Size(14, 14)
+                    Size = new Size(14, 14),
+                    Cursor = Cursors.Hand
                 };
+                tt.SetToolTip(mau, tooltipText);
+
                 var hang = new Panel
                 {
                     Location = new Point(6, y),
@@ -823,10 +1031,7 @@ namespace QuanLySuKienVaBanVe.GUI
             if (the == null) return;
             the.BorderRadius = boTron;
             the.FillColor = Color.White;
-            the.ShadowDecoration.Enabled = true;
-            the.ShadowDecoration.Color = Color.FromArgb(20, 15, 23, 42);
-            the.ShadowDecoration.Depth = 10;
-            the.ShadowDecoration.BorderRadius = boTron;
+            the.ShadowDecoration.Enabled = false;
         }
 
         private static void DatChipIcon(Guna.UI2.WinForms.Guna2Panel chip, PictureBox anh, Color mau)

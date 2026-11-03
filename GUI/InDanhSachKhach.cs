@@ -120,7 +120,7 @@ namespace QuanLySuKienVaBanVe.GUI
                     y += 6f;
 
                     float caoDong = fNoiDung.Height + 8f;
-                    var cat = new StringFormat { Trimming = StringTrimming.EllipsisCharacter };
+                    using (var cat = new StringFormat { Trimming = StringTrimming.EllipsisCharacter })
                     using (var ke = new Pen(Color.FromArgb(220, 220, 220)))
                     {
                         while (dongHienTai < bang.Rows.Count)
