@@ -52,6 +52,12 @@ namespace QuanLySuKienVaBanVe.BLL
             return GheDAL.GiaiPhongGhe(maGhe);
         }
 
+        public static int LayGiayConLaiGiu(IEnumerable<int> dsMaGhe)
+        {
+            if (dsMaGhe == null) return 0;
+            return GheDAL.LayGiayConLaiGiu(dsMaGhe);
+        }
+
         public static int GiaiPhongDanhSachGhe(IEnumerable<int> dsMaGhe)
         {
             if (dsMaGhe == null) return 0;

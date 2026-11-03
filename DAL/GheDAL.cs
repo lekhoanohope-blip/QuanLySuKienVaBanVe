@@ -383,6 +383,31 @@ namespace QuanLySuKienVaBanVe.DAL
         /// <summary>
         /// Giải phóng danh sách ghế đang giữ về 'Trong'.
         /// </summary>
+        /// <summary>
+        /// Lấy số giây còn lại tối thiểu của danh sách ghế đang giữ dựa trên đồng hồ của SQL Server (GETDATE).
+        /// Nếu không có ghế nào hoặc ghế đã quá hạn / đã bán thì trả về 0.
+        /// </summary>
+        public static int LayGiayConLaiGiu(IEnumerable<int> dsMaGhe)
+        {
+            if (dsMaGhe == null) return 0;
+            List<int> validIds = dsMaGhe.Where(id => id > 0).ToList();
+            if (validIds.Count == 0) return 0;
+
+            EnsureSchema();
+            string inClause = string.Join(",", validIds);
+            string query = $@"
+                SELECT ISNULL(MIN({ThoiGianGiuToiDaGiay} - DATEDIFF(SECOND, ThoiGianGiu, GETDATE())), 0)
+                FROM Ghe
+                WHERE MaGhe IN ({inClause})
+                  AND TrangThai = N'DangGiu'
+                  AND ThoiGianGiu IS NOT NULL;";
+
+            object result = Database.ExecuteScalar(query);
+            if (result == null || result == DBNull.Value) return 0;
+            int remaining = Convert.ToInt32(result);
+            return remaining > 0 ? remaining : 0;
+        }
+
         public static int GiaiPhongDanhSachGhe(IEnumerable<int> dsMaGhe)
         {
             if (dsMaGhe == null) return 0;

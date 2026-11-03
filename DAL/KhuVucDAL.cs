@@ -147,6 +147,23 @@ namespace QuanLySuKienVaBanVe.DAL
             EnsureSchemaAndSyncSeats();
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
+                conn.Open();
+
+                // Giải phóng các ghế đang giữ quá hạn (> 10 phút) của suất diễn này trước khi đếm số ghế trống
+                string cleanQuery = @"
+                    UPDATE g
+                    SET g.TrangThai = N'Trong', g.ThoiGianGiu = NULL, g.MaPhienGiu = NULL
+                    FROM Ghe g
+                    INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
+                    WHERE kv.MaSuat = @MaSuat
+                      AND g.TrangThai = N'DangGiu'
+                      AND (g.ThoiGianGiu IS NULL OR DATEDIFF(SECOND, g.ThoiGianGiu, GETDATE()) > 600);";
+                using (SqlCommand cmdClean = new SqlCommand(cleanQuery, conn))
+                {
+                    cmdClean.Parameters.AddWithValue("@MaSuat", maSuat);
+                    cmdClean.ExecuteNonQuery();
+                }
+
                 string query = @"
                     SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '#D97706') AS MauSac,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
@@ -162,6 +179,37 @@ namespace QuanLySuKienVaBanVe.DAL
                     DataTable dt = new DataTable();
                     da.Fill(dt);
                     return dt;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Lấy số ghế còn trống thực tế tức thời của khu vực (sau khi đã nhả ghế quá hạn).
+        /// </summary>
+        public static int LayConLaiTheoKhuVuc(int maKV)
+        {
+            EnsureSchemaAndSyncSeats();
+            using (SqlConnection conn = DatabaseHelper.GetConnection())
+            {
+                conn.Open();
+                string cleanQuery = @"
+                    UPDATE Ghe
+                    SET TrangThai = N'Trong', ThoiGianGiu = NULL, MaPhienGiu = NULL
+                    WHERE MaKV = @MaKV
+                      AND TrangThai = N'DangGiu'
+                      AND (ThoiGianGiu IS NULL OR DATEDIFF(SECOND, ThoiGianGiu, GETDATE()) > 600);";
+                using (SqlCommand cmdClean = new SqlCommand(cleanQuery, conn))
+                {
+                    cmdClean.Parameters.AddWithValue("@MaKV", maKV);
+                    cmdClean.ExecuteNonQuery();
+                }
+
+                string query = "SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV AND TrangThai = N'Trong'";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@MaKV", maKV);
+                    object res = cmd.ExecuteScalar();
+                    return res != null && res != DBNull.Value ? Convert.ToInt32(res) : 0;
                 }
             }
         }
