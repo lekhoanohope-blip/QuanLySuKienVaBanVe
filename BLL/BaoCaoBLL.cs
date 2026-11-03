@@ -98,9 +98,10 @@ namespace QuanLySuKienVaBanVe.BLL
             return BaoCaoDAL.DoanhThuTheoThoiGian(maSK, maSuat, tuNgay, denNgay, ChuanHoaCheDo(cheDo));
         }
 
-        public static DataTable TyLeLapDayTheoKhuVuc(int maSK, int maSuat)
+        public static DataTable TyLeLapDayTheoKhuVuc(int maSK, int maSuat, DateTime tuNgay, DateTime denNgay)
         {
-            return BaoCaoDAL.TyLeLapDayTheoKhuVuc(maSK, maSuat);
+            ChuanHoaNgay(ref tuNgay, ref denNgay);
+            return BaoCaoDAL.TyLeLapDayTheoKhuVuc(maSK, maSuat, tuNgay, denNgay);
         }
 
         public static DataTable DanhSachDonVe(int maSK, int maSuat, DateTime tuNgay, DateTime denNgay)

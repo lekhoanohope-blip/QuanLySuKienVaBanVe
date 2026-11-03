@@ -8,8 +8,10 @@ namespace QuanLySuKienVaBanVe.DAL
     /// Truy vấn báo cáo / thống kê. Mọi câu truy vấn đều dùng tham số, không nối chuỗi.
     ///
     /// QUY ƯỚC MẶC ĐỊNH (nhóm có thể đổi, xem README_BaoCao.txt):
-    /// - Doanh thu = SUM(ThanhToan.SoTien) của các đơn có TrangThai = 'DaThanhToan',
+    /// - Doanh thu = SUM(ThanhToan.SoTien) của các đơn có TrangThai IN ('DaThanhToan', 'DaDoi'),
     ///   lọc theo ThanhToan.NgayThanhToan. Tiền hoàn (SoTien âm) tự trừ vào tổng.
+    ///   Đơn 'DaDoi' phải tính vì sau khi đổi vé, tiền gốc vẫn nằm ở đơn cũ (đơn mới
+    ///   chỉ ghi khoản chênh lệch; đổi ngang giá thì đơn mới không có dòng thanh toán).
     /// - Vé đã bán = ChiTietVe có TrangThai = 'HopLe' thuộc đơn 'DaThanhToan',
     ///   lọc theo DonVe.NgayDat.
     /// - Tỷ lệ lấp đầy = số ghế DaBan / tổng số ghế thật trong bảng Ghe
@@ -40,7 +42,7 @@ WITH Pay AS (
     SELECT dv.MaSuat, SUM(tt.SoTien) AS Tien
     FROM DonVe dv
     INNER JOIN ThanhToan tt ON tt.MaDon = dv.MaDon
-    WHERE dv.TrangThai = N'DaThanhToan'
+    WHERE dv.TrangThai IN (N'DaThanhToan', N'DaDoi')
       AND tt.NgayThanhToan >= @tu AND tt.NgayThanhToan < @denSau
     GROUP BY dv.MaSuat
 ),
@@ -117,7 +119,7 @@ SELECT " + nhom + @" AS Nhan,
        COALESCE(SUM(tt.SoTien), 0) AS DoanhThu
 FROM DonVe dv
 INNER JOIN ThanhToan tt ON tt.MaDon = dv.MaDon
-WHERE dv.TrangThai = N'DaThanhToan'
+WHERE dv.TrangThai IN (N'DaThanhToan', N'DaDoi')
   AND tt.NgayThanhToan >= @tu AND tt.NgayThanhToan < @denSau
   AND (@maSuat = 0 OR dv.MaSuat = @maSuat)
   AND (@maSK = 0 OR dv.MaSuat IN (SELECT MaSuat FROM SuatDien WHERE MaSK = @maSK))
@@ -126,8 +128,12 @@ ORDER BY Nhan";
             return Database.ExecuteQuery(sql, ThamSoLoc(maSK, maSuat, tuNgay, denNgay));
         }
 
-        /// <summary>Tỷ lệ lấp đầy ghế theo từng khu vực (cho bảng chi tiết thứ hai).</summary>
-        public static DataTable TyLeLapDayTheoKhuVuc(int maSK, int maSuat)
+        /// <summary>
+        /// Tỷ lệ lấp đầy ghế theo từng khu vực (cho bảng chi tiết thứ hai).
+        /// Chỉ lấy khu vực thuộc suất diễn BẮT ĐẦU trong khoảng lọc, khớp với
+        /// KPI và bảng đơn vé trên cùng màn hình (giống TyLeLapDayBinhQuan).
+        /// </summary>
+        public static DataTable TyLeLapDayTheoKhuVuc(int maSK, int maSuat, DateTime tuNgay, DateTime denNgay)
         {
             const string sql = @"
 SELECT kv.TenKV AS [Khu vực], kv.HangVe AS [Hạng vé],
@@ -141,17 +147,14 @@ SELECT kv.TenKV AS [Khu vực], kv.HangVe AS [Hạng vé],
        CAST(100.0 * COALESCE(SUM(CASE WHEN g.TrangThai = N'DaBan' THEN 1 ELSE 0 END), 0)
             / NULLIF(COUNT(g.MaGhe), 0) AS DECIMAL(5, 2)) AS [Tỷ lệ lấp đầy (%)]
 FROM KhuVuc kv
+INNER JOIN SuatDien sd ON sd.MaSuat = kv.MaSuat
 LEFT JOIN Ghe g ON g.MaKV = kv.MaKV
-WHERE (@maSK = 0 OR kv.MaSuat IN (SELECT MaSuat FROM SuatDien WHERE MaSK = @maSK))
+WHERE (@maSK = 0 OR sd.MaSK = @maSK)
   AND (@maSuat = 0 OR kv.MaSuat = @maSuat)
+  AND sd.ThoiGianBatDau >= @tu AND sd.ThoiGianBatDau < @denSau
 GROUP BY kv.MaKV, kv.TenKV, kv.HangVe, kv.TongSoGhe
 ORDER BY kv.TenKV";
-            SqlParameter[] prm =
-            {
-                new SqlParameter("@maSK", SqlDbType.Int) { Value = maSK },
-                new SqlParameter("@maSuat", SqlDbType.Int) { Value = maSuat }
-            };
-            return Database.ExecuteQuery(sql, prm);
+            return Database.ExecuteQuery(sql, ThamSoLoc(maSK, maSuat, tuNgay, denNgay));
         }
 
         /// <summary>
@@ -230,7 +233,7 @@ ORDER BY kv.TenKV, g.Hang, g.Cot";
 SELECT COALESCE(SUM(tt.SoTien), 0)
 FROM DonVe dv
 INNER JOIN ThanhToan tt ON tt.MaDon = dv.MaDon
-WHERE dv.TrangThai = N'DaThanhToan'
+WHERE dv.TrangThai IN (N'DaThanhToan', N'DaDoi')
   AND tt.NgayThanhToan >= @tu AND tt.NgayThanhToan < @denSau
   AND (@maSuat = 0 OR dv.MaSuat = @maSuat)
   AND (@maSK = 0 OR dv.MaSuat IN (SELECT MaSuat FROM SuatDien WHERE MaSK = @maSK))";

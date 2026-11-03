@@ -69,6 +69,9 @@ namespace QuanLySuKienVaBanVe.GUI
                 bang = bangIn;
                 TaiLieu = new PrintDocument();
                 TaiLieu.DefaultPageSettings.Margins = new Margins(50, 50, 50, 50);
+                // Xem trước chạy hết một lượt in rồi mới hiện: không reset ở đây
+                // thì bấm nút In trên thanh Preview sẽ chỉ in tiêu đề/chân trang.
+                TaiLieu.BeginPrint += (s, e) => { dongHienTai = 0; soTrang = 0; };
                 TaiLieu.PrintPage += InTrang;
             }
 
