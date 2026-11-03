@@ -29,11 +29,12 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
                 {
                     try
                     {
-                        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read))
+                        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        using (var tempImg = Image.FromStream(fs))
                         {
-                            Image img = Image.FromStream(fs);
-                            _cache[filename] = img;
-                            return img;
+                            Bitmap bmp = new Bitmap(tempImg);
+                            _cache[filename] = bmp;
+                            return bmp;
                         }
                     }
                     catch
