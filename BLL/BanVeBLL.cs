@@ -62,18 +62,27 @@ namespace QuanLySuKienVaBanVe.BLL
 
         private static int XuLyKhachHangTrongTransaction(ThongTinDatVeDTO booking, SqlConnection conn, SqlTransaction trans)
         {
-            // 1. Nếu đã có MaKH hợp lệ, kiểm tra tồn tại
+            string sdt = booking.SDT?.Trim() ?? string.Empty;
+
+            // 1. Nếu có MaKH hợp lệ, CHỈ chấp nhận nếu SĐT trong DB khớp chính xác với booking.SDT
+            // (Chống lỗi gán nhầm MaKH cũ khi người dùng thay đổi SĐT trên giao diện)
             if (booking.MaKH.HasValue && booking.MaKH.Value > 0)
             {
                 KhachHangDTO khExist = KhachHangDAL.LayTheoMa(booking.MaKH.Value, conn, trans);
-                if (khExist != null)
+                if (khExist != null && string.Equals(khExist.SDT?.Trim(), sdt, StringComparison.OrdinalIgnoreCase))
                 {
+                    if (!string.IsNullOrWhiteSpace(booking.TenKH) && booking.TenKH.Trim() != khExist.TenKH)
+                    {
+                        khExist.TenKH = booking.TenKH.Trim();
+                        if (!string.IsNullOrWhiteSpace(booking.Email))
+                            khExist.Email = booking.Email.Trim();
+                        KhachHangDAL.Sua(khExist, conn, trans);
+                    }
                     return khExist.MaKH;
                 }
             }
 
             // 2. Tra cứu theo SĐT nếu có
-            string sdt = booking.SDT?.Trim() ?? string.Empty;
             if (!string.IsNullOrEmpty(sdt))
             {
                 KhachHangDTO khExistByPhone = KhachHangDAL.LayTheoSDT(sdt, conn, trans);

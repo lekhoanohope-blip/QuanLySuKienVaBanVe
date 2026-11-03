@@ -14,6 +14,12 @@ namespace QuanLySuKienVaBanVe.BLL
             return KhuVucDAL.LayDanhSachTheoSuat(maSuat);
         }
 
+        public static int LayConLaiTheoKhuVuc(int maKV)
+        {
+            if (maKV <= 0) return 0;
+            return KhuVucDAL.LayConLaiTheoKhuVuc(maKV);
+        }
+
         public static KhuVucDTO LayTheoMa(int maKV)
         {
             if (maKV <= 0) return null;
