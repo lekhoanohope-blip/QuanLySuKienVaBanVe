@@ -383,14 +383,22 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (currentFormChild != null)
             {
-                currentFormChild.Close();
-                if (!currentFormChild.IsDisposed)
+                var oldForm = currentFormChild;
+                currentFormChild = null;
+                pnlContent.Controls.Remove(oldForm);
+                oldForm.Close();
+                if (!oldForm.IsDisposed)
                 {
-                    childForm.Dispose();
-                    return;
+                    oldForm.Dispose();
                 }
             }
             if (pnlDashboard != null) pnlDashboard.Visible = false;
+            // Đổi màu menu và vẽ lại ngay TRƯỚC khi Show: Show() chạy Load của
+            // form con, nếu Load nặng thì menu cũ vẫn xanh suốt thời gian đó.
+            ResetButtonColors();
+            if (btnActive != null) { btnActive.FillColor = Color.FromArgb(16, 185, 129); btnActive.ForeColor = Color.White; }
+            Update();
+
             currentFormChild = childForm;
             childForm.TopLevel = false;
             childForm.FormBorderStyle = FormBorderStyle.None;
@@ -399,9 +407,6 @@ namespace QuanLySuKienVaBanVe.GUI
             childForm.BringToFront();
             childForm.Show();
             resizeBox.BringToFront();
-
-            ResetButtonColors();
-            if (btnActive != null) { btnActive.FillColor = Color.FromArgb(16, 185, 129); btnActive.ForeColor = Color.White; }
         }
 
         private void ResetButtonColors()
