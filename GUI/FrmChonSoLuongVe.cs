@@ -26,6 +26,14 @@ namespace QuanLySuKienVaBanVe.GUI
             _maxQty = Math.Max(1, Math.Min(_conLai > 0 ? _conLai : 1, maxChoPhep));
 
             this.Load += FrmChonSoLuongVe_Load;
+            this.AcceptButton = btnTiepTuc;
+            this.KeyPreview = true;
+            this.KeyDown += (s, e) => {
+                if (e.KeyCode == Keys.Escape) {
+                    this.DialogResult = DialogResult.Cancel;
+                    this.Close();
+                }
+            };
         }
 
         private void FrmChonSoLuongVe_Load(object sender, EventArgs e)
@@ -64,6 +72,12 @@ namespace QuanLySuKienVaBanVe.GUI
                 _soLuong++;
                 UpdateUi();
             }
+        }
+
+        private void lblChonKhuVucKhac_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            this.DialogResult = DialogResult.Cancel;
+            this.Close();
         }
 
         private void lblChonKhuVucKhac_Click(object sender, EventArgs e)

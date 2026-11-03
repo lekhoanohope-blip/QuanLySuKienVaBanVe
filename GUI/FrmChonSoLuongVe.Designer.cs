@@ -18,7 +18,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             this.pnlCard = new Guna.UI2.WinForms.Guna2Panel();
             this.btnTiepTuc = new Guna.UI2.WinForms.Guna2Button();
-            this.lblChonKhuVucKhac = new System.Windows.Forms.Label();
+            this.lblChonKhuVucKhac = new System.Windows.Forms.LinkLabel();
             this.pnlGiftBox = new Guna.UI2.WinForms.Guna2Panel();
             this.lblGiftContent = new System.Windows.Forms.Label();
             this.lblGiftIcon = new System.Windows.Forms.Label();
@@ -83,16 +83,20 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // lblChonKhuVucKhac
             // 
+            this.lblChonKhuVucKhac.ActiveLinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(5)))), ((int)(((byte)(150)))), ((int)(((byte)(105)))));
             this.lblChonKhuVucKhac.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.lblChonKhuVucKhac.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F, System.Drawing.FontStyle.Underline);
-            this.lblChonKhuVucKhac.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.lblChonKhuVucKhac.Font = new System.Drawing.Font("Segoe UI Semibold", 9.5F);
+            this.lblChonKhuVucKhac.LinkBehavior = System.Windows.Forms.LinkBehavior.HoverUnderline;
+            this.lblChonKhuVucKhac.LinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.lblChonKhuVucKhac.Location = new System.Drawing.Point(24, 258);
             this.lblChonKhuVucKhac.Name = "lblChonKhuVucKhac";
             this.lblChonKhuVucKhac.Size = new System.Drawing.Size(412, 24);
             this.lblChonKhuVucKhac.TabIndex = 6;
+            this.lblChonKhuVucKhac.TabStop = true;
             this.lblChonKhuVucKhac.Text = "Chọn khu vực khác";
             this.lblChonKhuVucKhac.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.lblChonKhuVucKhac.Click += new System.EventHandler(this.lblChonKhuVucKhac_Click);
+            this.lblChonKhuVucKhac.VisitedLinkColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.lblChonKhuVucKhac.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lblChonKhuVucKhac_LinkClicked);
             // 
             // pnlGiftBox
             // 
@@ -289,7 +293,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private Guna.UI2.WinForms.Guna2Panel pnlGiftBox;
         private System.Windows.Forms.Label lblGiftIcon;
         private System.Windows.Forms.Label lblGiftContent;
-        private System.Windows.Forms.Label lblChonKhuVucKhac;
+        private System.Windows.Forms.LinkLabel lblChonKhuVucKhac;
         private Guna.UI2.WinForms.Guna2Button btnTiepTuc;
     }
 }
