@@ -17,6 +17,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmKhachHang()
         {
             InitializeComponent();
+            HieuUng.GanChoForm(this);
             DoubleBuffered = true;
             ManagementFormLayout.Attach(pnlHeader, txtTimKiem, btnThem, btnSua, btnXoa);
         }

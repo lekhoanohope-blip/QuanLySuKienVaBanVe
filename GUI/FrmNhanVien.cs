@@ -18,6 +18,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmNhanVien()
         {
             InitializeComponent();
+            HieuUng.GanChoForm(this);
             DoubleBuffered = true;
             foreach (Control control in new Control[] { txtTimKiem, btnThem, btnSua, btnKhoa, btnXoa })
                 control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
