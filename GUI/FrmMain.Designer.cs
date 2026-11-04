@@ -1,4 +1,4 @@
-﻿namespace QuanLySuKienVaBanVe.GUI
+namespace QuanLySuKienVaBanVe.GUI
 {
     partial class FrmMain
     {
@@ -299,7 +299,7 @@
             // 
             // picCrowd
             // 
-            this.picCrowd.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.picCrowd.Dock = System.Windows.Forms.DockStyle.None;
             this.picCrowd.Image = ((System.Drawing.Image)(resources.GetObject("picCrowd.Image")));
             this.picCrowd.Location = new System.Drawing.Point(0, 850);
             this.picCrowd.Margin = new System.Windows.Forms.Padding(4);

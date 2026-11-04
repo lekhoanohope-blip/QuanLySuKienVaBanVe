@@ -1,9 +1,7 @@
 using System;
-using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
-using System.Windows.Forms.DataVisualization.Charting;
 using QuanLySuKienVaBanVe.BLL;
 
 namespace QuanLySuKienVaBanVe.GUI
@@ -134,18 +132,20 @@ namespace QuanLySuKienVaBanVe.GUI
             pnlSidebar.AutoScroll = true;
             btnDangXuat.Dock = DockStyle.None;
             btnCaiDat.Dock = DockStyle.None;
-            // Cập nhật mảng này để bao gồm tất cả các nút có thể hiển thị
-            Control[] navButtons = DanhSachNutDieuHuong();
+            if (picCrowd != null) picCrowd.Dock = DockStyle.None;
+
+            var navButtons = DanhSachNutDieuHuong();
             int navBottom = Px(140) + navButtons.Count(b => b != null && b.Visible) * Px(60) + Px(10);
-            // Chừa 150px dưới đáy cho ảnh đám đông cố định, nút dưới cùng không đè lên ảnh.
-            int footerH = Px(150);
+            int footerH = (picCrowd != null && picCrowd.Height > 0) ? picCrowd.Height : Px(150);
             int linkTop = Math.Max(navBottom, pnlSidebar.ClientSize.Height - Px(140) - footerH);
-            pnlSidebar.AutoScrollMinSize = new Size(0, linkTop + Px(140));
+            int totalContentHeight = linkTop + Px(140) + footerH;
+
+            pnlSidebar.AutoScrollMinSize = new Size(0, totalContentHeight);
             int viewportWidth = sidebarWidth -
-                (linkTop + Px(140) > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
+                (totalContentHeight > pnlSidebar.ClientSize.Height ? SystemInformation.VerticalScrollBarWidth : 0);
             int currentY = Px(140);
 
-            foreach (Control btn in navButtons)
+            foreach (var btn in navButtons)
             {
                 if (btn != null)
                 {
@@ -168,6 +168,11 @@ namespace QuanLySuKienVaBanVe.GUI
             else
             {
                 btnDangXuat.SetBounds(0, linkTop + Px(70), viewportWidth, Px(70));
+            }
+
+            if (picCrowd != null)
+            {
+                picCrowd.SetBounds(0, linkTop + Px(140), viewportWidth, footerH);
             }
 
             bool compact = sidebarWidth < Px(220);
@@ -208,9 +213,9 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnActive != null) { btnActive.FillColor = Color.FromArgb(20, 184, 166); btnActive.ForeColor = Color.White; }
         }
 
-        private Control[] DanhSachNutDieuHuong()
+        private Guna.UI2.WinForms.Guna2Button[] DanhSachNutDieuHuong()
         {
-            return new Control[] {
+            return new Guna.UI2.WinForms.Guna2Button[] {
                 btnSuKien, btnSuatDien, btnKhachHang, btnTaiKhoan, btnBaoCao,
                 btnNhatKy, btnBanVe, btnDonVe
             };
@@ -218,11 +223,11 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void MoMucDauTien()
         {
-            foreach (Control nut in DanhSachNutDieuHuong())
+            foreach (var nut in DanhSachNutDieuHuong())
             {
                 if (nut != null && nut.Visible)
                 {
-                    ((Guna.UI2.WinForms.Guna2Button)nut).PerformClick();
+                    nut.PerformClick();
                     return;
                 }
             }
