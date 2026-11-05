@@ -222,8 +222,12 @@ namespace QuanLySuKienVaBanVe.BLL
                 attempts++;
                 if (attempts > 50)
                 {
-                    code = string.Format("SK{0:D2}-SD{1:D2}-{2}-{3}-{4}", maSK, maSuat, (maGheHienThi ?? "SEAT").Trim().ToUpper(), DateTime.Now.Ticks % 10000, randomNum);
-                    break;
+                    string uniqueSuffix = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpper();
+                    code = string.Format("SK{0:D2}-SD{1:D2}-{2}-{3}", maSK, maSuat, (maGheHienThi ?? "SEAT").Trim().ToUpper(), uniqueSuffix);
+                    if (!ChiTietVeDAL.KiemTraMaVeCodeTonTai(code, conn, tran))
+                    {
+                        break;
+                    }
                 }
             } while (ChiTietVeDAL.KiemTraMaVeCodeTonTai(code, conn, tran));
 

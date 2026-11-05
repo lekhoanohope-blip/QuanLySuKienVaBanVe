@@ -47,7 +47,7 @@ namespace QuanLySuKienVaBanVe.DAL
                         // 2. Sửa lỗi gán sai trước đó và gán MaVung cho dữ liệu mẫu cũ theo tên cụ thể
                         string updateMaVungSql = @"
                             -- Sửa lỗi những bản ghi VIP B từng bị gán nhầm thành VIP_A do điều kiện %Khu VIP% cũ
-                            UPDATE KhuVuc SET MaVung = 'VIP_B' WHERE MaVung = 'VIP_A' AND (TenKV LIKE '%VIP B%' OR TenKV LIKE '%VIP_B%');
+                            -- Giữ nguyên MaVung nếu Admin đã cấu hình
 
                             -- Khớp tên cụ thể và chính xác trước; dữ liệu không rõ ràng giữ nguyên NULL để người dùng tự cấu hình
                             UPDATE KhuVuc SET MaVung = 'VIP_B' WHERE MaVung IS NULL AND (TenKV LIKE '%VIP B%' OR TenKV LIKE '%VIP_B%');
@@ -56,19 +56,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             UPDATE KhuVuc SET MaVung = 'GA_A'  WHERE MaVung IS NULL AND (TenKV LIKE '%GA A%'  OR TenKV LIKE '%GA_A%');
                             UPDATE KhuVuc SET MaVung = 'CAT'   WHERE MaVung IS NULL AND (TenKV LIKE '%CAT %'  OR TenKV LIKE '%CAT_%' OR TenKV = 'CAT');
 
-                            -- Gán màu mặc định cho các vùng nếu chưa có màu
-                            UPDATE KhuVuc SET MauSac = '#D97706' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_A' OR TenKV LIKE '%VIP A%');
-                            UPDATE KhuVuc SET MauSac = '#CA8A04' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_B' OR TenKV LIKE '%VIP B%');
-                            UPDATE KhuVuc SET MauSac = '#DC2626' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_C' OR TenKV LIKE '%VIP C%');
-                            UPDATE KhuVuc SET MauSac = '#DB2777' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'VIP_D' OR TenKV LIKE '%VIP D%');
-                            UPDATE KhuVuc SET MauSac = '#2563EB' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_A' OR TenKV LIKE '%GA A%');
-                            UPDATE KhuVuc SET MauSac = '#0D9488' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_B' OR TenKV LIKE '%GA B%');
-                            UPDATE KhuVuc SET MauSac = '#6366F1' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_C' OR TenKV LIKE '%GA C%');
-                            UPDATE KhuVuc SET MauSac = '#0284C7' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_D' OR TenKV LIKE '%GA D%');
-                            UPDATE KhuVuc SET MauSac = '#059669' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'GA_E' OR TenKV LIKE '%GA E%');
-                            UPDATE KhuVuc SET MauSac = '#7C3AED' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'CAT' OR MaVung = 'CAT_A' OR TenKV LIKE '%CAT A%' OR TenKV = 'CAT');
-                            UPDATE KhuVuc SET MauSac = '#78350F' WHERE (MauSac IS NULL OR MauSac = '') AND (MaVung = 'CAT_B' OR TenKV LIKE '%CAT B%');
-                            UPDATE KhuVuc SET MauSac = '#D97706' WHERE MauSac IS NULL OR MauSac = '';
+                            
                         ";
                         using (SqlCommand cmd = new SqlCommand(updateMaVungSql, conn))
                         {
@@ -149,23 +137,11 @@ namespace QuanLySuKienVaBanVe.DAL
             {
                 conn.Open();
 
-                // Giải phóng các ghế đang giữ quá hạn (> 10 phút) của suất diễn này trước khi đếm số ghế trống
-                string cleanQuery = @"
-                    UPDATE g
-                    SET g.TrangThai = N'Trong', g.ThoiGianGiu = NULL, g.MaPhienGiu = NULL
-                    FROM Ghe g
-                    INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
-                    WHERE kv.MaSuat = @MaSuat
-                      AND g.TrangThai = N'DangGiu'
-                      AND (g.ThoiGianGiu IS NULL OR DATEDIFF(SECOND, g.ThoiGianGiu, GETDATE()) > 600);";
-                using (SqlCommand cmdClean = new SqlCommand(cleanQuery, conn))
-                {
-                    cmdClean.Parameters.AddWithValue("@MaSuat", maSuat);
-                    cmdClean.ExecuteNonQuery();
-                }
+                // Giải phóng các ghế đang giữ quá hạn (> 10 phút) của suất diễn này
+                GheDAL.GiaiPhongGheQuaHanTheoSuat(maSuat);
 
                 string query = @"
-                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '#D97706') AS MauSac,
+                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '') AS MauSac,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DangGiu') as DangGiu,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai
@@ -192,17 +168,8 @@ namespace QuanLySuKienVaBanVe.DAL
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 conn.Open();
-                string cleanQuery = @"
-                    UPDATE Ghe
-                    SET TrangThai = N'Trong', ThoiGianGiu = NULL, MaPhienGiu = NULL
-                    WHERE MaKV = @MaKV
-                      AND TrangThai = N'DangGiu'
-                      AND (ThoiGianGiu IS NULL OR DATEDIFF(SECOND, ThoiGianGiu, GETDATE()) > 600);";
-                using (SqlCommand cmdClean = new SqlCommand(cleanQuery, conn))
-                {
-                    cmdClean.Parameters.AddWithValue("@MaKV", maKV);
-                    cmdClean.ExecuteNonQuery();
-                }
+                // Giải phóng các ghế đang giữ quá hạn (> 10 phút) của khu vực này
+                GheDAL.GiaiPhongGheQuaHanTheoKhuVuc(maKV);
 
                 string query = "SELECT COUNT(*) FROM Ghe WHERE MaKV = @MaKV AND TrangThai = N'Trong'";
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -220,7 +187,7 @@ namespace QuanLySuKienVaBanVe.DAL
             using (SqlConnection conn = DatabaseHelper.GetConnection())
             {
                 string query = @"
-                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '#D97706') AS MauSac,
+                    SELECT kv.MaKV, kv.MaSuat, ISNULL(kv.MaVung, '') AS MaVung, kv.TenKV, kv.HangVe, kv.TongSoGhe, kv.GiaVe, kv.ChoPhepBanVe, ISNULL(kv.MauSac, '') AS MauSac,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DaBan') as DaBan,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'DangGiu') as DangGiu,
                            (SELECT COUNT(*) FROM Ghe g WHERE g.MaKV = kv.MaKV AND g.TrangThai = N'Trong') as ConLai

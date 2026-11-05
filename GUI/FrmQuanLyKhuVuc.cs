@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using QuanLySuKienVaBanVe.BLL;
 using QuanLySuKienVaBanVe.DTO;
+using QuanLySuKienVaBanVe.GUI.Helpers;
 using Guna.UI2.WinForms;
 
 namespace QuanLySuKienVaBanVe.GUI
@@ -563,7 +564,7 @@ namespace QuanLySuKienVaBanVe.GUI
                     // Vùng đã cấu hình: tô màu theo cấu hình Admin (MauSac) hoặc mặc định theo hạng vé
                     string hangVe = matchedRow["HangVe"]?.ToString() ?? "VIP";
                     string hexColor = matchedRow.Table.Columns.Contains("MauSac") && matchedRow["MauSac"] != DBNull.Value ? matchedRow["MauSac"].ToString() : "";
-                    Color baseColor = !string.IsNullOrWhiteSpace(hexColor) ? ColorTranslator.FromHtml(hexColor) : GetCategoryColor(hangVe);
+                    Color baseColor = ZoneColorHelper.Resolve(hexColor, matchedRow["MaVung"]?.ToString(), GetCategoryColor(hangVe));
                     decimal gia = Convert.ToDecimal(matchedRow["GiaVe"]);
                     int conLai = Convert.ToInt32(matchedRow["ConLai"]);
                     bool choPhep = Convert.ToBoolean(matchedRow["ChoPhepBanVe"]);
@@ -1016,10 +1017,19 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(txtMauSac.Text) && !ZoneColorHelper.IsValidHex(txtMauSac.Text))
+            {
+                MessageBox.Show("Mã màu không hợp lệ! Vui lòng nhập định dạng #RRGGBB (ví dụ: #D97706) hoặc dùng nút Chọn màu.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtMauSac.Focus();
+                return;
+            }
+
             int maSuat = _currentMaSuat.Value;
             bool choPhepBanVe = toggleBanVe.Checked;
 
-            string mauSacHex = string.IsNullOrWhiteSpace(txtMauSac.Text) ? "#D97706" : txtMauSac.Text.Trim();
+            string mauSacHex = string.IsNullOrWhiteSpace(txtMauSac.Text)
+                ? ZoneColorHelper.DefaultHexFor(maVung)
+                : txtMauSac.Text.Trim();
             KhuVucDTO kv = new KhuVucDTO
             {
                 MaKV = _editingMaKV ?? 0,
@@ -1327,11 +1337,14 @@ namespace QuanLySuKienVaBanVe.GUI
             using (ColorDialog cd = new ColorDialog())
             {
                 cd.FullOpen = true;
-                try
+                if (ZoneColorHelper.IsValidHex(txtMauSac.Text))
                 {
-                    cd.Color = ColorTranslator.FromHtml(txtMauSac.Text.Trim());
+                    try
+                    {
+                        cd.Color = ColorTranslator.FromHtml(txtMauSac.Text.Trim());
+                    }
+                    catch { }
                 }
-                catch { }
 
                 if (cd.ShowDialog() == DialogResult.OK)
                 {
@@ -1345,15 +1358,17 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void UpdateColorPreview()
         {
-            try
+            string hex = txtMauSac.Text.Trim();
+            if (ZoneColorHelper.IsValidHex(hex))
             {
-                string hex = txtMauSac.Text.Trim();
-                if (!string.IsNullOrWhiteSpace(hex))
+                try
                 {
                     pnlMauSacPreview.FillColor = ColorTranslator.FromHtml(hex);
+                    return;
                 }
+                catch { }
             }
-            catch { }
+            pnlMauSacPreview.FillColor = Color.Transparent;
         }
 
         private string GetDefaultColorForCode(string code)

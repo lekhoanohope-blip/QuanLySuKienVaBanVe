@@ -47,11 +47,11 @@ GO
 DECLARE @MaSuat1 INT = (SELECT TOP 1 MaSuat FROM SuatDien);
 IF @MaSuat1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM KhuVuc WHERE MaSuat = @MaSuat1)
 BEGIN
-    INSERT INTO KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe)
-    VALUES (@MaSuat1, N'Khu VIP Khán Đài Trực Diện', N'VIP', 500000, 20);
+    INSERT INTO KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe)
+    VALUES (@MaSuat1, 'VIP_A', N'Khu VIP Khán Đài Trực Diện', N'VIP', 500000, 20);
 
-    INSERT INTO KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe)
-    VALUES (@MaSuat1, N'Khu Thường Tiêu Chuẩn', N'Thuong', 250000, 30);
+    INSERT INTO KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe)
+    VALUES (@MaSuat1, 'CAT', N'Khu Thường Tiêu Chuẩn', N'Thuong', 250000, 30);
 END
 GO
 

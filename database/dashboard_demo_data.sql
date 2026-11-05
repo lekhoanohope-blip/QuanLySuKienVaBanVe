@@ -133,11 +133,11 @@ BEGIN TRY
 
             SET @VipPrice = 300000 + (@EventNo % 5) * 75000 + @ShowNo * 25000;
             SET @StandardPrice = @VipPrice / 2;
-            INSERT dbo.KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe)
-            VALUES (@ShowId, N'[DEMO] Khu VIP', N'VIP', @VipPrice, 15);
+            INSERT dbo.KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe)
+            VALUES (@ShowId, 'VIP_A', N'[DEMO] Khu VIP', N'VIP', @VipPrice, 15);
             SET @VipArea = CONVERT(INT, SCOPE_IDENTITY());
-            INSERT dbo.KhuVuc (MaSuat, TenKV, HangVe, GiaVe, TongSoGhe)
-            VALUES (@ShowId, N'[DEMO] Khu tiêu chuẩn', N'Thuong', @StandardPrice, 15);
+            INSERT dbo.KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe)
+            VALUES (@ShowId, 'CAT', N'[DEMO] Khu tiêu chuẩn', N'Thuong', @StandardPrice, 15);
             SET @StandardArea = CONVERT(INT, SCOPE_IDENTITY());
 
             SET @SeatNo = 1;

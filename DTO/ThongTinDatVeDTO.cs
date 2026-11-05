@@ -33,6 +33,12 @@ namespace QuanLySuKienVaBanVe.DTO
         public int SoLuong { get; set; } = 1;
         public decimal TongTien => GiaVe * SoLuong;
 
+        // Tổng tiền nhân viên đã báo khách và xác nhận tại giao diện
+        public decimal TongTienDaXacNhan { get; set; }
+
+        // Mã phiên giữ ghế duy nhất (chống giải phóng hoặc bán nhầm ghế của quầy khác)
+        public Guid MaPhienGiu { get; set; } = Guid.Empty;
+
         // Danh sách mã ghế thực tế trong cơ sở dữ liệu
         public List<int> DanhSachMaGhe { get; set; } = new List<int>();
 
@@ -50,6 +56,9 @@ namespace QuanLySuKienVaBanVe.DTO
         public string SDT { get; set; }
         public string Email { get; set; }
         public string PhuongThucThanhToan { get; set; } = "TienMat";
+
+        // Cờ cho phép cập nhật tên khách hàng khi SĐT khớp khách cũ trong DB (được xác nhận ở UI)
+        public bool ChoPhepCapNhatTen { get; set; } = false;
 
         // Thời gian giữ ghế còn lại (giây), mặc định 600s = 10 phút
         public int SoGiayConLai { get; set; } = 600;

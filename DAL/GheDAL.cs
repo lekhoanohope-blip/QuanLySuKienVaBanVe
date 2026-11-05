@@ -15,7 +15,7 @@ namespace QuanLySuKienVaBanVe.DAL
         private static readonly object _schemaLock = new object();
 
         /// <summary>
-        /// Đảm bảo bảng Ghe có cột ThoiGianGiu (Idempotent).
+        /// Đảm bảo bảng Ghe có cột ThoiGianGiu và MaPhienGiu (Idempotent).
         /// </summary>
         public static void EnsureSchema()
         {
@@ -41,12 +41,25 @@ namespace QuanLySuKienVaBanVe.DAL
                         {
                             cmd.ExecuteNonQuery();
                         }
+
+                        // Xác nhận lại rằng cả hai cột đã thực sự tồn tại
+                        string verifySql = @"
+                            SELECT CASE WHEN COL_LENGTH('dbo.Ghe', 'ThoiGianGiu') IS NOT NULL 
+                                         AND COL_LENGTH('dbo.Ghe', 'MaPhienGiu') IS NOT NULL THEN 1 ELSE 0 END;";
+                        using (SqlCommand cmdVerify = new SqlCommand(verifySql, conn))
+                        {
+                            object ok = cmdVerify.ExecuteScalar();
+                            if (ok == null || Convert.ToInt32(ok) != 1)
+                            {
+                                throw new InvalidOperationException("Thiếu cột Ghe.ThoiGianGiu hoặc Ghe.MaPhienGiu. Vui lòng thực thi migration database/migrate_tv3_banve.sql!");
+                            }
+                        }
                     }
                     _schemaEnsured = true;
                 }
-                catch
+                catch (SqlException sqlEx)
                 {
-                    // Tránh crash nếu không có quyền DDL
+                    throw new InvalidOperationException("Không thể tự động cập nhật cấu trúc bảng Ghe (thiếu quyền DDL). Vui lòng chạy database/migrate_tv3_banve.sql: " + sqlEx.Message, sqlEx);
                 }
             }
         }
@@ -72,6 +85,28 @@ namespace QuanLySuKienVaBanVe.DAL
         }
 
         /// <summary>
+        /// Tự động giải phóng các ghế đang giữ quá hạn (> 10 phút) của toàn bộ suất diễn về 'Trong'.
+        /// </summary>
+        public static int GiaiPhongGheQuaHanTheoSuat(int maSuat)
+        {
+            EnsureSchema();
+            string query = @"
+                UPDATE g
+                SET g.TrangThai = N'Trong', g.ThoiGianGiu = NULL, g.MaPhienGiu = NULL
+                FROM Ghe g
+                INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
+                WHERE kv.MaSuat = @MaSuat
+                  AND g.TrangThai = N'DangGiu'
+                  AND (g.ThoiGianGiu IS NULL OR DATEDIFF(SECOND, g.ThoiGianGiu, GETDATE()) > @MaxSeconds);";
+
+            SqlParameter[] parameters = {
+                new SqlParameter("@MaSuat", SqlDbType.Int) { Value = maSuat },
+                new SqlParameter("@MaxSeconds", SqlDbType.Int) { Value = ThoiGianGiuToiDaGiay }
+            };
+            return Database.ExecuteNonQuery(query, parameters);
+        }
+
+        /// <summary>
         /// Lấy danh sách ghế của một khu vực (đã tự động nhả ghế quá hạn).
         /// </summary>
         public static DataTable LayDanhSachTheoKhuVuc(int maKV)
@@ -80,7 +115,7 @@ namespace QuanLySuKienVaBanVe.DAL
             GiaiPhongGheQuaHanTheoKhuVuc(maKV);
 
             string query = @"
-                SELECT g.MaGhe, g.MaKV, g.Hang, g.Cot, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu,
+                SELECT g.MaGhe, g.MaKV, g.Hang, g.Cot, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu, g.MaPhienGiu,
                        kv.TenKV, kv.HangVe, kv.GiaVe, kv.ChoPhepBanVe
                 FROM Ghe g
                 INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
@@ -95,11 +130,13 @@ namespace QuanLySuKienVaBanVe.DAL
 
         /// <summary>
         /// Giữ ghế tạm thời bằng Transaction ngắn + khóa dòng vi-mô WITH (UPDLOCK, ROWLOCK).
+        /// Trả về mã phiên giữ ghế maPhienGiu nếu thành công.
         /// </summary>
-        public static bool GiuGheTamThoi(int maGhe, out string errorMessage)
+        public static bool GiuGheTamThoi(int maGhe, out Guid maPhienGiu, out string errorMessage)
         {
             EnsureSchema();
             errorMessage = string.Empty;
+            maPhienGiu = Guid.Empty;
 
             using (SqlConnection conn = Database.GetConnection())
             {
@@ -109,7 +146,7 @@ namespace QuanLySuKienVaBanVe.DAL
                     try
                     {
                         string selectSql = @"
-                            SELECT g.MaGhe, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu,
+                            SELECT g.MaGhe, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu, g.MaPhienGiu,
                                    kv.ChoPhepBanVe, sd.MaSuat, sd.TrangThai AS TrangThaiSuat, sd.ThoiGianBatDau
                             FROM Ghe g WITH (UPDLOCK, ROWLOCK)
                             INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
@@ -170,21 +207,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             return false;
                         }
 
-                        int maSuat = Convert.ToInt32(row["MaSuat"]);
                         Guid phienGiuId = Guid.NewGuid();
-
-                        string checkPhienSql = @"
-                            IF OBJECT_ID('dbo.PhienGiuGhe') IS NOT NULL
-                            BEGIN
-                                INSERT INTO PhienGiuGhe (MaPhienGiu, MaSuat, MaTK, BatDauUtc, HetHanUtc, TrangThai)
-                                VALUES (@MaPhienGiu, @MaSuat, 1, SYSUTCDATETIME(), DATEADD(SECOND, 600, SYSUTCDATETIME()), N'HoatDong');
-                            END";
-                        using (SqlCommand cmdPhien = new SqlCommand(checkPhienSql, conn, trans))
-                        {
-                            cmdPhien.Parameters.AddWithValue("@MaPhienGiu", phienGiuId);
-                            cmdPhien.Parameters.AddWithValue("@MaSuat", maSuat);
-                            cmdPhien.ExecuteNonQuery();
-                        }
 
                         string updateSql = @"
                             UPDATE Ghe
@@ -207,6 +230,7 @@ namespace QuanLySuKienVaBanVe.DAL
                         }
 
                         trans.Commit();
+                        maPhienGiu = phienGiuId;
                         return true;
                     }
                     catch (Exception ex)
@@ -220,16 +244,17 @@ namespace QuanLySuKienVaBanVe.DAL
         }
 
         /// <summary>
-        /// Thuật toán phân bổ và giữ ghế tự động theo quy tắc nghiệp vụ:
-        /// "Thanh toán càng sớm, ghế càng gần sân khấu: Hệ thống sẽ tự động xếp chỗ ưu tiên
-        /// từ các hàng ghế đầu tiên (gần sân khấu nhất) lùi dần về sau theo thứ tự thời gian giao dịch".
+        /// Thuật toán phân bổ và giữ ghế tự động theo quy tắc:
+        /// Ưu tiên từ các hàng ghế đầu tiên (gần sân khấu nhất) theo thứ tự thời gian giao dịch.
         /// Sử dụng khóa vi-mô WITH (UPDLOCK, ROWLOCK) để chống chọn trùng giữa các quầy.
+        /// Trả về mã phiên giữ ghế maPhienGiu duy nhất.
         /// </summary>
-        public static bool GiuGheTuDongTheoKhuVuc(int maKV, int soLuong, out List<GheDTO> dsGheGiu, out string errorMessage)
+        public static bool GiuGheTuDongTheoKhuVuc(int maKV, int soLuong, out List<GheDTO> dsGheGiu, out Guid maPhienGiu, out string errorMessage)
         {
             EnsureSchema();
             dsGheGiu = new List<GheDTO>();
             errorMessage = string.Empty;
+            maPhienGiu = Guid.Empty;
 
             if (soLuong <= 0)
             {
@@ -260,7 +285,6 @@ namespace QuanLySuKienVaBanVe.DAL
                         }
 
                         // 2. Đọc và đặt khóa UPDLOCK, ROWLOCK trên TOP (@SoLuong) ghế gần sân khấu nhất
-                        // Sắp xếp theo hàng A -> Z (độ dài hàng và chữ cái), sau đó theo số cột 1..N
                         string selectSql = @"
                             SELECT TOP (@SoLuong)
                                    g.MaGhe, g.MaKV, g.Hang, g.Cot, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu,
@@ -304,7 +328,7 @@ namespace QuanLySuKienVaBanVe.DAL
                             return false;
                         }
 
-                        // 3. Khóa giữ các ghế đã chọn sang 'DangGiu' kèm ThoiGianGiu = GETDATE()
+                        // 3. Khóa giữ các ghế đã chọn sang 'DangGiu' kèm ThoiGianGiu = GETDATE() và MaPhienGiu
                         List<int> seatIds = new List<int>();
                         foreach (DataRow r in dt.Rows)
                         {
@@ -313,34 +337,28 @@ namespace QuanLySuKienVaBanVe.DAL
                             dsGheGiu.Add(new GheDTO(r));
                         }
 
-                        int maSuat = Convert.ToInt32(firstRow["MaSuat"]);
                         Guid phienGiuId = Guid.NewGuid();
 
-                        string checkPhienSql = @"
-                            IF OBJECT_ID('dbo.PhienGiuGhe') IS NOT NULL
-                            BEGIN
-                                INSERT INTO PhienGiuGhe (MaPhienGiu, MaSuat, MaTK, BatDauUtc, HetHanUtc, TrangThai)
-                                VALUES (@MaPhienGiu, @MaSuat, 1, SYSUTCDATETIME(), DATEADD(SECOND, @MaxSeconds, SYSUTCDATETIME()), N'HoatDong');
-                            END";
-                        using (SqlCommand cmdPhien = new SqlCommand(checkPhienSql, conn, trans))
+                        var updateParams = new List<SqlParameter>();
+                        var inParams = new List<string>();
+                        for (int i = 0; i < seatIds.Count; i++)
                         {
-                            cmdPhien.Parameters.AddWithValue("@MaPhienGiu", phienGiuId);
-                            cmdPhien.Parameters.AddWithValue("@MaSuat", maSuat);
-                            cmdPhien.Parameters.AddWithValue("@MaxSeconds", ThoiGianGiuToiDaGiay);
-                            cmdPhien.ExecuteNonQuery();
+                            string p = "@id" + i;
+                            inParams.Add(p);
+                            updateParams.Add(new SqlParameter(p, SqlDbType.Int) { Value = seatIds[i] });
                         }
+                        updateParams.Add(new SqlParameter("@MaPhienGiu", SqlDbType.UniqueIdentifier) { Value = phienGiuId });
 
-                        string inClause = string.Join(",", seatIds);
                         string updateSql = $@"
                             UPDATE Ghe
                             SET TrangThai = N'DangGiu',
                                 ThoiGianGiu = GETDATE(),
                                 MaPhienGiu = @MaPhienGiu
-                            WHERE MaGhe IN ({inClause});";
+                            WHERE MaGhe IN ({string.Join(",", inParams)});";
 
                         using (SqlCommand cmdUpdate = new SqlCommand(updateSql, conn, trans))
                         {
-                            cmdUpdate.Parameters.AddWithValue("@MaPhienGiu", phienGiuId);
+                            cmdUpdate.Parameters.AddRange(updateParams.ToArray());
                             int affected = cmdUpdate.ExecuteNonQuery();
                             if (affected != soLuong)
                             {
@@ -351,6 +369,7 @@ namespace QuanLySuKienVaBanVe.DAL
                         }
 
                         trans.Commit();
+                        maPhienGiu = phienGiuId;
                         return true;
                     }
                     catch (Exception ex)
@@ -364,78 +383,108 @@ namespace QuanLySuKienVaBanVe.DAL
         }
 
         /// <summary>
-        /// Giải phóng 1 ghế đang giữ tạm về 'Trong'.
+        /// Giải phóng 1 ghế đang giữ tạm về 'Trong' (chỉ giải phóng nếu thuộc đúng phiên giữ).
         /// </summary>
-        public static bool GiaiPhongGhe(int maGhe)
+        public static bool GiaiPhongGhe(int maGhe, Guid maPhienGiu)
         {
+            if (maGhe <= 0 || maPhienGiu == Guid.Empty) return false;
             EnsureSchema();
             string query = @"
                 UPDATE Ghe
                 SET TrangThai = N'Trong', ThoiGianGiu = NULL, MaPhienGiu = NULL
-                WHERE MaGhe = @MaGhe AND TrangThai = N'DangGiu';";
+                WHERE MaGhe = @MaGhe AND TrangThai = N'DangGiu' AND MaPhienGiu = @MaPhienGiu;";
 
             SqlParameter[] parameters = {
-                new SqlParameter("@MaGhe", SqlDbType.Int) { Value = maGhe }
+                new SqlParameter("@MaGhe", SqlDbType.Int) { Value = maGhe },
+                new SqlParameter("@MaPhienGiu", SqlDbType.UniqueIdentifier) { Value = maPhienGiu }
             };
             return Database.ExecuteNonQuery(query, parameters) > 0;
         }
 
         /// <summary>
-        /// Giải phóng danh sách ghế đang giữ về 'Trong'.
+        /// Lấy số giây còn lại tối thiểu của danh sách ghế đang giữ dựa trên đồng hồ SQL Server (GETDATE).
+        /// Chỉ trả về thời gian nếu TOÀN BỘ danh sách ghế vẫn thuộc đúng phiên giữ maPhienGiu.
         /// </summary>
-        /// <summary>
-        /// Lấy số giây còn lại tối thiểu của danh sách ghế đang giữ dựa trên đồng hồ của SQL Server (GETDATE).
-        /// Nếu không có ghế nào hoặc ghế đã quá hạn / đã bán thì trả về 0.
-        /// </summary>
-        public static int LayGiayConLaiGiu(IEnumerable<int> dsMaGhe)
+        public static int LayGiayConLaiGiu(IEnumerable<int> dsMaGhe, Guid maPhienGiu)
         {
-            if (dsMaGhe == null) return 0;
+            if (dsMaGhe == null || maPhienGiu == Guid.Empty) return 0;
             List<int> validIds = dsMaGhe.Where(id => id > 0).ToList();
             if (validIds.Count == 0) return 0;
 
             EnsureSchema();
-            string inClause = string.Join(",", validIds);
+            var parameters = new List<SqlParameter>();
+            var inParams = new List<string>();
+            for (int i = 0; i < validIds.Count; i++)
+            {
+                string p = "@id" + i;
+                inParams.Add(p);
+                parameters.Add(new SqlParameter(p, SqlDbType.Int) { Value = validIds[i] });
+            }
+            parameters.Add(new SqlParameter("@MaPhienGiu", SqlDbType.UniqueIdentifier) { Value = maPhienGiu });
+
             string query = $@"
-                SELECT ISNULL(MIN({ThoiGianGiuToiDaGiay} - DATEDIFF(SECOND, ThoiGianGiu, GETDATE())), 0)
+                SELECT COUNT(1) AS SoGheKhopPhien,
+                       ISNULL(MIN({ThoiGianGiuToiDaGiay} - DATEDIFF(SECOND, ThoiGianGiu, GETDATE())), 0) AS GiayConLai
                 FROM Ghe
-                WHERE MaGhe IN ({inClause})
+                WHERE MaGhe IN ({string.Join(",", inParams)})
                   AND TrangThai = N'DangGiu'
+                  AND MaPhienGiu = @MaPhienGiu
                   AND ThoiGianGiu IS NOT NULL;";
 
-            object result = Database.ExecuteScalar(query);
-            if (result == null || result == DBNull.Value) return 0;
-            int remaining = Convert.ToInt32(result);
+            DataTable dt = Database.ExecuteQuery(query, parameters.ToArray());
+            if (dt == null || dt.Rows.Count == 0) return 0;
+
+            int soGheKhop = Convert.ToInt32(dt.Rows[0]["SoGheKhopPhien"]);
+            if (soGheKhop < validIds.Count) return 0; // Một trong các ghế đã bị mất phiên hoặc giải phóng
+
+            int remaining = Convert.ToInt32(dt.Rows[0]["GiayConLai"]);
             return remaining > 0 ? remaining : 0;
         }
 
-        public static int GiaiPhongDanhSachGhe(IEnumerable<int> dsMaGhe)
+        /// <summary>
+        /// Giải phóng danh sách ghế đang giữ về 'Trong' (chỉ giải phóng nếu thuộc đúng phiên giữ maPhienGiu).
+        /// </summary>
+        public static int GiaiPhongDanhSachGhe(IEnumerable<int> dsMaGhe, Guid maPhienGiu)
         {
-            if (dsMaGhe == null) return 0;
+            if (dsMaGhe == null || maPhienGiu == Guid.Empty) return 0;
             List<int> validIds = dsMaGhe.Where(id => id > 0).ToList();
             if (validIds.Count == 0) return 0;
 
             EnsureSchema();
-            string inClause = string.Join(",", validIds);
+            var parameters = new List<SqlParameter>();
+            var inParams = new List<string>();
+            for (int i = 0; i < validIds.Count; i++)
+            {
+                string p = "@id" + i;
+                inParams.Add(p);
+                parameters.Add(new SqlParameter(p, SqlDbType.Int) { Value = validIds[i] });
+            }
+            parameters.Add(new SqlParameter("@MaPhienGiu", SqlDbType.UniqueIdentifier) { Value = maPhienGiu });
+
             string query = $@"
                 UPDATE Ghe
                 SET TrangThai = N'Trong', ThoiGianGiu = NULL, MaPhienGiu = NULL
-                WHERE MaGhe IN ({inClause}) AND TrangThai = N'DangGiu';";
+                WHERE MaGhe IN ({string.Join(",", inParams)})
+                  AND TrangThai = N'DangGiu'
+                  AND MaPhienGiu = @MaPhienGiu;";
 
-            return Database.ExecuteNonQuery(query);
+            return Database.ExecuteNonQuery(query, parameters.ToArray());
         }
 
         /// <summary>
         /// Kiểm tra và khóa dòng ghế bằng WITH (UPDLOCK, ROWLOCK) bên trong SqlTransaction thanh toán.
+        /// Trả về các trường thông tin ghế, MaPhienGiu và cờ DaBatDau tính theo GETDATE() SQL.
         /// </summary>
         public static DataRow KiemTraVaKhoaGheTrongGiaoDich(int maGhe, SqlConnection conn, SqlTransaction trans)
         {
             string query = @"
-                SELECT g.MaGhe, g.MaGheHienThi, g.Hang, g.Cot, g.TrangThai, g.ThoiGianGiu,
+                SELECT g.MaGhe, g.MaGheHienThi, g.Hang, g.Cot, g.TrangThai, g.ThoiGianGiu, g.MaPhienGiu,
                        CASE WHEN g.ThoiGianGiu IS NULL THEN 999999
                             ELSE DATEDIFF(SECOND, g.ThoiGianGiu, GETDATE())
                        END AS SoGiayDaGiu,
                        kv.MaKV, kv.TenKV, kv.HangVe, kv.GiaVe, kv.ChoPhepBanVe,
-                       sd.MaSuat, sd.MaSK, sd.ThoiGianBatDau, sd.TrangThai AS TrangThaiSuat
+                       sd.MaSuat, sd.MaSK, sd.ThoiGianBatDau, sd.TrangThai AS TrangThaiSuat,
+                       CASE WHEN sd.ThoiGianBatDau <= GETDATE() THEN 1 ELSE 0 END AS DaBatDau
                 FROM Ghe g WITH (UPDLOCK, ROWLOCK)
                 INNER JOIN KhuVuc kv WITH (UPDLOCK, ROWLOCK) ON g.MaKV = kv.MaKV
                 INNER JOIN SuatDien sd ON kv.MaSuat = sd.MaSuat
@@ -451,19 +500,22 @@ namespace QuanLySuKienVaBanVe.DAL
 
         /// <summary>
         /// Cập nhật trạng thái ghế trong cùng SqlTransaction.
+        /// Chỉ cho phép chuyển sang DaBan nếu ghế thuộc đúng phiên giữ maPhienGiu.
         /// </summary>
-        public static bool CapNhatTrangThai(int maGhe, string trangThai, SqlConnection conn, SqlTransaction trans)
+        public static bool CapNhatTrangThai(int maGhe, string trangThai, Guid? maPhienGiu, SqlConnection conn, SqlTransaction trans)
         {
             string query = @"
                 UPDATE Ghe
                 SET TrangThai = @TrangThai,
                     ThoiGianGiu = CASE WHEN @TrangThai = N'DangGiu' THEN GETDATE() ELSE NULL END,
-                    MaPhienGiu = CASE WHEN @TrangThai = N'DangGiu' THEN NEWID() ELSE NULL END
-                WHERE MaGhe = @MaGhe;";
+                    MaPhienGiu = CASE WHEN @TrangThai = N'DangGiu' THEN ISNULL(@MaPhienGiu, NEWID()) ELSE NULL END
+                WHERE MaGhe = @MaGhe
+                  AND (@MaPhienGiu IS NULL OR MaPhienGiu = @MaPhienGiu OR @TrangThai = N'DangGiu');";
 
             SqlParameter[] parameters = {
                 new SqlParameter("@TrangThai", SqlDbType.NVarChar, 30) { Value = trangThai },
-                new SqlParameter("@MaGhe", SqlDbType.Int) { Value = maGhe }
+                new SqlParameter("@MaGhe", SqlDbType.Int) { Value = maGhe },
+                new SqlParameter("@MaPhienGiu", SqlDbType.UniqueIdentifier) { Value = (object)maPhienGiu ?? DBNull.Value }
             };
             return Database.ExecuteNonQuery(query, conn, trans, parameters) > 0;
         }

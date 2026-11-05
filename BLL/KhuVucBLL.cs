@@ -69,6 +69,11 @@ namespace QuanLySuKienVaBanVe.BLL
                 kv.HangVe = "VIP";
             }
 
+            if (!string.IsNullOrWhiteSpace(kv.MauSac) && !System.Text.RegularExpressions.Regex.IsMatch(kv.MauSac.Trim(), "^#[0-9A-Fa-f]{6}$"))
+            {
+                return "Mã màu không hợp lệ! Định dạng mã màu phải là #RRGGBB (ví dụ: #D97706).";
+            }
+
             try
             {
                 int newMaKV = KhuVucDAL.Them(kv);

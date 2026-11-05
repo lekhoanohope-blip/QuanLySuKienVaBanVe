@@ -201,6 +201,7 @@
     <Compile Include="GUI\Helpers\Lang.cs" />
     <Compile Include="GUI\HieuUng.cs" />
     <Compile Include="GUI\Helpers\IconHelper.cs" />
+    <Compile Include="GUI\Helpers\ZoneColorHelper.cs" />
     <Compile Include="GUI\InDanhSachKhach.cs" />
     <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\ManagementGridRenderer.cs" />
@@ -276,6 +277,7 @@
     <Content Include="database\dashboard_demo_data.sql" />
     <Content Include="database\migration_add_columns.sql" />
     <Content Include="database\migrate_tv3_donve.sql" />
+    <Content Include="database\migrate_tv3_banve.sql" />
     <Content Include="database\sample_data.sql" />
     <Content Include="QuanLySuKienVaBanVe.slnx" />
   </ItemGroup>
