@@ -88,6 +88,7 @@ namespace QuanLySuKienVaBanVe.GUI
             btnClose.Click += delegate { DialogResult = DialogResult.Cancel; };
             layer.Controls.Add(btnClose);
             btnClose.BringToFront();
+            HieuUng.MoDan(this);
         }
 
         private void ApplyMode()

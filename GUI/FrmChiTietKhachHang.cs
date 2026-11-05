@@ -21,6 +21,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmChiTietKhachHang(KhachHangDTO customer)
         {
             InitializeComponent();
+            HieuUng.MoDan(this);
             original = customer ?? new KhachHangDTO();
             bool editing = original.MaKH > 0;
             Text = editing ? "Sửa khách hàng" : "Thêm khách hàng";

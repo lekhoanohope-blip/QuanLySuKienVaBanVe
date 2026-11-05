@@ -17,6 +17,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmQuanLySuatDien()
         {
             InitializeComponent();
+            HieuUng.GanChoForm(this);
             this.DoubleBuffered = true;
             ManagementFormLayout.Attach(pnlHeader, txtTimKiem, btnThem, btnSua, btnXoa);
         }

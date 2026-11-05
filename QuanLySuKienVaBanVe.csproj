@@ -176,6 +176,7 @@
     </Compile>
     <Compile Include="GUI\Helpers\Fx.cs" />
     <Compile Include="GUI\Helpers\Lang.cs" />
+    <Compile Include="GUI\HieuUng.cs" />
     <Compile Include="GUI\InDanhSachKhach.cs" />
     <Compile Include="GUI\ManagementFormLayout.cs" />
     <Compile Include="GUI\ManagementGridRenderer.cs" />
@@ -213,13 +214,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
     <None Include="BLL\.gitkeep" />
     <None Include="DAL\.gitkeep" />
     <None Include="database\.gitkeep" />
@@ -230,6 +227,11 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>

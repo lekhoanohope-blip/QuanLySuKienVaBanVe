@@ -44,6 +44,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmQuanLyKhuVuc(int? maSuat = null)
         {
             InitializeComponent();
+            HieuUng.GanChoForm(this);
             this.DoubleBuffered = true;
             this.MaSuatCanChon = maSuat;
 

@@ -12,6 +12,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmChiTietSuKien(int? maSK = null)
         {
             InitializeComponent();
+            HieuUng.MoDan(this);
             _maSK = maSK;
             this.Text = _maSK.HasValue ? "Sửa Sự kiện" : "Thêm Sự kiện";
         }
