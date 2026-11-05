@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -29,6 +29,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private bool _nameUserEdited = false;
         private bool _emailUserEdited = false;
         private string _linkedPhone = null;
+        private string _dbCustomerName = null;
 
         public FrmThanhToan(ThongTinDatVeDTO booking = null)
         {
@@ -101,7 +102,8 @@ namespace QuanLySuKienVaBanVe.GUI
                 GiaVe = 650000m,
                 SoLuong = 1,
                 DanhSachMaGhe = new List<int>(),
-                SoGiayConLai = 600
+                SoGiayConLai = 600,
+                TongTienDaXacNhan = 650000m
             };
         }
 
@@ -168,7 +170,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 // Hết 10 phút giữ ghế
                 if (_booking.DanhSachMaGhe != null && _booking.DanhSachMaGhe.Count > 0)
                 {
-                    GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe);
+                    GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
                     _booking.DanhSachMaGhe.Clear();
                 }
 
@@ -275,7 +277,7 @@ namespace QuanLySuKienVaBanVe.GUI
             // Nếu đóng form mà chưa thanh toán thành công, giải phóng ghế đang giữ
             if (!_isPaidSuccess && _booking.DanhSachMaGhe != null && _booking.DanhSachMaGhe.Count > 0)
             {
-                GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe);
+                GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
                 _booking.DanhSachMaGhe.Clear();
             }
         }
@@ -338,6 +340,7 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 _booking.MaKH = null;
                 _linkedPhone = null;
+                _dbCustomerName = null;
 
                 _autoFilling = true;
                 if (!_nameUserEdited) txtTenKH.Clear();
@@ -356,11 +359,12 @@ namespace QuanLySuKienVaBanVe.GUI
                     {
                         _booking.MaKH = maKH;
                         _linkedPhone = sdt;
+                        _dbCustomerName = r["TenKH"]?.ToString() ?? "";
                     }
 
                     _autoFilling = true;
                     if (!_nameUserEdited)
-                        txtTenKH.Text = r["TenKH"]?.ToString() ?? "";
+                        txtTenKH.Text = _dbCustomerName;
                     if (!_emailUserEdited)
                         txtEmail.Text = r["Email"]?.ToString() ?? "";
                     _autoFilling = false;
@@ -392,7 +396,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
                 if (_booking.DanhSachMaGhe != null && _booking.DanhSachMaGhe.Count > 0)
                 {
-                    GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe);
+                    GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
                     _booking.DanhSachMaGhe.Clear();
                 }
 
@@ -471,6 +475,22 @@ namespace QuanLySuKienVaBanVe.GUI
             _booking.SDT = sdt;
             _booking.Email = email;
 
+            _booking.ChoPhepCapNhatTen = false;
+            if (_booking.MaKH.HasValue && !string.IsNullOrWhiteSpace(_dbCustomerName) &&
+                !string.Equals(_dbCustomerName.Trim(), tenKH.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                DialogResult drTen = MessageBox.Show(
+                    $"Số điện thoại này thuộc về khách hàng '{_dbCustomerName}'.\nBạn có muốn cập nhật họ tên thành '{tenKH}' không?",
+                    "Xác nhận cập nhật thông tin khách",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (drTen == DialogResult.Yes)
+                {
+                    _booking.ChoPhepCapNhatTen = true;
+                }
+            }
+
             // Xác định phương thức thanh toán
             if (radChuyenKhoan.Checked)
                 _booking.PhuongThucThanhToan = PhuongThucThanhToan.ChuyenKhoan;
@@ -483,7 +503,7 @@ namespace QuanLySuKienVaBanVe.GUI
             SetProcessingState(true);
             try
             {
-                int remainDbSeconds = await Task.Run(() => GheBLL.LayGiayConLaiGiu(_booking.DanhSachMaGhe));
+                int remainDbSeconds = await Task.Run(() => GheBLL.LayGiayConLaiGiu(_booking.DanhSachMaGhe, _booking.MaPhienGiu));
                 if (remainDbSeconds <= 0)
                 {
                     _isProcessing = false;
@@ -524,6 +544,24 @@ namespace QuanLySuKienVaBanVe.GUI
 
                     this.DialogResult = DialogResult.OK;
                     this.Close();
+                }
+                else if (kq.CanXacNhanGia)
+                {
+                    DialogResult drGia = MessageBox.Show(
+                        $"{kq.Message}\n\nBạn có muốn áp dụng mức giá mới ({kq.TongTienMoi:N0} đ) và tiếp tục thanh toán không?",
+                        "Giá vé đã thay đổi",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    if (drGia == DialogResult.Yes)
+                    {
+                        _booking.TongTienDaXacNhan = kq.TongTienMoi;
+                        if (_booking.SoLuong > 0)
+                            _booking.GiaVe = kq.TongTienMoi / _booking.SoLuong;
+
+                        LoadBannerAndSummary();
+                    }
+                    return;
                 }
                 else
                 {

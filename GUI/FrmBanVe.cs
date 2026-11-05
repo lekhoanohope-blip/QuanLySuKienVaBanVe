@@ -25,6 +25,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         // Quản lý giữ ghế tạm thời
         private readonly List<int> _currentlyHeldSeatIds = new List<int>();
+        private Guid _currentMaPhienGiu = Guid.Empty;
 
         // Lưu thông tin đơn vừa thanh toán để in vé
         private int _lastPaidMaDon = 0;
@@ -122,8 +123,9 @@ namespace QuanLySuKienVaBanVe.GUI
             // Tự động giải phóng ghế nếu form bị đóng
             if (_currentlyHeldSeatIds.Count > 0)
             {
-                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds);
+                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
                 _currentlyHeldSeatIds.Clear();
+                _currentMaPhienGiu = Guid.Empty;
             }
         }
 
@@ -194,8 +196,9 @@ namespace QuanLySuKienVaBanVe.GUI
             // Giải phóng ghế đang giữ nếu đổi sự kiện
             if (_currentlyHeldSeatIds.Count > 0)
             {
-                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds);
+                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
                 _currentlyHeldSeatIds.Clear();
+                _currentMaPhienGiu = Guid.Empty;
             }
 
             if (cboSuKien.SelectedValue != null && int.TryParse(cboSuKien.SelectedValue.ToString(), out int maSK))
@@ -258,8 +261,9 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (_currentlyHeldSeatIds.Count > 0)
             {
-                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds);
+                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
                 _currentlyHeldSeatIds.Clear();
+                _currentMaPhienGiu = Guid.Empty;
             }
 
             ReadCurrentSuatInfo();
@@ -431,15 +435,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private static Color GetSafeZoneColor(string hexColor, string maVung)
         {
-            if (!string.IsNullOrWhiteSpace(hexColor))
-            {
-                try
-                {
-                    return ColorTranslator.FromHtml(hexColor.Trim());
-                }
-                catch { }
-            }
-            return GetZoneColor(maVung);
+            return ZoneColorHelper.Resolve(hexColor, maVung);
         }
 
         private void AdjustPriceListRowWidths()
@@ -486,6 +482,49 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
+        private DataRow TimKhuVucChoVung(ZoneDefinition zone, DataTable dtKhuVuc, HashSet<int> daKhop)
+        {
+            if (dtKhuVuc == null || zone == null) return null;
+
+            // Ưu tiên 1: Khớp chính xác theo MaVung đã cấu hình
+            foreach (DataRow r in dtKhuVuc.Rows)
+            {
+                int id = r.Table.Columns.Contains("MaKV") && r["MaKV"] != DBNull.Value ? Convert.ToInt32(r["MaKV"]) : 0;
+                if (daKhop != null && daKhop.Contains(id)) continue;
+
+                string dbMaVung = r.Table.Columns.Contains("MaVung") ? r["MaVung"]?.ToString()?.Trim() ?? "" : "";
+                if (!string.IsNullOrEmpty(dbMaVung) && dbMaVung.Equals(zone.Code, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (daKhop != null && id > 0) daKhop.Add(id);
+                    return r;
+                }
+            }
+
+            // Ưu tiên 2: CHỈ dự phòng theo tên KHI MaVung trong DB đang rỗng/null
+            foreach (DataRow r in dtKhuVuc.Rows)
+            {
+                int id = r.Table.Columns.Contains("MaKV") && r["MaKV"] != DBNull.Value ? Convert.ToInt32(r["MaKV"]) : 0;
+                if (daKhop != null && daKhop.Contains(id)) continue;
+
+                string dbMaVung = r.Table.Columns.Contains("MaVung") ? r["MaVung"]?.ToString()?.Trim() ?? "" : "";
+                if (!string.IsNullOrEmpty(dbMaVung))
+                {
+                    continue;
+                }
+
+                string ten = r.Table.Columns.Contains("TenKV") ? r["TenKV"]?.ToString() ?? "" : "";
+                if (!string.IsNullOrWhiteSpace(ten) &&
+                    (ten.IndexOf(zone.DisplayName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     ten.IndexOf(zone.Code, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    if (daKhop != null && id > 0) daKhop.Add(id);
+                    return r;
+                }
+            }
+
+            return null;
+        }
+
         private void DrawSeatMap(int loaiSoDo, DataTable dtKhuVuc)
         {
             if (seatMapWrapper == null)
@@ -514,40 +553,7 @@ namespace QuanLySuKienVaBanVe.GUI
             HashSet<int> matchedMaKVs = new HashSet<int>();
             foreach (var zone in definitions)
             {
-                DataRow matchedRow = null;
-
-                if (dtKhuVuc != null)
-                {
-                    // Khớp theo MaVung trước
-                    foreach (DataRow r in dtKhuVuc.Rows)
-                    {
-                        string dbMaVung = r["MaVung"]?.ToString()?.Trim() ?? "";
-                        if (!string.IsNullOrEmpty(dbMaVung) && dbMaVung.Equals(zone.Code, StringComparison.OrdinalIgnoreCase))
-                        {
-                            matchedRow = r;
-                            matchedMaKVs.Add(Convert.ToInt32(r["MaKV"]));
-                            break;
-                        }
-                    }
-
-                    // Fallback theo tên khu vực
-                    if (matchedRow == null)
-                    {
-                        foreach (DataRow r in dtKhuVuc.Rows)
-                        {
-                            int id = Convert.ToInt32(r["MaKV"]);
-                            if (matchedMaKVs.Contains(id)) continue;
-
-                            string ten = r["TenKV"]?.ToString() ?? "";
-                            if (ten.IndexOf(zone.DisplayName, StringComparison.OrdinalIgnoreCase) >= 0)
-                            {
-                                matchedRow = r;
-                                matchedMaKVs.Add(id);
-                                break;
-                            }
-                        }
-                    }
-                }
+                DataRow matchedRow = TimKhuVucChoVung(zone, dtKhuVuc, matchedMaKVs);
 
                 float fontSize = zone.Bounds.Width < 80 ? 8.5F : 9.5F;
                 Guna2Button btn = new Guna2Button
@@ -688,8 +694,10 @@ namespace QuanLySuKienVaBanVe.GUI
                 list.Add(new ZoneDefinition { Code = "GA_G", DisplayName = "GA G", Category = "Phổ thông", Bounds = new Rectangle(350, 220, 90, 60) });
                 list.Add(new ZoneDefinition { Code = "GA_H", DisplayName = "GA H", Category = "Phổ thông", Bounds = new Rectangle(450, 220, 90, 60) });
 
-                list.Add(new ZoneDefinition { Code = "CAT_A", DisplayName = "CAT A", Category = "Thường", Bounds = new Rectangle(150, 300, 190, 50) });
-                list.Add(new ZoneDefinition { Code = "CAT_B", DisplayName = "CAT B", Category = "Thường", Bounds = new Rectangle(350, 300, 190, 50) });
+                list.Add(new ZoneDefinition { Code = "CAT_C", DisplayName = "CAT C", Category = "Thường", Bounds = new Rectangle(20, 90, 100, 190) });
+                list.Add(new ZoneDefinition { Code = "CAT_D", DisplayName = "CAT D", Category = "Thường", Bounds = new Rectangle(580, 90, 100, 190) });
+                list.Add(new ZoneDefinition { Code = "CAT_A", DisplayName = "CAT A", Category = "Thường", Bounds = new Rectangle(150, 300, 190, 70) });
+                list.Add(new ZoneDefinition { Code = "CAT_B", DisplayName = "CAT B", Category = "Thường", Bounds = new Rectangle(360, 300, 190, 70) });
             }
             return list;
         }
@@ -730,7 +738,10 @@ namespace QuanLySuKienVaBanVe.GUI
                     UpdateZoneStatesInPlace(dtNew);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[FrmBanVe.PollTimer_Tick] Lỗi polling: " + ex.Message);
+            }
             finally
             {
                 _isPolling = false;
@@ -742,34 +753,12 @@ namespace QuanLySuKienVaBanVe.GUI
             if (dt == null) return;
             _dtKhuVucCurrent = dt;
 
+            HashSet<int> matchedMaKVs = new HashSet<int>();
             foreach (var kvp in _zoneMetaMap)
             {
                 Guna2Button btn = kvp.Key;
                 ZoneButtonMeta meta = kvp.Value;
-                string zoneCode = meta.Definition.Code;
-
-                DataRow matchedRow = null;
-                foreach (DataRow r in dt.Rows)
-                {
-                    string dbMaVung = r["MaVung"]?.ToString()?.Trim() ?? "";
-                    if (!string.IsNullOrEmpty(dbMaVung) && dbMaVung.Equals(zoneCode, StringComparison.OrdinalIgnoreCase))
-                    {
-                        matchedRow = r;
-                        break;
-                    }
-                }
-                if (matchedRow == null)
-                {
-                    foreach (DataRow r in dt.Rows)
-                    {
-                        string ten = r["TenKV"]?.ToString() ?? "";
-                        if (ten.IndexOf(meta.Definition.DisplayName, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            matchedRow = r;
-                            break;
-                        }
-                    }
-                }
+                DataRow matchedRow = TimKhuVucChoVung(meta.Definition, dt, matchedMaKVs);
 
                 meta.DataRow = matchedRow;
                 if (matchedRow != null)
@@ -915,15 +904,17 @@ namespace QuanLySuKienVaBanVe.GUI
                         // Giải phóng các ghế cũ đang giữ nếu có
                         if (_currentlyHeldSeatIds.Count > 0)
                         {
-                            GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds);
+                            GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
                             _currentlyHeldSeatIds.Clear();
+                            _currentMaPhienGiu = Guid.Empty;
                         }
 
                         // Thực thi phân bổ và giữ ghế tự động theo quy tắc:
                         // "Thanh toán càng sớm, ghế càng gần sân khấu"
                         List<GheDTO> dsGheGiu;
                         string errGiuGhe;
-                        bool okGiuGhe = GheBLL.GiuGheTuDongTheoKhuVuc(maKV, soLuongChon, out dsGheGiu, out errGiuGhe);
+                        Guid maPhienGiu;
+                        bool okGiuGhe = GheBLL.GiuGheTuDongTheoKhuVuc(maKV, soLuongChon, out dsGheGiu, out maPhienGiu, out errGiuGhe);
 
                         if (!okGiuGhe || dsGheGiu == null || dsGheGiu.Count < soLuongChon)
                         {
@@ -934,12 +925,13 @@ namespace QuanLySuKienVaBanVe.GUI
                             return;
                         }
 
-                        // Lưu danh sách ID ghế vừa giữ thành công
+                        // Lưu danh sách ID ghế và mã phiên vừa giữ thành công
+                        _currentMaPhienGiu = maPhienGiu;
                         _currentlyHeldSeatIds.Clear();
                         _currentlyHeldSeatIds.AddRange(dsGheGiu.Select(g => g.MaGhe));
 
                         // Lấy thời gian giữ ghế chính xác từ SQL Server (P2)
-                        int remainSeconds = GheBLL.LayGiayConLaiGiu(_currentlyHeldSeatIds);
+                        int remainSeconds = GheBLL.LayGiayConLaiGiu(_currentlyHeldSeatIds, _currentMaPhienGiu);
 
                         // Bước 3: Đóng gói DTO và mở FrmThanhToan
                         ThongTinDatVeDTO dto = new ThongTinDatVeDTO
@@ -961,7 +953,9 @@ namespace QuanLySuKienVaBanVe.GUI
                             SoLuong = soLuongChon,
                             DanhSachMaGhe = _currentlyHeldSeatIds.ToList(),
                             DanhSachGhe = dsGheGiu.Select(g => g.MaGheHienThi).ToList(),
-                            SoGiayConLai = remainSeconds > 0 ? remainSeconds : 600
+                            SoGiayConLai = remainSeconds > 0 ? remainSeconds : 600,
+                            MaPhienGiu = _currentMaPhienGiu,
+                            TongTienDaXacNhan = giaVe * soLuongChon
                         };
 
                         if (cboSuatDien.SelectedItem is DataRowView drv)
@@ -979,6 +973,7 @@ namespace QuanLySuKienVaBanVe.GUI
                             {
                                 // Thanh toán thành công!
                                 _currentlyHeldSeatIds.Clear();
+                                _currentMaPhienGiu = Guid.Empty;
                                 _lastPaidMaDon = dto.MaDonPhatHanh;
                                 _lastPaidMaVeCodes = dto.DanhSachMaVeCode;
 
@@ -990,12 +985,9 @@ namespace QuanLySuKienVaBanVe.GUI
                             }
                             else
                             {
-                                // Người dùng bấm "Chọn lại vé" / Hết giờ / Hủy
-                                if (_currentlyHeldSeatIds.Count > 0)
-                                {
-                                    GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds);
-                                    _currentlyHeldSeatIds.Clear();
-                                }
+                                // Người dùng bấm "Chọn lại vé" / Hết giờ / Hủy (FrmThanhToan đã xử lý giải phóng ghế)
+                                _currentlyHeldSeatIds.Clear();
+                                _currentMaPhienGiu = Guid.Empty;
 
                                 clickedBtn.BorderThickness = 0;
                                 _selectedZoneButton = null;
