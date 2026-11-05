@@ -7,6 +7,8 @@ namespace QuanLySuKienVaBanVe.GUI
 {
     internal static class ManagementGridRenderer
     {
+        private static readonly Image IconXoa = global::QuanLySuKienVaBanVe.Properties.Resources.icon_xoa;
+        private static readonly Image IconSua = global::QuanLySuKienVaBanVe.Properties.Resources.icon_sua;
         internal static Rectangle GetActionBounds(DataGridView grid, Rectangle cell, bool delete)
         {
             int gap = Scale(grid, 8);
@@ -105,9 +107,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
             // Icon thật trong Resources (icon_sua.png / icon_xoa.png, nền trong suốt),
             // vẽ vừa khung, giữ nét ở DPI cao nhờ ảnh gốc 64x64.
-            Image icon = delete
-                ? global::QuanLySuKienVaBanVe.Properties.Resources.icon_xoa
-                : global::QuanLySuKienVaBanVe.Properties.Resources.icon_sua;
+            Image icon = delete ? IconXoa : IconSua;
             if (icon == null) return;
             float iconSize = rectVe.Height / 2f;
             RectangleF dich = new RectangleF(

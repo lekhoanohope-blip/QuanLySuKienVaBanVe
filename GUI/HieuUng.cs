@@ -100,15 +100,15 @@ namespace QuanLySuKienVaBanVe.GUI
             // Nút nằm trong panel tự quản vị trí (FlowLayoutPanel /
             // TableLayoutPanel) hoặc đang Dock thì layout sẽ nuốt mất thay
             // đổi Location, nên chỉ đậm màu + bóng đổ, không nhấc.
-            bool coTheNoi = !(nut.Parent is FlowLayoutPanel) &&
-                            !(nut.Parent is TableLayoutPanel) &&
-                            nut.Dock == DockStyle.None;
             bool dangNoi = false;
             Point gocViTri = nut.Location;
             nut.MouseEnter += delegate
             {
                 if (dangNoi) return;
                 gocViTri = nut.Location;
+                bool coTheNoi = !(nut.Parent is FlowLayoutPanel) &&
+                                !(nut.Parent is TableLayoutPanel) &&
+                                nut.Dock == DockStyle.None;
                 if (coTheNoi)
                 {
                     dangNoi = true;
@@ -123,7 +123,16 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (dangNoi)
                 {
                     dangNoi = false;
-                    nut.Location = gocViTri;
+                    // Nếu layout đã thay đổi vị trí trong lúc hover (resize/maximize),
+                    // giữ nguyên vị trí mới do layout tính thay vì khôi phục gocViTri cũ.
+                    if (nut.Location.X == gocViTri.X && nut.Location.Y == gocViTri.Y - 2)
+                    {
+                        nut.Location = gocViTri;
+                    }
+                    else if (nut.Location.Y == gocViTri.Y - 2)
+                    {
+                        nut.Location = new Point(nut.Location.X, gocViTri.Y);
+                    }
                 }
                 if (!bongSan) nut.ShadowDecoration.Enabled = false;
                 nut.Invalidate();
