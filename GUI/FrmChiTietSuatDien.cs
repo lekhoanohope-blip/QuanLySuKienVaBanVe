@@ -13,6 +13,7 @@ namespace QuanLySuKienVaBanVe.GUI
         public FrmChiTietSuatDien(int? maSuat = null)
         {
             InitializeComponent();
+            HieuUng.MoDan(this);
             _maSuat = maSuat;
             this.Text = _maSuat.HasValue ? "Sửa Suất diễn" : "Thêm Suất diễn";
         }

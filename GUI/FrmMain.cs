@@ -223,7 +223,7 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             return new Guna.UI2.WinForms.Guna2Button[] {
                 btnSuKien, btnSuatDien, btnKhachHang, btnTaiKhoan, btnBaoCao,
-                btnNhatKy, btnBanVe, btnDonVe
+                btnBanVe, btnDonVe
             };
         }
 
@@ -251,7 +251,6 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnDonVe != null) { btnDonVe.FillColor = defaultColor; btnDonVe.ForeColor = defaultTextColor; }
             if (btnTaiKhoan != null) { btnTaiKhoan.FillColor = defaultColor; btnTaiKhoan.ForeColor = defaultTextColor; }
             if (btnBaoCao != null) { btnBaoCao.FillColor = defaultColor; btnBaoCao.ForeColor = defaultTextColor; }
-            if (btnNhatKy != null) { btnNhatKy.FillColor = defaultColor; btnNhatKy.ForeColor = defaultTextColor; }
             if (btnCaiDat != null) { btnCaiDat.FillColor = defaultColor; btnCaiDat.ForeColor = defaultTextColor; }
         }
 
@@ -305,10 +304,6 @@ namespace QuanLySuKienVaBanVe.GUI
             OpenChildForm(new FrmBaoCao(), btnBaoCao);
         }
 
-        private void btnNhatKy_Click(object sender, EventArgs e)
-        {
-            OpenChildForm(new FrmNhatKy(), btnNhatKy);
-        }
 
         private void btnCaiDat_Click(object sender, EventArgs e)
         {
@@ -334,7 +329,6 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (btnKhachHang != null) btnKhachHang.Visible = isAdmin;
                 if (btnTaiKhoan != null) btnTaiKhoan.Visible = isAdmin;
                 if (btnBaoCao != null) btnBaoCao.Visible = isAdmin;
-                if (btnNhatKy != null) btnNhatKy.Visible = isAdmin;
 
                 // 2. STAFF
                 if (btnBanVe != null) btnBanVe.Visible = !isAdmin;

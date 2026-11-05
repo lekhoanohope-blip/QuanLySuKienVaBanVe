@@ -18,7 +18,6 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnDonVe = new Guna.UI2.WinForms.Guna2Button();
             this.btnTaiKhoan = new Guna.UI2.WinForms.Guna2Button();
             this.btnBaoCao = new Guna.UI2.WinForms.Guna2Button();
-            this.btnNhatKy = new Guna.UI2.WinForms.Guna2Button();
             this.btnDangXuat = new Guna.UI2.WinForms.Guna2Button();
             this.btnCaiDat = new Guna.UI2.WinForms.Guna2Button();
             this.btnKhuVuc = new Guna.UI2.WinForms.Guna2Button();
@@ -56,7 +55,6 @@ namespace QuanLySuKienVaBanVe.GUI
             this.pnlSidebar.Controls.Add(this.btnDonVe);
             this.pnlSidebar.Controls.Add(this.btnTaiKhoan);
             this.pnlSidebar.Controls.Add(this.btnBaoCao);
-            this.pnlSidebar.Controls.Add(this.btnNhatKy);
             this.pnlSidebar.Controls.Add(this.btnDangXuat);
             this.pnlSidebar.Controls.Add(this.btnCaiDat);
             this.pnlSidebar.Controls.Add(this.btnKhuVuc);
@@ -121,22 +119,6 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnBaoCao.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
             this.btnBaoCao.Click += new System.EventHandler(this.btnBaoCao_Click);
             // 
-            // btnNhatKy
-            // 
-            this.btnNhatKy.FillColor = System.Drawing.Color.Transparent;
-            this.btnNhatKy.Font = new System.Drawing.Font("Segoe UI", 11F);
-            this.btnNhatKy.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
-            this.btnNhatKy.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(13)))), ((int)(((byte)(92)))), ((int)(((byte)(88)))));
-            this.btnNhatKy.Location = new System.Drawing.Point(0, 700);
-            this.btnNhatKy.Margin = new System.Windows.Forms.Padding(4);
-            this.btnNhatKy.Name = "btnNhatKy";
-            this.btnNhatKy.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnNhatKy.Size = new System.Drawing.Size(312, 62);
-            this.btnNhatKy.TabIndex = 11;
-            this.btnNhatKy.Text = "Nhật ký";
-            this.btnNhatKy.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
-            this.btnNhatKy.Click += new System.EventHandler(this.btnNhatKy_Click);
-            // 
             // btnDangXuat
             // 
             this.btnDangXuat.Dock = System.Windows.Forms.DockStyle.Bottom;
@@ -144,7 +126,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnDangXuat.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnDangXuat.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(239)))), ((int)(((byte)(68)))), ((int)(((byte)(68)))));
             this.btnDangXuat.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(13)))), ((int)(((byte)(92)))), ((int)(((byte)(88)))));
-            this.btnDangXuat.Location = new System.Drawing.Point(0, 674);
+            this.btnDangXuat.Location = new System.Drawing.Point(0, 824);
             this.btnDangXuat.Margin = new System.Windows.Forms.Padding(4);
             this.btnDangXuat.Name = "btnDangXuat";
             this.btnDangXuat.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
@@ -160,7 +142,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnCaiDat.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.btnCaiDat.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(203)))), ((int)(((byte)(213)))), ((int)(((byte)(225)))));
             this.btnCaiDat.HoverState.FillColor = System.Drawing.Color.FromArgb(((int)(((byte)(13)))), ((int)(((byte)(92)))), ((int)(((byte)(88)))));
-            this.btnCaiDat.Location = new System.Drawing.Point(0, 762);
+            this.btnCaiDat.Location = new System.Drawing.Point(0, 912);
             this.btnCaiDat.Margin = new System.Windows.Forms.Padding(4);
             this.btnCaiDat.Name = "btnCaiDat";
             this.btnCaiDat.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
@@ -299,7 +281,6 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // picCrowd
             // 
-            this.picCrowd.Dock = System.Windows.Forms.DockStyle.None;
             this.picCrowd.Image = ((System.Drawing.Image)(resources.GetObject("picCrowd.Image")));
             this.picCrowd.Location = new System.Drawing.Point(0, 850);
             this.picCrowd.Margin = new System.Windows.Forms.Padding(4);
@@ -504,6 +485,5 @@ namespace QuanLySuKienVaBanVe.GUI
         private Guna.UI2.WinForms.Guna2Button btnDonVe;
         private Guna.UI2.WinForms.Guna2Button btnTaiKhoan;
         private Guna.UI2.WinForms.Guna2Button btnBaoCao;
-        private Guna.UI2.WinForms.Guna2Button btnNhatKy;
     }
 }

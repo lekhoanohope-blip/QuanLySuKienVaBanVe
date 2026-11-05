@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
@@ -8,29 +9,6 @@ using Guna.UI2.WinForms;
 
 namespace QuanLySuKienVaBanVe.GUI
 {
-    /// <summary>
-    /// Hiệu ứng dùng chung cho các form quản lý (Guna2). Gọi 1 dòng trong
-    /// constructor (sau InitializeComponent) là đủ, KHÔNG sửa file Designer:
-    ///     HieuUng.GanChoForm(this);   // form nào cũng dùng được
-    ///     HieuUng.MoDan(this);        // chỉ form top-level (dialog), xem ghi chú dưới
-    ///
-    /// Có đúng 3 hiệu ứng, đều nhẹ và an toàn với theme Guna2 sẵn có:
-    ///  1. Nút: rê chuột thì NHẤC LÊN 2px + đậm màu + hiện bóng đổ; nhấn thì
-    ///     đậm thêm, thả ra thì hạ xuống. (Chỉ tô màu khi Designer chưa đặt
-    ///     sẵn HoverState/PressedState, nên nút nào đã chỉnh màu hover thì
-    ///     giữ nguyên như cũ.)
-    ///  2. Lưới: rê chuột lên nút Sửa/Xóa thì ô đó đậm lên (vẽ trong
-    ///     ManagementGridRenderer, hàm này chỉ lo vẽ lại khi chuột đổi ô).
-    ///  3. Mở dần (fade-in): chỉ form top-level mới mờ được (Opacity là
-    ///     thuộc tính của cửa sổ top-level). Form nhúng trong FrmMain có
-    ///     TopLevel = false nên MoDan() tự bỏ qua, không lỗi gì cả.
-    ///
-    /// KHÔNG làm: trượt/slide form nhúng (giật, vỡ layout khi resize),
-    /// ripple (Guna2 không hỗ trợ, tự vẽ dễ nhấp nháy), hover cả hàng
-    /// trong lưới (đụng màu xen kẽ + màu đang chọn của Guna2).
-    /// Màn hình đăng nhập đã có hiệu ứng riêng (FxButton/FxControls) nên
-    /// không gọi 2 hàm này ở đó.
-    /// </summary>
     internal static class HieuUng
     {
         /// <summary>Form hiện dần từ trong suốt (0 -&gt; 1) trong ~0,2 giây.</summary>
@@ -54,22 +32,36 @@ namespace QuanLySuKienVaBanVe.GUI
         internal static void GanChoForm(Form form)
         {
             if (form == null) return;
-            GanChoControl(form);
+            GanChoMoi(form);
         }
 
-        private static void GanChoControl(Control cha)
+        // Control đã gắn hiệu ứng (tránh gắn trùng khi control bị gỡ ra rồi
+        // thêm lại). ConditionalWeakTable không giữ control sống quá lâu
+        // nên form đóng là rác được thu hồi bình thường.
+        private static readonly ConditionalWeakTable<Control, object> DaGan =
+            new ConditionalWeakTable<Control, object>();
+
+        /// <summary>
+        /// Gắn hiệu ứng cho một control và mọi control con của nó, đồng thời
+        /// đăng ký ControlAdded để control tạo động về sau cũng tự được gắn.
+        /// Gọi lại hàm này (hoặc GanChoNut/GanChoLuoi) sau khi tạo control động
+        /// nếu control đó không nằm trong cây control của form lúc gắn.
+        /// </summary>
+        internal static void GanChoMoi(Control c)
         {
-            foreach (Control c in cha.Controls)
-            {
-                Guna2Button nut = c as Guna2Button;
-                if (nut != null) GanChoNut(nut);
-                DataGridView luoi = c as DataGridView;
-                if (luoi != null) GanChoLuoi(luoi);
-                if (c.HasChildren) GanChoControl(c);
-            }
+            if (c == null) return;
+            object daCo;
+            if (DaGan.TryGetValue(c, out daCo)) return;
+            DaGan.Add(c, new object());
+            Guna2Button nut = c as Guna2Button;
+            if (nut != null) GanChoNut(nut);
+            DataGridView luoi = c as DataGridView;
+            if (luoi != null) GanChoLuoi(luoi);
+            c.ControlAdded += (s, e) => GanChoMoi(e.Control);
+            foreach (Control con in c.Controls) GanChoMoi(con);
         }
 
-        private static void GanChoNut(Guna2Button nut)
+        internal static void GanChoNut(Guna2Button nut)
         {
             Color goc = nut.FillColor;
             if (goc.A == 0) return; // nút nền trong suốt (vd nút nav): không động vào
@@ -105,23 +97,34 @@ namespace QuanLySuKienVaBanVe.GUI
 
             // Nhấc nút lên 2px khi rê chuột: lấy lại vị trí gốc mỗi lần vào
             // (layout có thể đã dời nút sau lần gắn), rời chuột thì trả về.
+            // Nút nằm trong panel tự quản vị trí (FlowLayoutPanel /
+            // TableLayoutPanel) hoặc đang Dock thì layout sẽ nuốt mất thay
+            // đổi Location, nên chỉ đậm màu + bóng đổ, không nhấc.
+            bool coTheNoi = !(nut.Parent is FlowLayoutPanel) &&
+                            !(nut.Parent is TableLayoutPanel) &&
+                            nut.Dock == DockStyle.None;
             bool dangNoi = false;
             Point gocViTri = nut.Location;
             nut.MouseEnter += delegate
             {
                 if (dangNoi) return;
                 gocViTri = nut.Location;
-                dangNoi = true;
-                nut.Location = new Point(gocViTri.X, gocViTri.Y - 2);
+                if (coTheNoi)
+                {
+                    dangNoi = true;
+                    nut.Location = new Point(gocViTri.X, gocViTri.Y - 2);
+                }
                 if (!bongSan) nut.ShadowDecoration.Enabled = true;
                 nut.Invalidate();
             };
             nut.MouseLeave += delegate
             {
                 if (dangNhan) { dangNhan = false; nut.HoverState.FillColor = hoverGoc; }
-                if (!dangNoi) return;
-                dangNoi = false;
-                nut.Location = gocViTri;
+                if (dangNoi)
+                {
+                    dangNoi = false;
+                    nut.Location = gocViTri;
+                }
                 if (!bongSan) nut.ShadowDecoration.Enabled = false;
                 nut.Invalidate();
             };
@@ -132,7 +135,7 @@ namespace QuanLySuKienVaBanVe.GUI
         /// ManagementGridRenderer tô đậm đúng ô đang rê chuột. Chỉ vẽ lại
         /// khi ô hover thay đổi nên không gây nhấp nháy.
         /// </summary>
-        private static void GanChoLuoi(DataGridView luoi)
+        internal static void GanChoLuoi(DataGridView luoi)
         {
             string dangHot = null;
             luoi.MouseMove += delegate (object sender, MouseEventArgs e)
@@ -159,7 +162,9 @@ namespace QuanLySuKienVaBanVe.GUI
 
     /// <summary>
     /// Bộ máy animation cho biểu đồ (Chart): nội suy giá trị từ số đang hiển
-    /// thị sang số mới trong ~0,36 giây (24 bước, ease-out). Một form chỉ cần
+    /// thị sang số mới trong ~0,36 giây (24 bước, ease-out). Hiện chưa form nào
+    /// dùng (FrmBaoCao đang dùng animation nội tuyến riêng) — để dùng sau cho
+    /// biểu đồ thống kê. Một form chỉ cần
     /// MỘT đối tượng này, dùng chung cho mọi biểu đồ; mỗi biểu đồ là một
     /// "track" chạy song song. Timer nằm trong components của form nên form
     /// đóng là tự hủy.
