@@ -235,15 +235,43 @@ namespace QuanLySuKienVaBanVe.GUI
                 BackColor = Color.White
             };
 
+            btnPrint = TaoNut("In vé", 90, Color.FromArgb(22, 163, 74));
+            btnPrint.Click += (s, e) => InThietBi();
+
+            btnPdf = TaoNut("Xuất PDF", 110, Color.FromArgb(124, 58, 237));
+            btnPdf.Click += (s, e) => XuatPdf();
 
             btnClose = TaoNut("Đóng", 80, Color.FromArgb(156, 163, 175));
             btnClose.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
 
+            Label lblFolder = new Label
+            {
+                Text = "Thư mục PDF:",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(71, 85, 105),
+                Margin = new Padding(18, 17, 4, 0)
+            };
+
+            txtThuMuc = new TextBox
+            {
+                Width = 300,
+                Margin = new Padding(0, 13, 0, 0),
+                Font = new Font("Segoe UI", 9f),
+                BorderStyle = BorderStyle.FixedSingle,
+                Text = TicketPdfExporter.ThuMucMacDinh
+            };
+
+            flow.Controls.Add(btnPrint);
+            flow.Controls.Add(btnPdf);
+            flow.Controls.Add(lblFolder);
+            flow.Controls.Add(txtThuMuc);
             flow.Controls.Add(btnClose);
 
             pnlToolbar.Controls.Add(flow);
             Controls.Add(pnlToolbar);
         }
+
         private void TaoCanvas()
         {
             pnlCanvas = new Panel
