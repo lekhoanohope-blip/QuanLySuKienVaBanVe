@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$SqlServer = '.',
   [ValidateSet('Debug', 'Release')][string]$Configuration = 'Debug',
   [string]$AssemblyPath = ''
@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Data
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
 
 $root = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($AssemblyPath)) { 
@@ -111,6 +112,23 @@ SELECT @tkStaff AS StaffId, @tkAdmin AS AdminId, @kh AS KhachId, @sk AS SkId, @s
   finally { $connection.Dispose() }
 }
 
+function Assert-AutoSeats([string]$name, [string]$available, [string]$expected, [int]$quantity = 4) {
+  $fixture = Reset-Fixture -seatCount 20
+  Sql-Exec "UPDATE Ghe SET Hang = 'B', Cot = Cot - 10 WHERE MaKV = $($fixture.KvId) AND Cot > 10;
+UPDATE Ghe SET TrangThai = N'DaBan' WHERE MaKV = $($fixture.KvId) AND NOT ($available);"
+  $seats = $null
+  $session = [Guid]::Empty
+  $message = ''
+  $ok = [QuanLySuKienVaBanVe.DAL.GheDAL]::GiuGheTuDongTheoKhuVuc($fixture.KvId, $quantity, [ref]$seats, [ref]$session, [ref]$message)
+  $actual = ($seats | ForEach-Object { "$($_.Hang)$($_.Cot)" }) -join ','
+  if (-not $ok -or $session -eq [Guid]::Empty -or $actual -ne $expected) {
+    throw "T2 allocation ($name): Expected $expected, got $actual. $message"
+  }
+  $heldCount = [int](Sql-Value "SELECT COUNT(*) FROM Ghe WHERE MaKV = $($fixture.KvId) AND TrangThai = N'DangGiu' AND MaPhienGiu = '$session'")
+  if ($heldCount -ne $quantity) { throw "T2 allocation ($name): Wrong seats held in DB." }
+  Write-Output "PASS T2 allocation ($name): $actual"
+}
+
 try {
   $master.Open()
   Run-Batches ([IO.File]::ReadAllText((Join-Path $root 'database\create_database.sql')).Replace('QuanLySuKienVaBanVe', $dbName))
@@ -132,6 +150,37 @@ try {
     throw "T1 Failed: Missing columns or index after running migrations."
   }
   Write-Output "PASS T1: Idempotent migration runs twice without error; columns and index exist"
+
+  # T1C: Migration maps physical zones by name, independent of insertion order.
+  Sql-Exec @"
+INSERT SuKien(TenSK, TrangThai) VALUES(N'Mapping test', N'SapDien');
+DECLARE @sk int = SCOPE_IDENTITY();
+INSERT SuatDien(MaSK, ThoiGianBatDau, DiaDiem, TrangThai)
+VALUES(@sk, DATEADD(DAY, 1, GETDATE()), N'Mapping test venue', N'MoCuaBanVe');
+DECLARE @suat int = SCOPE_IDENTITY();
+INSERT KhuVuc(MaSuat, TenKV, HangVe, GiaVe, TongSoGhe, MaVung) VALUES
+(@suat,N'VIP B',N'VIP',100,10,NULL),
+(@suat,N'VIP A',N'VIP',100,10,NULL),
+(@suat,N'Unknown VIP',N'VIP',100,10,NULL),
+(@suat,N'VIP A VIP B',N'VIP',100,10,NULL),
+(@suat,N'CAT_A',N'Thuong',100,10,NULL),
+(@suat,N'Existing custom',N'VIP',100,10,'VIP_C'),
+(@suat,N'VIP C',N'VIP',100,10,NULL),
+(@suat,N'GA A',N'PhoThong',100,10,NULL),
+(@suat,N'Khu GA A',N'PhoThong',100,10,NULL),
+(@suat,N'Khu Thường Tiêu Chuẩn',N'Thuong',100,10,NULL);
+"@
+  $mappingMigration = [IO.File]::ReadAllText((Join-Path $root 'database\migrate_tv3_banve.sql')).Replace('QuanLySuKienVaBanVe', $dbName)
+  Run-Batches $mappingMigration
+  Run-Batches $mappingMigration
+  foreach ($pair in @(@('VIP A','VIP_A'), @('VIP B','VIP_B'), @('CAT_A','CAT_A'), @('Existing custom','VIP_C'), @('Khu Thường Tiêu Chuẩn','CAT'))) {
+    $actual = [string](Sql-Value "SELECT MaVung FROM KhuVuc WHERE TenKV = N'$($pair[0])'")
+    if ($actual -ne $pair[1]) { throw "T1C Failed: $($pair[0]) mapped to '$actual'." }
+  }
+  if ([int](Sql-Value "SELECT COUNT(*) FROM KhuVuc WHERE TenKV IN (N'Unknown VIP',N'VIP A VIP B',N'VIP C',N'GA A',N'Khu GA A') AND MaVung IS NOT NULL") -ne 0) {
+    throw 'T1C Failed: Ambiguous, unknown or conflicting zone was assigned.'
+  }
+  Write-Output 'PASS T1C: Migration preserves physical names and existing codes; ambiguous/conflicting zones remain unmapped'
 
   # Setup test data
   $f = Reset-Fixture -price 500000 -hoursFromNow 24 -seatCount 10
@@ -206,6 +255,22 @@ ALTER TABLE dbo.DonVe ADD CONSTRAINT FK_DonVe_PhienGiuGhe
     throw "T2 Failed: Seat $seat1 in DB does not have status 'DangGiu' or matching MaPhienGiu."
   }
   Write-Output "PASS T2: Automatic seat hold generates valid session GUID and updates seat status in DB"
+
+  # All priority levels, including a later consecutive run and fragmented fallback.
+  Assert-AutoSeats 'consecutive beats front row' "Hang = 'B' OR (Hang = 'A' AND Cot >= 8)" 'B1,B2,B3,B4'
+  Assert-AutoSeats 'two seats left in front row' "Hang = 'B' OR (Hang = 'A' AND Cot >= 9)" 'B1,B2,B3,B4'
+  Assert-AutoSeats 'consecutive beats fragmented row' "Hang = 'B' OR (Hang = 'A' AND Cot IN (1,3,5,7))" 'B1,B2,B3,B4'
+  Assert-AutoSeats 'later run in same row' "(Hang = 'A' AND Cot IN (1,3,5,6,7,8)) OR Hang = 'B'" 'A5,A6,A7,A8'
+  Assert-AutoSeats 'same row without consecutive run' "Cot IN (1,3,5,7)" 'A1,A3,A5,A7'
+  Assert-AutoSeats 'cross-row fallback' "(Hang = 'A' AND Cot >= 9) OR (Hang = 'B' AND Cot <= 2)" 'A9,A10,B1,B2'
+  Assert-AutoSeats 'nearest full row' '1=1' 'A1,A2,A3,A4'
+
+  # Restore the T2 hold used by ownership checks below.
+  $f = Reset-Fixture
+  $heldSeats = $null
+  $sessionId = [Guid]::Empty
+  $null = [QuanLySuKienVaBanVe.BLL.GheBLL]::GiuGheTuDongTheoKhuVuc($f.KvId, 2, [ref]$heldSeats, [ref]$sessionId, [ref]$errMsg)
+  $seat1 = $heldSeats[0].MaGhe
 
   # T3: Session ownership enforcement on release
   $fakeSession = [Guid]::NewGuid()
@@ -364,6 +429,49 @@ ALTER TABLE dbo.DonVe ADD CONSTRAINT FK_DonVe_PhienGiuGhe
   }
   Write-Output "PASS T6: Checkout rejected when show has already started even if MoCuaBanVe is set"
 
+  # T6B: Both hold paths reject a show that has started, using SQL time.
+  $f = Reset-Fixture -hoursFromNow -1
+  $seat = [int](Sql-Value "SELECT TOP 1 MaGhe FROM Ghe WHERE MaKV = $($f.KvId) ORDER BY Cot")
+  $singleSession = [Guid]::Empty
+  if ([QuanLySuKienVaBanVe.DAL.GheDAL]::GiuGheTamThoi($seat, [ref]$singleSession, [ref]$errMsg)) {
+    throw 'T6B Failed: Single-seat hold accepted a past show.'
+  }
+  $autoSeats = $null
+  $autoSession = [Guid]::Empty
+  if ([QuanLySuKienVaBanVe.DAL.GheDAL]::GiuGheTuDongTheoKhuVuc($f.KvId, 2, [ref]$autoSeats, [ref]$autoSession, [ref]$errMsg)) {
+    throw 'T6B Failed: Automatic hold accepted a past show.'
+  }
+  if ([int](Sql-Value "SELECT COUNT(*) FROM Ghe WHERE TrangThai = N'DangGiu'") -ne 0) { throw 'T6B Failed: Rejected hold changed seats.' }
+  Write-Output 'PASS T6B: Single and automatic holds reject a past show without holding seats'
+
+  # T6C: Single-seat expiry is computed by SQL, including legacy NULL timestamps.
+  $f = Reset-Fixture
+  $seat = [int](Sql-Value "SELECT TOP 1 MaGhe FROM Ghe WHERE MaKV = $($f.KvId) ORDER BY Cot")
+  foreach ($timestamp in @('DATEADD(SECOND, -610, GETDATE())', 'NULL', 'DATEADD(SECOND, -590, GETDATE())')) {
+    Sql-Exec "UPDATE Ghe SET TrangThai = N'DangGiu', ThoiGianGiu = $timestamp, MaPhienGiu = NEWID() WHERE MaGhe = $seat"
+    $singleSession = [Guid]::Empty
+    $ok = [QuanLySuKienVaBanVe.DAL.GheDAL]::GiuGheTamThoi($seat, [ref]$singleSession, [ref]$errMsg)
+    if ($ok -ne ($timestamp -ne 'DATEADD(SECOND, -590, GETDATE())')) { throw "T6C Failed: Incorrect expiry for $timestamp" }
+  }
+  Write-Output 'PASS T6C: Expired and NULL holds can be reclaimed; a live hold is protected'
+
+  # T6D: Selling requires a nonempty, matching hold session.
+  $connection = New-Object Data.SqlClient.SqlConnection $testConn
+  try {
+    $connection.Open()
+    $transaction = $connection.BeginTransaction()
+    try {
+      foreach ($invalidSession in @($null, [Guid]::Empty, [Guid]::NewGuid())) {
+        if ([QuanLySuKienVaBanVe.DAL.GheDAL]::CapNhatTrangThai($seat, 'DaBan', $invalidSession, $connection, $transaction)) {
+          throw 'T6D Failed: Selling accepted a missing or incorrect session.'
+        }
+      }
+    }
+    finally { $transaction.Rollback(); $transaction.Dispose() }
+  }
+  finally { $connection.Dispose() }
+  Write-Output 'PASS T6D: Selling rejects NULL, empty and mismatched hold sessions'
+
   # T7: Customer name confirmation & independent email update
   $f = Reset-Fixture -price 500000 -hoursFromNow 24 -seatCount 10
   # Khách ban đầu: Nguyen Van A, 0912345678, vana@example.com
@@ -386,7 +494,7 @@ ALTER TABLE dbo.DonVe ADD CONSTRAINT FK_DonVe_PhienGiuGhe
   $dto7A.DanhSachGhe = [Collections.Generic.List[string]]::new()
   $dto7A.DanhSachGhe.Add("A-01")
   $dto7A.MaPhienGiu = $session7A
-  $dto7A.MaKH = $f.KhachId
+  # No MaKH: exercise lookup by phone. T7B exercises lookup by ID.
   $dto7A.TenKH = "Nguyen Van B"
   $dto7A.SDT = "0912345678"
   $dto7A.Email = "email_b@example.com"
@@ -401,6 +509,11 @@ ALTER TABLE dbo.DonVe ADD CONSTRAINT FK_DonVe_PhienGiuGhe
   $dbEmail7A = Sql-Value "SELECT Email FROM KhachHang WHERE MaKH = $($f.KhachId)"
   if ($dbTen7A -ne "Nguyen Van A" -or $dbEmail7A -ne "email_b@example.com") {
     throw "T7 Failed: Expected TenKH 'Nguyen Van A' and Email 'email_b@example.com', got '$dbTen7A' and '$dbEmail7A'"
+  }
+
+  $audit7A = [string](Sql-Value "SELECT TOP 1 ChiTiet FROM NhatKy ORDER BY MaNK DESC")
+  if ($dto7A.TenKH -ne $dbTen7A -or -not $audit7A.Contains($dbTen7A) -or $audit7A.Contains('Nguyen Van B')) {
+    throw 'T7A Failed: Booking DTO or audit log uses the rejected customer name.'
   }
 
   # Case 7B: ChoPhepCapNhatTen = true
@@ -436,6 +549,10 @@ ALTER TABLE dbo.DonVe ADD CONSTRAINT FK_DonVe_PhienGiuGhe
   $dbEmail7B = Sql-Value "SELECT Email FROM KhachHang WHERE MaKH = $($f.KhachId)"
   if ($dbTen7B -ne "Nguyen Van B" -or $dbEmail7B -ne "final@example.com") {
     throw "T7 Failed: Expected TenKH 'Nguyen Van B' and Email 'final@example.com', got '$dbTen7B' and '$dbEmail7B'"
+  }
+  $audit7B = [string](Sql-Value "SELECT TOP 1 ChiTiet FROM NhatKy ORDER BY MaNK DESC")
+  if ($dto7B.TenKH -ne $dbTen7B -or -not $audit7B.Contains($dbTen7B)) {
+    throw 'T7B Failed: Booking DTO or audit log does not use the confirmed name.'
   }
   Write-Output "PASS T7: Customer name preserved unless confirmed; email updated independently"
 
@@ -505,6 +622,125 @@ ALTER TABLE dbo.DonVe ADD CONSTRAINT FK_DonVe_PhienGiuGhe
     throw "T10 Failed: ZoneColorHelper resolved #2563EB incorrectly"
   }
   Write-Output "PASS T10: Invalid hex color rejected at BLL; ZoneColorHelper resolves safely without throwing"
+
+  # T10B: Every supported zone has one canonical, distinct color.
+  $codes = @('VIP_A','VIP_B','VIP_C','VIP_D','GA_A','GA_B','GA_C','GA_D','GA_E','GA_F','GA_G','GA_H','CAT','CAT_A','CAT_B','CAT_C','CAT_D')
+  $colors = @()
+  foreach ($code in $codes) {
+    $hex = [QuanLySuKienVaBanVe.GUI.Helpers.ZoneColorHelper]::DefaultHexFor($code)
+    $byCode = [QuanLySuKienVaBanVe.GUI.Helpers.ZoneColorHelper]::ByCode($code)
+    $resolved = [QuanLySuKienVaBanVe.GUI.Helpers.ZoneColorHelper]::Resolve('', $code, $null)
+    if ($hex -eq '#64748B' -or $byCode.ToArgb() -ne [Drawing.ColorTranslator]::FromHtml($hex).ToArgb() -or $resolved.ToArgb() -ne $byCode.ToArgb()) {
+      throw "T10B Failed: Missing or inconsistent zone color: $code"
+    }
+    $colors += $hex
+  }
+  if (@($colors | Select-Object -Unique).Count -ne $codes.Count) { throw 'T10B Failed: Zone colors are duplicated.' }
+  $fallback = [Drawing.Color]::HotPink
+  foreach ($unknownCode in @('UNKNOWN', '', $null)) {
+    $actual = [QuanLySuKienVaBanVe.GUI.Helpers.ZoneColorHelper]::Resolve('invalid', $unknownCode, $fallback)
+    if ($actual.ToArgb() -ne $fallback.ToArgb()) { throw 'T10B Failed: Custom fallback ignored.' }
+  }
+  if ([QuanLySuKienVaBanVe.GUI.Helpers.ZoneColorHelper]::DefaultHexFor(' vip_c ') -ne '#DC2626') {
+    throw 'T10B Failed: Zone code normalization is inconsistent.'
+  }
+  Write-Output 'PASS T10B: All 17 supported codes (16 zones in layout 3) have distinct colors; custom fallback honored'
+
+  # T11: Price polling uses MaKV even when codes overlap or are empty.
+  $form = New-Object QuanLySuKienVaBanVe.GUI.FrmBanVe
+  try {
+    $flags = [Reflection.BindingFlags]'NonPublic,Instance'
+    $formType = $form.GetType()
+    $prices = New-Object Data.DataTable
+    foreach ($column in @('MaKV','TenKV','MaVung','MauSac','GiaVe','ConLai','ChoPhepBanVe')) {
+      $type = if ($column -in @('MaKV','ConLai')) { [int] } elseif ($column -eq 'GiaVe') { [decimal] } elseif ($column -eq 'ChoPhepBanVe') { [bool] } else { [string] }
+      $null = $prices.Columns.Add($column, $type)
+    }
+    $null = $prices.Rows.Add(101,'Cat','CAT','',100000,5,$true)
+    $null = $prices.Rows.Add(102,'Cat A','CAT_A','',200000,5,$true)
+    $null = $prices.Rows.Add(103,'Legacy','','',300000,5,$true)
+    $null = $formType.GetMethod('RenderPriceList', $flags).Invoke($form, [object[]](,$prices.PSObject.BaseObject))
+    $panel = $formType.GetField('flpPriceList', $flags).GetValue($form)
+    $updated = $prices.Clone()
+    $null = $updated.Rows.Add(103,'Legacy','','',330000,5,$true)
+    $null = $updated.Rows.Add(101,'Cat','CAT','',110000,0,$true)
+    $null = $updated.Rows.Add(102,'Cat A','CAT_A','',220000,5,$true)
+    $null = $formType.GetMethod('UpdateZoneStatesInPlace', $flags).Invoke($form, [object[]](,$updated.PSObject.BaseObject))
+    foreach ($row in $panel.Controls) {
+      $price = @($row.Controls | Where-Object { $_ -is [Windows.Forms.Label] -and $_.Dock -eq [Windows.Forms.DockStyle]::Right })[0]
+      $expected = switch ([int]$row.Tag) { 101 { 'Hết vé' } 102 { '{0:N0} đ' -f 220000 } 103 { '{0:N0} đ' -f 330000 } default { throw 'T11 Failed: Price row has no MaKV.' } }
+      if ($price.Text -ne $expected) { throw "T11 Failed: MaKV $($row.Tag) expected $expected, got $($price.Text)" }
+    }
+    if ($panel.Controls.Count -ne 3) { throw 'T11 Failed: Price rows missing.' }
+    Write-Output 'PASS T11: Price polling distinguishes CAT, CAT_A and empty zone codes by MaKV'
+  }
+  finally { $form.Dispose() }
+
+  # T12: Every payment option fits inside the column and remains reachable by scrolling.
+  $checkout = [QuanLySuKienVaBanVe.GUI.FrmThanhToan]::new([QuanLySuKienVaBanVe.DTO.ThongTinDatVeDTO]::new())
+  try {
+    $flags = [Reflection.BindingFlags]'NonPublic,Instance'
+    $type = $checkout.GetType()
+    $container = $type.GetField('pnlContainer', $flags).GetValue($checkout)
+    $left = $type.GetField('pnlLeftColumn', $flags).GetValue($checkout)
+    $payment = $type.GetField('pnlPaymentMethodCard', $flags).GetValue($checkout)
+    $bank = $type.GetField('radTheNganHang', $flags).GetValue($checkout)
+    foreach ($size in @([Drawing.Size]::new(1024,480), [Drawing.Size]::new(760,480), [Drawing.Size]::new(1200,800))) {
+      $checkout.ClientSize = $size
+      $checkout.PerformLayout()
+      $null = $type.GetMethod('ResponsiveLayout', $flags).Invoke($checkout, @())
+      $left.PerformLayout()
+      if ($payment.Bottom -gt $left.ClientSize.Height -or $bank.Bottom -gt $payment.ClientSize.Height) {
+        throw "T12 Failed: Payment options clipped at $size."
+      }
+      if ($size.Height -eq 480 -and (-not $container.AutoScroll -or $container.DisplayRectangle.Height -le $container.ClientSize.Height)) {
+        throw "T12 Failed: Short window has no scrollable content at $size."
+      }
+    }
+    Write-Output 'PASS T12: Short wide/narrow checkout layouts keep payment controls inside scrollable content'
+  }
+  finally { $checkout.Dispose() }
+
+  # T13: A failed cleanup cannot interrupt closing; processing and paid guards remain intact.
+  $f = Reset-Fixture
+  $seats = $null; $session = [Guid]::Empty
+  if (-not [QuanLySuKienVaBanVe.BLL.GheBLL]::GiuGheTuDongTheoKhuVuc($f.KvId, 1, [ref]$seats, [ref]$session, [ref]$errMsg)) {
+    throw "T13 setup failed: $errMsg"
+  }
+  $seatId = $seats[0].MaGhe
+  $dbField = [QuanLySuKienVaBanVe.DAL.Database].GetField('_connStr', [Reflection.BindingFlags]'NonPublic,Static')
+  foreach ($scenario in @('offline', 'processing', 'paid', 'normal')) {
+    $dto = New-Object QuanLySuKienVaBanVe.DTO.ThongTinDatVeDTO
+    $dto.DanhSachMaGhe.Add($seatId)
+    $dto.MaPhienGiu = $session
+    $checkout = [QuanLySuKienVaBanVe.GUI.FrmThanhToan]::new($dto)
+    try {
+      $type = $checkout.GetType()
+      $null = $type.GetMethod('InitCountdownTimer', $flags).Invoke($checkout, @())
+      if ($scenario -eq 'offline') {
+        $offlineBuilder = New-Object Data.SqlClient.SqlConnectionStringBuilder $testConn
+        $offlineBuilder['Initial Catalog'] = 'CodexMissing_' + [Guid]::NewGuid().ToString('N')
+        $offlineBuilder['Connect Timeout'] = 1
+        $offlineBuilder['Pooling'] = $false
+        $dbField.SetValue($null, $offlineBuilder.ConnectionString)
+      }
+      if ($scenario -eq 'processing') { $type.GetField('_isProcessing', $flags).SetValue($checkout, $true) }
+      if ($scenario -eq 'paid') { $type.GetField('_isPaidSuccess', $flags).SetValue($checkout, $true) }
+      $closing = New-Object Windows.Forms.FormClosingEventArgs([Windows.Forms.CloseReason]::UserClosing, $false)
+      $null = $type.GetMethod('FrmThanhToan_FormClosing', $flags).Invoke($checkout, [object[]]@($checkout.PSObject.BaseObject, $closing.PSObject.BaseObject))
+      if ($closing.Cancel -ne ($scenario -eq 'processing')) { throw "T13 Failed: Wrong close result for $scenario." }
+      if ($scenario -eq 'offline' -and $dto.DanhSachMaGhe.Count -ne 0) { throw 'T13 Failed: Offline UI session not cleared.' }
+    }
+    finally {
+      $dbField.SetValue($null, $testConn)
+      $checkout.Dispose()
+    }
+    $expectedState = if ($scenario -eq 'normal') { 'Trong' } else { 'DangGiu' }
+    if ((Sql-Value "SELECT TrangThai FROM Ghe WHERE MaGhe = $seatId") -ne $expectedState) {
+      throw "T13 Failed: Wrong seat status after $scenario."
+    }
+  }
+  Write-Output 'PASS T13: Offline cleanup allows closing; processing blocks closing, paid seats stay protected, normal cleanup releases hold'
 
 }
 finally {

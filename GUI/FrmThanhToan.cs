@@ -23,6 +23,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private int _remainingSeconds = 600;
         private bool _isPaidSuccess = false;
         private bool _isProcessing = false;
+        private bool _isLayingOut = false;
 
         // Quản lý liên kết khách hàng & chống đè dữ liệu người dùng đã sửa tay (P1)
         private bool _autoFilling = false;
@@ -167,14 +168,11 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 _countdownTimer.Stop();
 
-                // Hết 10 phút giữ ghế
-                if (_booking.DanhSachMaGhe != null && _booking.DanhSachMaGhe.Count > 0)
-                {
-                    GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
-                    _booking.DanhSachMaGhe.Clear();
-                }
+                bool released = TryReleaseHeldSeats();
 
-                MessageBox.Show("Thời gian giữ vé (10 phút) đã kết thúc!\n\nHệ thống đã tự động giải phóng ghế đang giữ về trạng thái trống.",
+                MessageBox.Show(released
+                    ? "Thời gian giữ vé (10 phút) đã kết thúc!\n\nHệ thống đã giải phóng ghế đang giữ."
+                    : "Thời gian giữ vé (10 phút) đã kết thúc!\n\nChưa thể kết nối để nhả ghế. Hệ thống sẽ thu hồi ghế quá hạn khi kết nối được khôi phục.",
                     "Hết giờ giữ chỗ", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                 this.DialogResult = DialogResult.Cancel;
@@ -233,31 +231,58 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void ResponsiveLayout()
         {
-            if (pnlContainer.ClientSize.Width <= 0) return;
-
-            int padding = 20;
-            int gap = 16;
-            int totalW = pnlContainer.ClientSize.Width - (padding * 2);
-            int totalH = pnlContainer.ClientSize.Height - (padding * 2);
-
-            // Bố cục 1 cột khi bề ngang hẹp (< 860px)
-            if (totalW < 860)
+            if (_isLayingOut || pnlContainer.ClientSize.Width <= 0) return;
+            _isLayingOut = true;
+            try
             {
+                int padding = 20;
+                int gap = 16;
+                int totalW = pnlContainer.ClientSize.Width - (padding * 2);
+                int totalH = pnlContainer.ClientSize.Height - (padding * 2);
+                int leftContentHeight = pnlCustomerCard.Height + pnlPaymentMethodCard.Height;
+                int rightContentHeight = pnlRightCard.Padding.Vertical + btnThanhToan.Height + gap
+                    + pnlRightCard.Controls.Cast<Control>().Where(c => c.Dock == DockStyle.Top).Sum(c => c.Height);
                 pnlContainer.AutoScroll = true;
-                int colW = Math.Max(320, totalW - 10);
-                pnlLeftColumn.SetBounds(padding, padding, colW, 610);
-                pnlRightCard.SetBounds(padding, padding + 610 + gap, colW, 580);
-                return;
+
+                // Bố cục 1 cột khi bề ngang hẹp (< 860px)
+                if (totalW < 860)
+                {
+                    int colW = Math.Max(320, totalW - 10);
+                    pnlLeftColumn.SetBounds(padding, padding, colW, leftContentHeight);
+                    pnlRightCard.SetBounds(padding, padding + leftContentHeight + gap, colW, rightContentHeight);
+                    return;
+                }
+
+                int rightW = 440;
+                if (totalW < 1050) rightW = 400;
+                if (totalW < 950) rightW = 360;
+                int leftW = totalW - rightW - gap;
+
+                pnlLeftColumn.SetBounds(padding, padding, leftW, Math.Max(totalH, leftContentHeight));
+                pnlRightCard.SetBounds(padding + leftW + gap, padding, rightW, Math.Max(totalH, rightContentHeight));
             }
+            finally { _isLayingOut = false; }
+        }
 
-            pnlContainer.AutoScroll = true;
-            int rightW = 440;
-            if (totalW < 1050) rightW = 400;
-            if (totalW < 950) rightW = 360;
-            int leftW = totalW - rightW - gap;
-
-            pnlLeftColumn.SetBounds(padding, padding, leftW, totalH);
-            pnlRightCard.SetBounds(padding + leftW + gap, padding, rightW, totalH);
+        private bool TryReleaseHeldSeats()
+        {
+            if (_isPaidSuccess || _booking.DanhSachMaGhe == null || _booking.DanhSachMaGhe.Count == 0)
+                return true;
+            try
+            {
+                GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("FrmThanhToan: Không thể nhả ghế phiên {0}: {1}", _booking.MaPhienGiu, ex);
+                return false;
+            }
+            finally
+            {
+                // Kết thúc phiên trên UI; DB vẫn bảo vệ token và thu hồi ghế quá hạn.
+                _booking.DanhSachMaGhe.Clear();
+            }
         }
 
         private void FrmThanhToan_FormClosing(object sender, FormClosingEventArgs e)
@@ -270,16 +295,10 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
+            TryReleaseHeldSeats();
             _countdownTimer?.Stop();
             _countdownTimer?.Dispose();
             _errorProvider?.Dispose();
-
-            // Nếu đóng form mà chưa thanh toán thành công, giải phóng ghế đang giữ
-            if (!_isPaidSuccess && _booking.DanhSachMaGhe != null && _booking.DanhSachMaGhe.Count > 0)
-            {
-                GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
-                _booking.DanhSachMaGhe.Clear();
-            }
         }
 
         #region 1. Hiển thị thông tin Banner & Tóm tắt đơn hàng (Ticketbox)
@@ -393,12 +412,6 @@ namespace QuanLySuKienVaBanVe.GUI
             if (dr == DialogResult.Yes)
             {
                 _countdownTimer?.Stop();
-
-                if (_booking.DanhSachMaGhe != null && _booking.DanhSachMaGhe.Count > 0)
-                {
-                    GheBLL.GiaiPhongDanhSachGhe(_booking.DanhSachMaGhe, _booking.MaPhienGiu);
-                    _booking.DanhSachMaGhe.Clear();
-                }
 
                 this.DialogResult = DialogResult.Cancel;
                 this.Close();
