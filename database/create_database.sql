@@ -74,6 +74,7 @@ BEGIN
         GiaVe DECIMAL(18,0) NOT NULL CONSTRAINT CK_KhuVuc_GiaVe CHECK (GiaVe >= 0),
         TongSoGhe INT NOT NULL DEFAULT 0,
         ChoPhepBanVe BIT NOT NULL CONSTRAINT DF_KhuVuc_ChoPhepBanVe DEFAULT 1,
+        MauSac VARCHAR(20) NULL,
         CONSTRAINT CK_KhuVuc_TongSoGhe CHECK (TongSoGhe > 0 AND TongSoGhe <= 10000)
     );
 END
@@ -90,6 +91,8 @@ BEGIN
         MaGheHienThi AS (Hang + CAST(Cot AS VARCHAR(10))) PERSISTED,
         TrangThai NVARCHAR(30) NOT NULL DEFAULT N'Trong'
             CONSTRAINT CK_Ghe_TrangThai CHECK (TrangThai IN (N'Trong', N'DangGiu', N'DaBan')),
+        ThoiGianGiu DATETIME NULL,
+        MaPhienGiu UNIQUEIDENTIFIER NULL,
         CONSTRAINT UQ_Ghe_ViTri UNIQUE (MaKV, Hang, Cot)
     );
 END
@@ -115,6 +118,7 @@ BEGIN
         MaKH INT NOT NULL CONSTRAINT FK_DonVe_KhachHang FOREIGN KEY REFERENCES KhachHang(MaKH),
         MaSuat INT NOT NULL CONSTRAINT FK_DonVe_SuatDien FOREIGN KEY REFERENCES SuatDien(MaSuat),
         MaTK INT NOT NULL CONSTRAINT FK_DonVe_TaiKhoan FOREIGN KEY REFERENCES TaiKhoan(MaTK),
+        MaDonGoc INT NULL CONSTRAINT FK_DonVe_DonVeGoc REFERENCES DonVe(MaDon),
         NgayDat DATETIME NOT NULL DEFAULT GETDATE(),
         TongTien DECIMAL(18,0) NOT NULL DEFAULT 0,
         TrangThai NVARCHAR(30) NOT NULL DEFAULT N'DaThanhToan'
@@ -197,5 +201,23 @@ BEGIN
     UPDATE KhuVuc SET TongSoGhe = 1 WHERE TongSoGhe <= 0;
     ALTER TABLE KhuVuc WITH CHECK
         ADD CONSTRAINT CK_KhuVuc_TongSoGhe CHECK (TongSoGhe > 0 AND TongSoGhe <= 10000);
+END
+GO
+
+IF COL_LENGTH('KhuVuc', 'MauSac') IS NULL
+BEGIN
+    ALTER TABLE KhuVuc ADD MauSac VARCHAR(20) NULL;
+END
+GO
+
+IF COL_LENGTH('Ghe', 'ThoiGianGiu') IS NULL
+BEGIN
+    ALTER TABLE Ghe ADD ThoiGianGiu DATETIME NULL;
+END
+GO
+
+IF COL_LENGTH('Ghe', 'MaPhienGiu') IS NULL
+BEGIN
+    ALTER TABLE Ghe ADD MaPhienGiu UNIQUEIDENTIFIER NULL;
 END
 GO

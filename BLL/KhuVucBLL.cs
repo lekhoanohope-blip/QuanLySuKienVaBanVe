@@ -14,6 +14,12 @@ namespace QuanLySuKienVaBanVe.BLL
             return KhuVucDAL.LayDanhSachTheoSuat(maSuat);
         }
 
+        public static int LayConLaiTheoKhuVuc(int maKV)
+        {
+            if (maKV <= 0) return 0;
+            return KhuVucDAL.LayConLaiTheoKhuVuc(maKV);
+        }
+
         public static KhuVucDTO LayTheoMa(int maKV)
         {
             if (maKV <= 0) return null;
@@ -61,6 +67,11 @@ namespace QuanLySuKienVaBanVe.BLL
             if (string.IsNullOrWhiteSpace(kv.HangVe))
             {
                 kv.HangVe = "VIP";
+            }
+
+            if (!string.IsNullOrWhiteSpace(kv.MauSac) && !System.Text.RegularExpressions.Regex.IsMatch(kv.MauSac.Trim(), "^#[0-9A-Fa-f]{6}$"))
+            {
+                return "Mã màu không hợp lệ! Định dạng mã màu phải là #RRGGBB (ví dụ: #D97706).";
             }
 
             try

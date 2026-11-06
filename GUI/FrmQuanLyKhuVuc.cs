@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using QuanLySuKienVaBanVe.BLL;
 using QuanLySuKienVaBanVe.DTO;
+using QuanLySuKienVaBanVe.GUI.Helpers;
 using Guna.UI2.WinForms;
 
 namespace QuanLySuKienVaBanVe.GUI
@@ -62,6 +63,7 @@ namespace QuanLySuKienVaBanVe.GUI
             cboLoaiKV.SelectedIndexChanged += (s, e) => { if (!_isPopulating) _isDirty = true; };
             txtSucChua.TextChanged += (s, e) => { if (!_isPopulating) _isDirty = true; };
             txtGiaVe.TextChanged += (s, e) => { if (!_isPopulating) _isDirty = true; };
+            txtMauSac.TextChanged += (s, e) => { if (!_isPopulating) _isDirty = true; UpdateColorPreview(); };
             toggleBanVe.CheckedChanged += (s, e) => { if (!_isPopulating) _isDirty = true; };
         }
 
@@ -559,9 +561,10 @@ namespace QuanLySuKienVaBanVe.GUI
 
                 if (matchedRow != null)
                 {
-                    // Vùng đã cấu hình: tô màu theo hạng vé
+                    // Vùng đã cấu hình: tô màu theo cấu hình Admin (MauSac) hoặc mặc định theo hạng vé
                     string hangVe = matchedRow["HangVe"]?.ToString() ?? "VIP";
-                    Color baseColor = GetCategoryColor(hangVe);
+                    string hexColor = matchedRow.Table.Columns.Contains("MauSac") && matchedRow["MauSac"] != DBNull.Value ? matchedRow["MauSac"].ToString() : "";
+                    Color baseColor = ZoneColorHelper.Resolve(hexColor, matchedRow["MaVung"]?.ToString(), GetCategoryColor(hangVe));
                     decimal gia = Convert.ToDecimal(matchedRow["GiaVe"]);
                     int conLai = Convert.ToInt32(matchedRow["ConLai"]);
                     bool choPhep = Convert.ToBoolean(matchedRow["ChoPhepBanVe"]);
@@ -875,6 +878,12 @@ namespace QuanLySuKienVaBanVe.GUI
             decimal gia = Convert.ToDecimal(row["GiaVe"]);
             txtGiaVe.Text = gia.ToString("N0");
 
+            string mauSac = row.Table.Columns.Contains("MauSac") && row["MauSac"] != DBNull.Value && !string.IsNullOrWhiteSpace(row["MauSac"].ToString())
+                ? row["MauSac"].ToString()
+                : ZoneColorHelper.DefaultHexFor(maVung);
+            txtMauSac.Text = mauSac;
+            UpdateColorPreview();
+
             toggleBanVe.Checked = Convert.ToBoolean(row["ChoPhepBanVe"]);
 
             _isPopulating = false;
@@ -900,6 +909,9 @@ namespace QuanLySuKienVaBanVe.GUI
             txtSucChua.Enabled = PhienDangNhap.LaQuanLy;
             lblSucChuaHint.Text = "Tự động sinh ma trận ghế (10 ghế mỗi hàng)";
             txtGiaVe.Text = "";
+            string defColor = ZoneColorHelper.DefaultHexFor(code);
+            txtMauSac.Text = defColor;
+            UpdateColorPreview();
             toggleBanVe.Checked = true;
 
             _isPopulating = false;
@@ -1005,9 +1017,19 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
+            if (!string.IsNullOrWhiteSpace(txtMauSac.Text) && !ZoneColorHelper.IsValidHex(txtMauSac.Text))
+            {
+                MessageBox.Show("Mã màu không hợp lệ! Vui lòng nhập định dạng #RRGGBB (ví dụ: #D97706) hoặc dùng nút Chọn màu.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtMauSac.Focus();
+                return;
+            }
+
             int maSuat = _currentMaSuat.Value;
             bool choPhepBanVe = toggleBanVe.Checked;
 
+            string mauSacHex = string.IsNullOrWhiteSpace(txtMauSac.Text)
+                ? ZoneColorHelper.DefaultHexFor(maVung)
+                : txtMauSac.Text.Trim();
             KhuVucDTO kv = new KhuVucDTO
             {
                 MaKV = _editingMaKV ?? 0,
@@ -1017,7 +1039,8 @@ namespace QuanLySuKienVaBanVe.GUI
                 HangVe = cboLoaiKV.Text,
                 GiaVe = giaVe,
                 TongSoGhe = sucChua,
-                ChoPhepBanVe = choPhepBanVe
+                ChoPhepBanVe = choPhepBanVe,
+                MauSac = mauSacHex
             };
 
             string result = _editingMaKV == null ? KhuVucBLL.Them(kv) : KhuVucBLL.Sua(kv);
@@ -1082,6 +1105,10 @@ namespace QuanLySuKienVaBanVe.GUI
             txtSucChua.Enabled = PhienDangNhap.LaQuanLy;
             lblSucChuaHint.Text = "Tự động sinh ma trận ghế (10 ghế mỗi hàng)";
             txtGiaVe.Text = "";
+            string codeVal = cboMaVung.SelectedValue?.ToString() ?? "";
+            string defColor = ZoneColorHelper.DefaultHexFor(codeVal);
+            txtMauSac.Text = defColor;
+            UpdateColorPreview();
             toggleBanVe.Checked = true;
 
             SelectZoneButton(null);
@@ -1305,5 +1332,44 @@ namespace QuanLySuKienVaBanVe.GUI
             btnToggleInfo.Text = pnlRightInfo.Visible ? ">" : "<";
             LayoutKhuVucForm();
         }
+        private void btnChonMau_Click(object sender, EventArgs e)
+        {
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.FullOpen = true;
+                if (ZoneColorHelper.IsValidHex(txtMauSac.Text))
+                {
+                    try
+                    {
+                        cd.Color = ColorTranslator.FromHtml(txtMauSac.Text.Trim());
+                    }
+                    catch { }
+                }
+
+                if (cd.ShowDialog() == DialogResult.OK)
+                {
+                    string hex = $"#{cd.Color.R:X2}{cd.Color.G:X2}{cd.Color.B:X2}";
+                    txtMauSac.Text = hex;
+                    pnlMauSacPreview.FillColor = cd.Color;
+                    _isDirty = true;
+                }
+            }
+        }
+
+        private void UpdateColorPreview()
+        {
+            string hex = txtMauSac.Text.Trim();
+            if (ZoneColorHelper.IsValidHex(hex))
+            {
+                try
+                {
+                    pnlMauSacPreview.FillColor = ColorTranslator.FromHtml(hex);
+                    return;
+                }
+                catch { }
+            }
+            pnlMauSacPreview.FillColor = Color.Transparent;
+        }
+
     }
 }

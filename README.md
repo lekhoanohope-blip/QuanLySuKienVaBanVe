@@ -1,4 +1,4 @@
-﻿# ĐỀ TÀI 20: QUẢN LÝ SỰ KIỆN VÀ BÁN VÉ
+# ĐỀ TÀI 20: QUẢN LÝ SỰ KIỆN VÀ BÁN VÉ
 
 > **Học phần:** COMP1019 — Lập trình Windows  
 > **Giảng viên hướng dẫn:** ThS. Lê Thanh Thoại  
@@ -69,9 +69,11 @@ Phần mềm **Quản lý sự kiện và bán vé** là ứng dụng desktop x�
    - Mở **SSMS** và kết nối vào SQL Server.
    - Mở và thực thi file script: `database/create_database.sql` để tạo database và các bảng.
    - Tiếp theo, chạy `database/migrate_tv3_donve.sql` để bổ sung `DonVe.MaDonGoc`, `Ghe.ThoiGianGiu` và ràng buộc chống bán trùng ghế. Đây là bước bắt buộc trước khi mở chức năng **Đơn vé**.
+   - Chạy `database/migrate_tv3_banve.sql` trước khi mở **Bán vé**. Migration bổ sung cấu trúc bán vé và gỡ khóa ngoại cũ `FK_Ghe_PhienGiuGhe`: `Ghe.MaPhienGiu` dùng làm token xác định quyền giữ ghế, không cần tạo bản ghi trong `PhienGiuGhe`. Bảng phiên cũ và liên kết lịch sử của đơn vé được giữ nguyên.
+   - Migration bán vé chỉ gán `MaVung` còn thiếu khi nhận diện được tên khu vực, không dựa vào thứ tự ID. Tên mơ hồ hoặc mã xung đột cần Admin cấu hình. Nếu đã chạy bản migration cũ và bị gán sai mã, cần kiểm tra/chỉnh lại trong **Quản lý khu vực**; chạy lại migration không ghi đè mã đã có.
    - Mở và thực thi file script: `database/sample_data.sql` để nạp dữ liệu danh mục ban đầu và tài khoản mẫu.
 
-   **Nâng cấp database đang có:** chạy `database/migration_add_columns.sql` trước, sau đó chạy `database/migrate_tv3_donve.sql`. Hai migration cấu trúc có thể chạy lại; không cần nạp lại `sample_data.sql` và không tự động xóa/nạp dữ liệu demo. Ứng dụng không tự chạy migration khi khởi động.
+   **Nâng cấp database đang có:** lần lượt chạy `database/migration_add_columns.sql`, `database/migrate_tv3_donve.sql`, rồi `database/migrate_tv3_banve.sql`. Các migration cấu trúc có thể chạy lại; không cần nạp lại `sample_data.sql` và không tự động xóa/nạp dữ liệu demo. Ứng dụng không tự chạy migration khi khởi động.
 
 3. **Cấu hình chuỗi kết nối trong `App.config`:**
    - Mở file `App.config`, kiểm tra và sửa lại `connectionString` cho khớp với tên SQL Server Instance của máy cá nhân:
@@ -100,6 +102,13 @@ Sau khi build Debug, chạy từ thư mục dự án bằng Windows PowerShell (
 ```
 
 Script tạo database `CodexTest_Ticket_<GUID>` riêng và xóa khi kết thúc, không sửa database của ứng dụng. Tài khoản SQL cần quyền tạo/xóa database. Có thể truyền `-SqlServer '.\SQLEXPRESS'`, `-Configuration Release` hoặc `-AssemblyPath '<đường dẫn exe đã build>'`. Các ca kiểm tra bao gồm thay đổi giá sau xác nhận, khu vực ngừng bán, khóa đồng thời, thu/hoàn tiền và rollback (Debug).
+
+Kiểm thử bán vé bằng `tests/Test-TicketBooking.ps1` với cùng các tham số. Script tạo database riêng, tái hiện lỗi khóa ngoại trên schema cũ rồi kiểm tra migration chạy hai lần, giữ nguyên dữ liệu lịch sử, giữ/nhả ghế đúng phiên và thanh toán.
+
+Bộ kiểm thử bán vé cũng kiểm tra 3 mức ưu tiên xếp ghế (liền kề cùng hàng → cùng hàng → ghế gần sân khấu nhất), giờ SQL Server khi giữ ghế, tên khách trong DTO/nhật ký, bảng màu dùng chung và polling bảng giá theo `MaKV` (kể cả `CAT`, `CAT_A` và mã vùng rỗng). Chạy cả `-Configuration Debug` và `-Configuration Release` sau khi build cấu hình tương ứng.
+
+Mỗi lượt đặt vé tại quầy chọn tối đa **10 vé**, tùy số ghế trống của khu vực. Nhóm trên 10 người cần nhiều giao dịch và không được bảo đảm ghế liền nhau giữa các giao dịch. Chức năng **In vé do TV1 phụ trách**; nút in hiện chỉ hiển thị thông báo đang phát triển, chưa xuất bản in hay tệp vé.
+
 
 ## 6. Tài khoản Demo
 

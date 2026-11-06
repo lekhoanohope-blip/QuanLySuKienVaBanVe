@@ -31,3 +31,30 @@ BEGIN
     ALTER TABLE KhuVuc WITH CHECK ADD CONSTRAINT CK_KhuVuc_TongSoGhe CHECK (TongSoGhe > 0 AND TongSoGhe <= 10000);
 END
 GO
+
+-- 5. Thêm cột MauSac vào bảng KhuVuc
+IF COL_LENGTH('KhuVuc', 'MauSac') IS NULL
+BEGIN
+    ALTER TABLE KhuVuc ADD MauSac VARCHAR(20) NULL;
+END
+GO
+
+-- 6. Thêm cột ThoiGianGiu và MaPhienGiu vào bảng Ghe
+IF COL_LENGTH('Ghe', 'ThoiGianGiu') IS NULL
+BEGIN
+    ALTER TABLE Ghe ADD ThoiGianGiu DATETIME NULL;
+END
+GO
+
+IF COL_LENGTH('Ghe', 'MaPhienGiu') IS NULL
+BEGIN
+    ALTER TABLE Ghe ADD MaPhienGiu UNIQUEIDENTIFIER NULL;
+END
+GO
+
+-- 7. Them cot MaDonGoc vao bang DonVe
+IF COL_LENGTH('DonVe', 'MaDonGoc') IS NULL
+BEGIN
+    ALTER TABLE DonVe ADD MaDonGoc INT NULL;
+END
+GO
