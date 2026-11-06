@@ -235,6 +235,8 @@ namespace QuanLySuKienVaBanVe.GUI
                 BackColor = Color.White
             };
 
+          
+
             pnlToolbar.Controls.Add(flow);
             Controls.Add(pnlToolbar);
         }
