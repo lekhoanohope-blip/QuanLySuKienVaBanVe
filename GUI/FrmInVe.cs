@@ -235,7 +235,11 @@ namespace QuanLySuKienVaBanVe.GUI
                 BackColor = Color.White
             };
 
-          
+
+            btnClose = TaoNut("Đóng", 80, Color.FromArgb(156, 163, 175));
+            btnClose.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
+
+            flow.Controls.Add(btnClose);
 
             pnlToolbar.Controls.Add(flow);
             Controls.Add(pnlToolbar);
