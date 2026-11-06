@@ -229,7 +229,7 @@ namespace QuanLySuKienVaBanVe.GUI
                         DateTime tg = r["ThoiGianBatDau"] != DBNull.Value ? Convert.ToDateTime(r["ThoiGianBatDau"]) : DateTime.Now;
                         string diaDiem = r["DiaDiem"]?.ToString() ?? "";
                         string trangThai = r["TrangThai"]?.ToString() ?? "";
-                        string statusLabel = trangThai == "MoBan" || trangThai == "MoCuaBanVe" ? "Mở bán" : "Đóng";
+                        string statusLabel = trangThai == "MoCuaBanVe" ? "Mở bán" : "Đóng";
                         r["MoTaHienThi"] = $"{tg:dd/MM/yyyy - HH:mm} | {diaDiem} ({statusLabel})";
                     }
                 }
@@ -289,39 +289,6 @@ namespace QuanLySuKienVaBanVe.GUI
         }
         #endregion
 
-        #region 2. Bảng màu định danh theo MaVung (Chuẩn Ticketbox)
-        public static Color GetZoneColor(string maVung)
-        {
-            if (string.IsNullOrWhiteSpace(maVung)) return Color.FromArgb(100, 116, 139);
-            string code = maVung.Trim().ToUpperInvariant();
-
-            switch (code)
-            {
-                case "VIP_A": return Color.FromArgb(217, 119, 6);   // Cam hổ phách
-                case "VIP_B": return Color.FromArgb(202, 138, 4);   // Vàng đồng
-                case "VIP_C": return Color.FromArgb(220, 38, 38);   // Đỏ san hô
-                case "VIP_D": return Color.FromArgb(219, 39, 119);  // Hồng đậm
-                case "GA_A":  return Color.FromArgb(37, 99, 235);   // Xanh dương
-                case "GA_B":  return Color.FromArgb(13, 148, 136);  // Xanh ngọc bích
-                case "GA_C":  return Color.FromArgb(79, 70, 229);   // Tím Indigo
-                case "GA_D":  return Color.FromArgb(2, 132, 199);   // Xanh lam sáng
-                case "GA_E":  return Color.FromArgb(5, 150, 105);   // Xanh lục bảo
-                case "GA_F":  return Color.FromArgb(147, 51, 234);  // Tím hồng
-                case "GA_G":  return Color.FromArgb(159, 18, 57);   // Đỏ rượu
-                case "GA_H":  return Color.FromArgb(71, 85, 105);   // Xanh đá
-                case "CAT":
-                case "CAT_A": return Color.FromArgb(109, 40, 217);  // Tím đậm
-                case "CAT_B": return Color.FromArgb(124, 45, 18);   // Nâu sẫm
-                case "CAT_C": return Color.FromArgb(30, 58, 138);   // Xanh navy
-                case "CAT_D": return Color.FromArgb(131, 24, 67);   // Hồng tím
-                default:
-                    if (code.StartsWith("VIP")) return Color.FromArgb(217, 119, 6);
-                    if (code.StartsWith("GA")) return Color.FromArgb(37, 99, 235);
-                    return Color.FromArgb(109, 40, 217);
-            }
-        }
-        #endregion
-
         #region 3. Load Khu vực & Vẽ Sơ đồ Seatmap & Bảng giá chỉ đọc
         private void LoadKhuVucVaVe()
         {
@@ -375,7 +342,7 @@ namespace QuanLySuKienVaBanVe.GUI
                         Height = 36,
                         Margin = new Padding(0, 0, 0, 6),
                         BackColor = Color.White,
-                        Tag = "PriceRow",
+                        Tag = Convert.ToInt32(r["MaKV"]),
                         AccessibleName = $"{maVung} {tenKV}"
                     };
 
@@ -444,7 +411,7 @@ namespace QuanLySuKienVaBanVe.GUI
             int newW = Math.Max(320, flpPriceList.ClientSize.Width - 6);
             foreach (Control c in flpPriceList.Controls)
             {
-                if (c is Panel pnlRow && pnlRow.Tag?.ToString() == "PriceRow")
+                if (c is Panel pnlRow && pnlRow.Tag is int)
                 {
                     pnlRow.Width = newW;
                     foreach (Control child in pnlRow.Controls)
@@ -777,19 +744,10 @@ namespace QuanLySuKienVaBanVe.GUI
             // Cập nhật giá vé trên flpPriceList mà không tạo lại control để tránh nhấp nháy UI
             foreach (Control c in flpPriceList.Controls)
             {
-                if (c is Panel pnlRow && pnlRow.Tag?.ToString() == "PriceRow")
+                if (c is Panel pnlRow && pnlRow.Tag is int)
                 {
-                    string accessible = pnlRow.AccessibleName ?? "";
-                    DataRow matched = null;
-                    foreach (DataRow r in dt.Rows)
-                    {
-                        string mv = r["MaVung"]?.ToString()?.Trim() ?? "";
-                        if (!string.IsNullOrEmpty(mv) && accessible.IndexOf(mv, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            matched = r;
-                            break;
-                        }
-                    }
+                    int maKV = (int)pnlRow.Tag;
+                    DataRow matched = dt.AsEnumerable().FirstOrDefault(r => Convert.ToInt32(r["MaKV"]) == maKV);
                     if (matched != null)
                     {
                         decimal gia = Convert.ToDecimal(matched["GiaVe"]);
@@ -1065,7 +1023,7 @@ namespace QuanLySuKienVaBanVe.GUI
             // Highlight dòng giá vé tương ứng bên cột phải
             foreach (Control c in flpPriceList.Controls)
             {
-                if (c is Panel pnlRow && pnlRow.Tag?.ToString() == "PriceRow")
+                if (c is Panel pnlRow && pnlRow.Tag is int)
                 {
                     string rowZone = pnlRow.AccessibleName ?? "";
                     if (string.IsNullOrEmpty(keyword))

@@ -880,7 +880,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
             string mauSac = row.Table.Columns.Contains("MauSac") && row["MauSac"] != DBNull.Value && !string.IsNullOrWhiteSpace(row["MauSac"].ToString())
                 ? row["MauSac"].ToString()
-                : GetDefaultColorForCode(maVung);
+                : ZoneColorHelper.DefaultHexFor(maVung);
             txtMauSac.Text = mauSac;
             UpdateColorPreview();
 
@@ -909,7 +909,7 @@ namespace QuanLySuKienVaBanVe.GUI
             txtSucChua.Enabled = PhienDangNhap.LaQuanLy;
             lblSucChuaHint.Text = "Tự động sinh ma trận ghế (10 ghế mỗi hàng)";
             txtGiaVe.Text = "";
-            string defColor = GetDefaultColorForCode(code);
+            string defColor = ZoneColorHelper.DefaultHexFor(code);
             txtMauSac.Text = defColor;
             UpdateColorPreview();
             toggleBanVe.Checked = true;
@@ -1106,7 +1106,7 @@ namespace QuanLySuKienVaBanVe.GUI
             lblSucChuaHint.Text = "Tự động sinh ma trận ghế (10 ghế mỗi hàng)";
             txtGiaVe.Text = "";
             string codeVal = cboMaVung.SelectedValue?.ToString() ?? "";
-            string defColor = GetDefaultColorForCode(codeVal);
+            string defColor = ZoneColorHelper.DefaultHexFor(codeVal);
             txtMauSac.Text = defColor;
             UpdateColorPreview();
             toggleBanVe.Checked = true;
@@ -1371,22 +1371,5 @@ namespace QuanLySuKienVaBanVe.GUI
             pnlMauSacPreview.FillColor = Color.Transparent;
         }
 
-        private string GetDefaultColorForCode(string code)
-        {
-            if (string.IsNullOrWhiteSpace(code)) return "#D97706";
-            string upper = code.Trim().ToUpperInvariant();
-            if (upper.Contains("VIP_A")) return "#D97706";
-            if (upper.Contains("VIP_B")) return "#CA8A04";
-            if (upper.Contains("VIP_C")) return "#DC2626";
-            if (upper.Contains("VIP_D")) return "#DB2777";
-            if (upper.Contains("GA_A")) return "#2563EB";
-            if (upper.Contains("GA_B")) return "#0D9488";
-            if (upper.Contains("GA_C")) return "#6366F1";
-            if (upper.Contains("GA_D")) return "#0284C7";
-            if (upper.Contains("GA_E")) return "#059669";
-            if (upper.Contains("CAT_B")) return "#78350F";
-            if (upper.Contains("CAT")) return "#7C3AED";
-            return "#D97706";
-        }
     }
 }
