@@ -61,34 +61,47 @@ WHERE MauSac IS NOT NULL
   AND MauSac NOT LIKE '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]';
 GO
 
--- 3. Gán MaVung cho các khu vực dữ liệu mẫu chưa được ánh xạ
-;WITH x AS (
-    SELECT MaKV, HangVe,
-           ROW_NUMBER() OVER (PARTITION BY MaSuat, HangVe ORDER BY MaKV) AS rn
+-- 3. Chỉ ánh xạ tên nhận diện được; không suy ra vị trí vật lý từ ID hoặc hạng vé.
+-- Tên mơ hồ, mã bị trùng và cấu hình có sẵn được giữ nguyên để Admin kiểm tra.
+;WITH Names AS (
+    SELECT MaKV, MaSuat, TenKV,
+           N' ' + UPPER(REPLACE(LTRIM(RTRIM(TenKV)), N'_', N' ')) + N' ' AS NormalizedName
     FROM dbo.KhuVuc
-    WHERE MaVung IS NULL OR MaVung = ''
+    WHERE NULLIF(LTRIM(RTRIM(MaVung)), '') IS NULL
+), Matches AS (
+    SELECT n.MaKV, n.MaSuat, z.MaVung
+    FROM Names n
+    CROSS JOIN (VALUES
+        ('VIP_A'), ('VIP_B'), ('VIP_C'), ('VIP_D'),
+        ('GA_A'), ('GA_B'), ('GA_C'), ('GA_D'), ('GA_E'), ('GA_F'), ('GA_G'), ('GA_H'),
+        ('CAT'), ('CAT_A'), ('CAT_B'), ('CAT_C'), ('CAT_D')
+    ) z(MaVung)
+    WHERE CHARINDEX(N' ' + REPLACE(z.MaVung, '_', ' ') + N' ', n.NormalizedName) > 0
+    UNION
+    SELECT MaKV, MaSuat,
+           CASE WHEN TenKV IN (N'Khu VIP Khán Đài Trực Diện', N'[DEMO] Khu VIP')
+                THEN 'VIP_A' ELSE 'CAT' END
+    FROM Names
+    WHERE TenKV IN (N'Khu VIP Khán Đài Trực Diện', N'[DEMO] Khu VIP',
+                    N'Khu Thường Tiêu Chuẩn', N'[DEMO] Khu tiêu chuẩn')
+), Ranked AS (
+    SELECT *, DENSE_RANK() OVER (PARTITION BY MaKV ORDER BY LEN(MaVung) DESC) AS Specificity
+    FROM Matches
+), NamedCandidates AS (
+    SELECT MaKV, MaSuat, MaVung,
+           COUNT(*) OVER (PARTITION BY MaKV) AS NameMatches
+    FROM Ranked WHERE Specificity = 1
+), Candidates AS (
+    SELECT *, COUNT(*) OVER (PARTITION BY MaSuat, MaVung) AS ZoneMatches
+    FROM NamedCandidates WHERE NameMatches = 1
 )
-UPDATE kv
-SET MaVung = CASE
-    WHEN x.HangVe = N'VIP'      AND x.rn = 1 THEN 'VIP_A'
-    WHEN x.HangVe = N'VIP'      AND x.rn = 2 THEN 'VIP_B'
-    WHEN x.HangVe = N'PhoThong' AND x.rn = 1 THEN 'GA_A'
-    WHEN x.HangVe = N'PhoThong' AND x.rn = 2 THEN 'GA_B'
-    WHEN x.HangVe = N'Thuong'   AND x.rn = 1 THEN 'CAT'
-END
-FROM dbo.KhuVuc kv
-JOIN x ON x.MaKV = kv.MaKV
-WHERE NOT EXISTS (
-    SELECT 1 FROM dbo.KhuVuc k2
-    WHERE k2.MaSuat = kv.MaSuat
-      AND k2.MaVung = CASE
-          WHEN x.HangVe = N'VIP'      AND x.rn = 1 THEN 'VIP_A'
-          WHEN x.HangVe = N'VIP'      AND x.rn = 2 THEN 'VIP_B'
-          WHEN x.HangVe = N'PhoThong' AND x.rn = 1 THEN 'GA_A'
-          WHEN x.HangVe = N'PhoThong' AND x.rn = 2 THEN 'GA_B'
-          WHEN x.HangVe = N'Thuong'   AND x.rn = 1 THEN 'CAT'
-      END
-);
+UPDATE kv SET MaVung = c.MaVung
+FROM dbo.KhuVuc kv JOIN Candidates c ON c.MaKV = kv.MaKV
+WHERE c.NameMatches = 1 AND c.ZoneMatches = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.KhuVuc existing
+      WHERE existing.MaSuat = c.MaSuat AND existing.MaVung = c.MaVung
+  );
 GO
 
 PRINT N'=== HOÀN TẤT MIGRATION BÁN VÉ TV3 THÀNH CÔNG ===';
