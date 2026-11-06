@@ -103,6 +103,7 @@ namespace QuanLySuKienVaBanVe.BLL
             {
                 KhachHangDAL.Sua(kh, conn, trans);
             }
+            booking.TenKH = kh.TenKH;
         }
 
         private static int XuLyKhachHangTrongTransaction(ThongTinDatVeDTO booking, SqlConnection conn, SqlTransaction trans)

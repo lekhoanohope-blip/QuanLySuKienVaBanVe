@@ -123,9 +123,10 @@ namespace QuanLySuKienVaBanVe.DAL
                     }
                     _schemaEnsured = true;
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Tránh crash nếu không có quyền DDL, lần sau thử lại
+                    System.Diagnostics.Debug.WriteLine("KhuVucDAL.EnsureSchemaAndSyncSeats: " + ex);
                 }
             }
         }

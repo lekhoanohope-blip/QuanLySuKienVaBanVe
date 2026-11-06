@@ -147,14 +147,18 @@ namespace QuanLySuKienVaBanVe.DAL
                     {
                         string selectSql = @"
                             SELECT g.MaGhe, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu, g.MaPhienGiu,
-                                   kv.ChoPhepBanVe, sd.MaSuat, sd.TrangThai AS TrangThaiSuat, sd.ThoiGianBatDau
+                                   kv.ChoPhepBanVe, sd.MaSuat, sd.TrangThai AS TrangThaiSuat,
+                                   CASE WHEN sd.ThoiGianBatDau <= GETDATE() THEN 1 ELSE 0 END AS DaBatDau,
+                                   CASE WHEN g.ThoiGianGiu IS NULL OR DATEDIFF(SECOND, g.ThoiGianGiu, GETDATE()) > @MaxSeconds
+                                        THEN 1 ELSE 0 END AS GiuQuaHan
                             FROM Ghe g WITH (UPDLOCK, ROWLOCK)
                             INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
                             INNER JOIN SuatDien sd ON kv.MaSuat = sd.MaSuat
                             WHERE g.MaGhe = @MaGhe;";
 
                         SqlParameter[] selectParams = {
-                            new SqlParameter("@MaGhe", SqlDbType.Int) { Value = maGhe }
+                            new SqlParameter("@MaGhe", SqlDbType.Int) { Value = maGhe },
+                            new SqlParameter("@MaxSeconds", SqlDbType.Int) { Value = ThoiGianGiuToiDaGiay }
                         };
 
                         DataTable dt = Database.ExecuteQuery(selectSql, conn, trans, selectParams);
@@ -170,28 +174,16 @@ namespace QuanLySuKienVaBanVe.DAL
                         string trangThai = row["TrangThai"]?.ToString() ?? string.Empty;
                         bool choPhepBanVe = row["ChoPhepBanVe"] == DBNull.Value || Convert.ToBoolean(row["ChoPhepBanVe"]);
                         string trangThaiSuat = row["TrangThaiSuat"]?.ToString() ?? string.Empty;
-                        DateTime thoiGianBatDau = Convert.ToDateTime(row["ThoiGianBatDau"]);
+                        bool daBatDau = Convert.ToInt32(row["DaBatDau"]) == 1;
 
-                        if (!choPhepBanVe || trangThaiSuat != "MoCuaBanVe" || thoiGianBatDau <= DateTime.Now)
+                        if (!choPhepBanVe || trangThaiSuat != "MoCuaBanVe" || daBatDau)
                         {
                             trans.Rollback();
                             errorMessage = $"Khu vực hoặc suất diễn của ghế {maGheHienThi} hiện không mở bán vé.";
                             return false;
                         }
 
-                        bool isExpiredHold = false;
-                        if (trangThai == TrangThaiGhe.DangGiu)
-                        {
-                            if (row["ThoiGianGiu"] == DBNull.Value)
-                            {
-                                isExpiredHold = true;
-                            }
-                            else
-                            {
-                                DateTime thoiGianGiu = Convert.ToDateTime(row["ThoiGianGiu"]);
-                                isExpiredHold = (DateTime.Now - thoiGianGiu).TotalSeconds > ThoiGianGiuToiDaGiay;
-                            }
-                        }
+                        bool isExpiredHold = Convert.ToInt32(row["GiuQuaHan"]) == 1;
 
                         if (trangThai == TrangThaiGhe.DaBan)
                         {
@@ -245,7 +237,7 @@ namespace QuanLySuKienVaBanVe.DAL
 
         /// <summary>
         /// Thuật toán phân bổ và giữ ghế tự động theo quy tắc:
-        /// Ưu tiên từ các hàng ghế đầu tiên (gần sân khấu nhất) theo thứ tự thời gian giao dịch.
+        /// Ưu tiên liền kề cùng hàng, sau đó cùng hàng, cuối cùng các ghế gần sân khấu nhất.
         /// Sử dụng khóa vi-mô WITH (UPDLOCK, ROWLOCK) để chống chọn trùng giữa các quầy.
         /// Trả về mã phiên giữ ghế maPhienGiu duy nhất.
         /// </summary>
@@ -284,12 +276,13 @@ namespace QuanLySuKienVaBanVe.DAL
                             cmdClean.ExecuteNonQuery();
                         }
 
-                        // 2. Đọc và đặt khóa UPDLOCK, ROWLOCK trên TOP (@SoLuong) ghế gần sân khấu nhất
+                        // 2. Khóa danh sách ghế trống để chọn dãy liền kề trong cùng transaction.
                         string selectSql = @"
-                            SELECT TOP (@SoLuong)
+                            SELECT
                                    g.MaGhe, g.MaKV, g.Hang, g.Cot, g.MaGheHienThi, g.TrangThai, g.ThoiGianGiu,
                                    kv.TenKV, kv.HangVe, kv.GiaVe, kv.ChoPhepBanVe,
-                                   sd.MaSuat, sd.TrangThai AS TrangThaiSuat, sd.ThoiGianBatDau
+                                   sd.MaSuat, sd.TrangThai AS TrangThaiSuat,
+                                   CASE WHEN sd.ThoiGianBatDau <= GETDATE() THEN 1 ELSE 0 END AS DaBatDau
                             FROM Ghe g WITH (UPDLOCK, ROWLOCK)
                             INNER JOIN KhuVuc kv WITH (UPDLOCK, ROWLOCK) ON g.MaKV = kv.MaKV
                             INNER JOIN SuatDien sd ON kv.MaSuat = sd.MaSuat
@@ -300,7 +293,6 @@ namespace QuanLySuKienVaBanVe.DAL
                         DataTable dt = new DataTable();
                         using (SqlCommand cmdSelect = new SqlCommand(selectSql, conn, trans))
                         {
-                            cmdSelect.Parameters.AddWithValue("@SoLuong", soLuong);
                             cmdSelect.Parameters.AddWithValue("@MaKV", maKV);
                             using (SqlDataAdapter da = new SqlDataAdapter(cmdSelect))
                             {
@@ -319,9 +311,9 @@ namespace QuanLySuKienVaBanVe.DAL
                         DataRow firstRow = dt.Rows[0];
                         bool choPhepBanVe = firstRow["ChoPhepBanVe"] == DBNull.Value || Convert.ToBoolean(firstRow["ChoPhepBanVe"]);
                         string trangThaiSuat = firstRow["TrangThaiSuat"]?.ToString() ?? string.Empty;
-                        DateTime thoiGianBatDau = Convert.ToDateTime(firstRow["ThoiGianBatDau"]);
+                        bool daBatDau = Convert.ToInt32(firstRow["DaBatDau"]) == 1;
 
-                        if (!choPhepBanVe || trangThaiSuat != "MoCuaBanVe" || thoiGianBatDau <= DateTime.Now)
+                        if (!choPhepBanVe || trangThaiSuat != "MoCuaBanVe" || daBatDau)
                         {
                             trans.Rollback();
                             errorMessage = "Khu vực hoặc suất diễn này hiện đã đóng bán vé.";
@@ -330,7 +322,7 @@ namespace QuanLySuKienVaBanVe.DAL
 
                         // 3. Khóa giữ các ghế đã chọn sang 'DangGiu' kèm ThoiGianGiu = GETDATE() và MaPhienGiu
                         List<int> seatIds = new List<int>();
-                        foreach (DataRow r in dt.Rows)
+                        foreach (DataRow r in ChonGheUuTien(dt, soLuong))
                         {
                             int id = Convert.ToInt32(r["MaGhe"]);
                             seatIds.Add(id);
@@ -380,6 +372,30 @@ namespace QuanLySuKienVaBanVe.DAL
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Danh sách đầu vào đã được SQL sắp theo LEN(Hang), Hang, Cot (gần sân khấu trước).
+        /// </summary>
+        private static List<DataRow> ChonGheUuTien(DataTable gheTrong, int soLuong)
+        {
+            var cacHang = gheTrong.AsEnumerable().GroupBy(r => r.Field<string>("Hang")).ToList();
+            foreach (var hang in cacHang)
+            {
+                var ghe = hang.ToList();
+                int lienTiep = 0;
+                for (int i = 0; i < ghe.Count; i++)
+                {
+                    lienTiep = i > 0 && ghe[i].Field<int>("Cot") == ghe[i - 1].Field<int>("Cot") + 1
+                        ? lienTiep + 1 : 1;
+                    if (lienTiep == soLuong)
+                        return ghe.Skip(i - soLuong + 1).Take(soLuong).ToList();
+                }
+            }
+
+            var cungHang = cacHang.FirstOrDefault(hang => hang.Count() >= soLuong);
+            if (cungHang != null) return cungHang.Take(soLuong).ToList();
+            return gheTrong.AsEnumerable().Take(soLuong).ToList();
         }
 
         /// <summary>
@@ -504,13 +520,17 @@ namespace QuanLySuKienVaBanVe.DAL
         /// </summary>
         public static bool CapNhatTrangThai(int maGhe, string trangThai, Guid? maPhienGiu, SqlConnection conn, SqlTransaction trans)
         {
+            if ((trangThai == TrangThaiGhe.DaBan || trangThai == TrangThaiGhe.DangGiu)
+                && (!maPhienGiu.HasValue || maPhienGiu.Value == Guid.Empty)) return false;
+
             string query = @"
                 UPDATE Ghe
                 SET TrangThai = @TrangThai,
                     ThoiGianGiu = CASE WHEN @TrangThai = N'DangGiu' THEN GETDATE() ELSE NULL END,
-                    MaPhienGiu = CASE WHEN @TrangThai = N'DangGiu' THEN ISNULL(@MaPhienGiu, NEWID()) ELSE NULL END
+                    MaPhienGiu = CASE WHEN @TrangThai = N'DangGiu' THEN @MaPhienGiu ELSE NULL END
                 WHERE MaGhe = @MaGhe
-                  AND (@MaPhienGiu IS NULL OR MaPhienGiu = @MaPhienGiu OR @TrangThai = N'DangGiu');";
+                  AND (@MaPhienGiu IS NULL OR MaPhienGiu = @MaPhienGiu OR @TrangThai = N'DangGiu')
+                  AND (@TrangThai <> N'DaBan' OR TrangThai = N'DangGiu');";
 
             SqlParameter[] parameters = {
                 new SqlParameter("@TrangThai", SqlDbType.NVarChar, 30) { Value = trangThai },
