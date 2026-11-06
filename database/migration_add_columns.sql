@@ -32,6 +32,7 @@ BEGIN
 END
 GO
 
+
 -- 5. Thêm cột MauSac vào bảng KhuVuc
 IF COL_LENGTH('KhuVuc', 'MauSac') IS NULL
 BEGIN
@@ -46,10 +47,12 @@ BEGIN
 END
 GO
 
+-- 5. Thêm cột MaPhienGiu vào bảng Ghe để quản lý phiên giữ ghế
 IF COL_LENGTH('Ghe', 'MaPhienGiu') IS NULL
 BEGIN
     ALTER TABLE Ghe ADD MaPhienGiu UNIQUEIDENTIFIER NULL;
 END
+
 GO
 
 -- 7. Them cot MaDonGoc vao bang DonVe
@@ -58,3 +61,6 @@ BEGIN
     ALTER TABLE DonVe ADD MaDonGoc INT NULL;
 END
 GO
+
+GO
+
