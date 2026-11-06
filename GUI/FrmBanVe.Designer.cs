@@ -306,7 +306,7 @@ namespace QuanLySuKienVaBanVe.GUI
             this.btnInVe.Name = "btnInVe";
             this.btnInVe.Size = new System.Drawing.Size(427, 3);
             this.btnInVe.TabIndex = 1;
-            this.btnInVe.Text = "In vé vừa đặt (Đang phát triển)";
+            this.btnInVe.Text = "In vé vừa đặt";
             this.btnInVe.Visible = false;
             this.btnInVe.Click += new System.EventHandler(this.btnInVe_Click);
             // 

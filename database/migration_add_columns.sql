@@ -31,3 +31,9 @@ BEGIN
     ALTER TABLE KhuVuc WITH CHECK ADD CONSTRAINT CK_KhuVuc_TongSoGhe CHECK (TongSoGhe > 0 AND TongSoGhe <= 10000);
 END
 GO
+-- 5. Thêm cột MaPhienGiu vào bảng Ghe để quản lý phiên giữ ghế
+IF COL_LENGTH('Ghe', 'MaPhienGiu') IS NULL
+BEGIN
+    ALTER TABLE Ghe ADD MaPhienGiu UNIQUEIDENTIFIER NULL;
+END
+GO
