@@ -136,9 +136,11 @@ namespace QuanLySuKienVaBanVe.DTO
                 ve.DiaDiem = LayString(donVe, "DiaDiem");
                 ve.TenKhachHang = LayString(donVe, "TenKH");
 
-                DateTime gio;
-                if (DateTime.TryParse(LayString(donVe, "ThoiGianBatDau"), out gio))
-                    ve.ThoiGianBatDau = gio;
+                if (donVe.Table.Columns.Contains("ThoiGianBatDau") && donVe["ThoiGianBatDau"] != DBNull.Value)
+                {
+                    try { ve.ThoiGianBatDau = Convert.ToDateTime(donVe["ThoiGianBatDau"]); }
+                    catch { }
+                }
             }
 
             return ve;
@@ -167,16 +169,16 @@ namespace QuanLySuKienVaBanVe.DTO
 
         private static int LayInt(DataRow row, string cot)
         {
-            string giaTri = LayString(row, cot);
-            int kq;
-            return int.TryParse(giaTri, NumberStyles.Integer, CultureInfo.InvariantCulture, out kq) ? kq : 0;
+            if (row == null || !row.Table.Columns.Contains(cot) || row[cot] == DBNull.Value) return 0;
+            try { return Convert.ToInt32(row[cot]); }
+            catch { return 0; }
         }
 
         private static decimal LayDecimal(DataRow row, string cot)
         {
-            string giaTri = LayString(row, cot);
-            decimal kq;
-            return decimal.TryParse(giaTri, NumberStyles.Number, CultureInfo.InvariantCulture, out kq) ? kq : 0m;
+            if (row == null || !row.Table.Columns.Contains(cot) || row[cot] == DBNull.Value) return 0m;
+            try { return Convert.ToDecimal(row[cot]); }
+            catch { return 0m; }
         }
     }
 }

@@ -30,7 +30,6 @@ namespace QuanLySuKienVaBanVe.GUI
         private TextBox txtThuMuc;
         private Button btnPrint, btnPdf, btnClose;
 
-        private int _renderWidth = -1;
         private const int KheGiuaVe = 18;
         private const int ChenLe = 16;
 
@@ -74,74 +73,10 @@ namespace QuanLySuKienVaBanVe.GUI
             return MoForm(dsVe, maDon, owner);
         }
 
-        public static DialogResult InDanhSachVe(int maDon, IList<ChiTietVeDTO> dsChiTietVe, IWin32Window owner)
-        {
-            if (dsChiTietVe == null || dsChiTietVe.Count == 0)
-                return InDanhSachVe(maDon, owner);
-
-            DataRow don = null;
-            try { don = DonVeBLL.LayThongTinDonVeVaSuatDien(maDon); }
-            catch { don = null; }
-
-            List<ThongTinInVeDTO> dsVe = new List<ThongTinInVeDTO>();
-            foreach (ChiTietVeDTO ct in dsChiTietVe)
-            {
-                if (ct == null) continue;
-                ThongTinInVeDTO ve = new ThongTinInVeDTO
-                {
-                    MaDon = ct.MaDon,
-                    MaCT = ct.MaCT,
-                    MaGhe = ct.MaGhe,
-                    MaVeCode = ct.MaVeCode,
-                    Zone = ct.TenKV,
-                    Hang = ct.Hang,
-                    Cot = ct.Cot,
-                    GiaVe = ct.GiaVe
-                };
-
-                if (don != null)
-                {
-                    ve.TenSuKien = LayCot(don, "TenSK");
-                    ve.DiaDiem = LayCot(don, "DiaDiem");
-                    ve.TenKhachHang = LayCot(don, "TenKH");
-                    DateTime gio;
-                    if (DateTime.TryParse(LayCot(don, "ThoiGianBatDau"), out gio))
-                        ve.ThoiGianBatDau = gio;
-                }
-
-                if (ve.Cot == 0 && !string.IsNullOrWhiteSpace(ct.MaGheHienThi))
-                {
-                    string hienThi = ct.MaGheHienThi.Trim().ToUpperInvariant();
-                    int i = 0;
-                    while (i < hienThi.Length && !char.IsDigit(hienThi[i])) i++;
-                    if (i > 0) ve.Hang = hienThi.Substring(0, i);
-                    int cot;
-                    if (i < hienThi.Length && int.TryParse(hienThi.Substring(i), out cot)) ve.Cot = cot;
-                }
-
-                dsVe.Add(ve);
-            }
-
-            if (dsVe.Count == 0)
-            {
-                MessageBox.Show(owner, "Danh sách vé rỗng, không có gì để in.",
-                    "Không có vé", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return DialogResult.None;
-            }
-
-            return MoForm(dsVe, maDon, owner);
-        }
-
         private static DialogResult MoForm(List<ThongTinInVeDTO> dsVe, int maDon, IWin32Window owner)
         {
             using (FrmInVe frm = new FrmInVe(dsVe, maDon))
                 return frm.ShowDialog(owner);
-        }
-
-        private static string LayCot(DataRow row, string cot)
-        {
-            return row != null && row.Table.Columns.Contains(cot) && row[cot] != DBNull.Value
-                ? row[cot].ToString() : string.Empty;
         }
 
         public FrmInVe()
@@ -170,6 +105,9 @@ namespace QuanLySuKienVaBanVe.GUI
 
             _printDoc = new PrintDocument();
             _printDoc.DocumentName = "EventTicket";
+            _printDoc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+            _printDoc.OriginAtMargins = false;
+            _printDoc.BeginPrint += (s, e) => _indexInPrint = 0;
             CauHinhKhoGiay(_printDoc);
             _printDoc.PrintPage += PrintDoc_PrintPage;
 
@@ -196,9 +134,11 @@ namespace QuanLySuKienVaBanVe.GUI
                 Text = "",
                 Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
                 ForeColor = Color.FromArgb(220, 235, 255),
-                AutoSize = true,
-                Location = new Point(0, 10),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                AutoSize = false,
+                Dock = DockStyle.Right,
+                Width = 140,
+                TextAlign = ContentAlignment.MiddleRight,
+                Padding = new Padding(0, 0, 14, 0)
             };
             pnlHeader.Controls.Add(lblPosition);
             Controls.Add(pnlHeader);
@@ -292,7 +232,7 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 PictureBox pic = new PictureBox
                 {
-                    SizeMode = PictureBoxSizeMode.AutoSize,
+                    SizeMode = PictureBoxSizeMode.Zoom,
                     BackColor = Color.Transparent
                 };
                 _picVe.Add(pic);
@@ -351,6 +291,15 @@ namespace QuanLySuKienVaBanVe.GUI
                 _danhSachVe.Count, string.Join(", ", maVe.ToArray()),
                 TicketPdfExporter.LayTenFile(_danhSachVe[0]));
 
+            float dpi = DeviceDpi > 0 ? DeviceDpi : 96f;
+            for (int i = 0; i < _picVe.Count; i++)
+            {
+                if (_picVe[i].Image == null)
+                {
+                    _picVe[i].Image = TicketRenderer.Render(_danhSachVe[i], 1280, dpi);
+                }
+            }
+
             VeLaiDanhSach();
         }
 
@@ -358,21 +307,14 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (_danhSachVe.Count == 0) return;
 
-            int w = pnlCanvas.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ChenLe;
+            int w = pnlCanvas.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - ChenLe * 2;
             if (w < 320) w = 320;
             if (w > TicketRenderer.PrintSizePx.Width) w = TicketRenderer.PrintSizePx.Width;
+            int h = (int)Math.Round(w * TicketRenderer.DesignH / TicketRenderer.DesignW);
 
-            if (w != _renderWidth)
+            foreach (PictureBox pic in _picVe)
             {
-                _renderWidth = w;
-                float dpi = DeviceDpi > 0 ? DeviceDpi : 96f;
-                for (int i = 0; i < _picVe.Count; i++)
-                {
-                    Bitmap moi = TicketRenderer.Render(_danhSachVe[i], w, dpi);
-                    Bitmap cu = _picVe[i].Image as Bitmap;
-                    _picVe[i].Image = moi;
-                    if (cu != null) cu.Dispose();
-                }
+                pic.Size = new Size(w, h);
             }
 
             SapXepChumVe();
@@ -395,15 +337,40 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             try
             {
-                doc.DefaultPageSettings.Landscape = true;
-                foreach (PaperSize ps in doc.PrinterSettings.PaperSizes)
+                doc.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+                doc.OriginAtMargins = false;
+
+                const int ticketW = 827;
+                const int ticketH = 354;
+
+                if (doc.PrinterSettings != null && doc.PrinterSettings.PaperSizes != null)
                 {
-                    if (Math.Abs(ps.Width - 827) <= 6 && Math.Abs(ps.Height - 354) <= 6)
+                    foreach (PaperSize ps in doc.PrinterSettings.PaperSizes)
                     {
-                        doc.DefaultPageSettings.PaperSize = ps;
-                        doc.DefaultPageSettings.Landscape = false;
-                        return;
+                        if (Math.Abs(ps.Width - ticketW) <= 8 && Math.Abs(ps.Height - ticketH) <= 8)
+                        {
+                            doc.DefaultPageSettings.PaperSize = ps;
+                            doc.DefaultPageSettings.Landscape = false;
+                            return;
+                        }
+                        if (Math.Abs(ps.Width - ticketH) <= 8 && Math.Abs(ps.Height - ticketW) <= 8)
+                        {
+                            doc.DefaultPageSettings.PaperSize = ps;
+                            doc.DefaultPageSettings.Landscape = true;
+                            return;
+                        }
                     }
+                }
+
+                try
+                {
+                    PaperSize custom = new PaperSize("EventTicket 210x90mm", ticketW, ticketH);
+                    doc.DefaultPageSettings.PaperSize = custom;
+                    doc.DefaultPageSettings.Landscape = false;
+                }
+                catch
+                {
+                    doc.DefaultPageSettings.Landscape = true;
                 }
             }
             catch (Exception ex)
@@ -418,20 +385,29 @@ namespace QuanLySuKienVaBanVe.GUI
 
             using (Bitmap anh = TicketRenderer.RenderForPrint(_danhSachVe[_indexInPrint]))
             {
-                float dpiX = e.Graphics.DpiX, dpiY = e.Graphics.DpiY;
-
                 RectangleF area = e.MarginBounds.IsEmpty ? e.PageBounds : e.MarginBounds;
-                RectangleF box = new RectangleF(
-                    area.X * dpiX / 100f, area.Y * dpiY / 100f,
-                    area.Width * dpiX / 100f, area.Height * dpiY / 100f);
 
                 float ratio = TicketRenderer.DesignW / TicketRenderer.DesignH;
-                float w = box.Width, h = w / ratio;
-                if (h > box.Height) { h = box.Height; w = h * ratio; }
+                float targetW = 827f;
+                float targetH = targetW / ratio;
+
+                float w = targetW;
+                float h = targetH;
+
+                if (w > area.Width || h > area.Height)
+                {
+                    w = area.Width;
+                    h = w / ratio;
+                    if (h > area.Height)
+                    {
+                        h = area.Height;
+                        w = h * ratio;
+                    }
+                }
 
                 RectangleF dest = new RectangleF(
-                    box.X + (box.Width - w) / 2f,
-                    box.Y + (box.Height - h) / 2f,
+                    area.X + (area.Width - w) / 2f,
+                    area.Y + (area.Height - h) / 2f,
                     w, h);
 
                 SmoothingMode oldSm = e.Graphics.SmoothingMode;
@@ -458,6 +434,8 @@ namespace QuanLySuKienVaBanVe.GUI
                 dlg.AllowSomePages = false;
                 dlg.UseEXDialog = true;
                 if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+                CauHinhKhoGiay(_printDoc);
 
                 _indexInPrint = 0;
                 try

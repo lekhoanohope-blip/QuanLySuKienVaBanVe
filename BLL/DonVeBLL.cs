@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -97,7 +97,9 @@ namespace QuanLySuKienVaBanVe.BLL
             if (maDon <= 0) return dsVe;
 
             DataRow don = DonVeDAL.LayThongTinDonVeVaSuatDien(maDon);
+            if (don == null) return dsVe;
             DataTable ct = ChiTietVeDAL.LayTheoMaDon(maDon);
+            if (ct == null) return dsVe;
 
             foreach (DataRow row in ct.Rows)
             {

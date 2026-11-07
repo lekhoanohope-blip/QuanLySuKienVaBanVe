@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Drawing.Text;
 using System.Windows.Forms;
 using QuanLySuKienVaBanVe.DTO;
 using ZXing;
@@ -26,6 +27,46 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
         private const float NotchR = 20f;
 
         private static string _fontFamily;
+        private static FontFamily _customFontFamily;
+        private static PrivateFontCollection _fontCollection;
+        private static readonly object _fontLock = new object();
+
+        private static void EnsureCustomFonts()
+        {
+            if (_fontCollection != null) return;
+            lock (_fontLock)
+            {
+                if (_fontCollection != null) return;
+                var coll = new PrivateFontCollection();
+                foreach (string root in CandidateFolders())
+                {
+                    string fontDir = Path.Combine(root, "Resources", "Fonts");
+                    if (Directory.Exists(fontDir))
+                    {
+                        foreach (string fontFile in Directory.GetFiles(fontDir, "*.ttf"))
+                        {
+                            try { coll.AddFontFile(fontFile); }
+                            catch { }
+                        }
+                    }
+                }
+
+                if (coll.Families.Length > 0)
+                {
+                    foreach (FontFamily fam in coll.Families)
+                    {
+                        if (string.Equals(fam.Name, "Poppins", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _customFontFamily = fam;
+                            break;
+                        }
+                    }
+                    if (_customFontFamily == null)
+                        _customFontFamily = coll.Families[0];
+                }
+                _fontCollection = coll;
+            }
+        }
 
         public static string FontFamily
         {
@@ -33,26 +74,45 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
             {
                 if (_fontFamily == null)
                 {
-                    _fontFamily = "Segoe UI";
-                    foreach (string ten in new[] { "Poppins", "Montserrat", "Nunito", "Segoe UI" })
+                    EnsureCustomFonts();
+                    if (_customFontFamily != null)
                     {
-                        try
+                        _fontFamily = _customFontFamily.Name;
+                    }
+                    else
+                    {
+                        _fontFamily = "Segoe UI";
+                        foreach (string ten in new[] { "Poppins", "Montserrat", "Nunito", "Segoe UI" })
                         {
-                            using (Font f = new Font(ten, 10f))
+                            try
                             {
-                                if (string.Equals(f.FontFamily.Name, ten, StringComparison.OrdinalIgnoreCase))
+                                using (Font f = new Font(ten, 10f))
                                 {
-                                    _fontFamily = ten;
-                                    break;
+                                    if (string.Equals(f.FontFamily.Name, ten, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        _fontFamily = ten;
+                                        break;
+                                    }
                                 }
                             }
+                            catch { }
                         }
-                        catch { }
                     }
                 }
                 return _fontFamily;
             }
             set { _fontFamily = value; }
+        }
+
+        private static Font CreateFont(float sizePx, FontStyle style)
+        {
+            EnsureCustomFonts();
+            if (_customFontFamily != null)
+            {
+                try { return new Font(_customFontFamily, sizePx, style, GraphicsUnit.Pixel); }
+                catch { }
+            }
+            return new Font(FontFamily, sizePx, style, GraphicsUnit.Pixel);
         }
 
         public static string BackgroundFolder = null;
@@ -173,7 +233,7 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
         {
             DrawText(g, label, new RectangleF(r.X, r.Y, r.Width, 55f),
                 36f, FontStyle.Regular, Color.FromArgb(235, 255, 255, 255), ContentAlignment.MiddleCenter);
-            DrawText(g, value, new RectangleF(r.X, r.Y + 58f, r.Width, 78f),
+            DrawFittedText(g, value, new RectangleF(r.X, r.Y + 58f, r.Width, 78f),
                 62f, FontStyle.Bold, InkWhite, ContentAlignment.MiddleCenter);
         }
 
@@ -361,7 +421,7 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
         private static void DrawText(Graphics g, string text, RectangleF r, float sizePx,
             FontStyle style, Color color, ContentAlignment align)
         {
-            using (Font f = new Font(FontFamily, sizePx, style, GraphicsUnit.Pixel))
+            using (Font f = CreateFont(sizePx, style))
             using (var br = new SolidBrush(color))
             using (StringFormat sf = AlignFormat(align))
                 g.DrawString(text ?? string.Empty, f, br, r, sf);
@@ -376,6 +436,8 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
             draw.Trimming = StringTrimming.EllipsisCharacter;
             if (maxLines == 1)
             {
+                // Private fonts can report glyph bounds smaller than the full line.
+                draw.FormatFlags &= ~StringFormatFlags.LineLimit;
                 draw.FormatFlags |= StringFormatFlags.NoWrap;
             }
             else
@@ -390,13 +452,14 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
                 float size = sizePx;
                 while (size > 14f)
                 {
-                    using (Font f = new Font(FontFamily, size, style, GraphicsUnit.Pixel))
+                    using (Font f = CreateFont(size, style))
                     {
                         bool fits;
                         if (maxLines == 1)
                         {
-                            SizeF need = g.MeasureString(text, f, PointF.Empty, StringFormat.GenericTypographic);
-                            fits = need.Width <= r.Width + 0.5f && need.Height <= r.Height + 0.5f;
+                            SizeF need = g.MeasureString(text, f, PointF.Empty, draw);
+                            float lineHeight = Math.Max(need.Height, f.GetHeight(g));
+                            fits = need.Width <= r.Width && lineHeight <= r.Height;
                         }
                         else
                         {
@@ -419,7 +482,7 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
                     size -= Math.Max(1.5f, size * 0.05f);
                 }
 
-                using (Font f = new Font(FontFamily, 14f, style, GraphicsUnit.Pixel))
+                using (Font f = CreateFont(14f, style))
                 using (var br = new SolidBrush(color))
                     g.DrawString(text, f, br, r, draw);
             }
@@ -431,7 +494,7 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
 
         private static StringFormat AlignFormat(ContentAlignment align)
         {
-            StringFormat sf = new StringFormat(StringFormat.GenericTypographic);
+            StringFormat sf = new StringFormat();
             switch (align)
             {
                 case ContentAlignment.TopLeft:
@@ -471,7 +534,14 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
                         string path = Path.Combine(root, "Resources", "Ticket", ten + ext);
                         if (File.Exists(path))
                         {
-                            try { found = Image.FromFile(path); }
+                            try
+                            {
+                                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                                using (var tmp = Image.FromStream(fs))
+                                {
+                                    found = new Bitmap(tmp);
+                                }
+                            }
                             catch { found = null; }
                             break;
                         }

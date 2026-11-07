@@ -14,25 +14,22 @@ FrmBanVe  --(chọn khu vực -> giữ ghế -> FrmThanhToan -> Commit)-->  MaDo
    v
 FrmInVe.InDanhSachVe(_lastPaidMaDon, this)
    |
-   +--> DonVeBLL.LayDanhSachVeIn(maDon)          // gom DonVe + SuatDien + SuKien + ChiTietVe + Ghe + KhuVuc
+   +--> DonVeBLL.LayDanhSachVeIn(maDon)          // gom DonVe + SuatDien + SuKien + ChiTietVe + Ghe + KhuVuc (chỉ lấy vé hợp lệ)
    +--> ThongTinInVeDTO                          // DTO đã định dạng sẵn cho việc in
    +--> TicketRenderer.Render(...)               // GDI+ vẽ vé (thân + cuống)
-   +--> PrintDocument / PrintPreviewDialog       // in ra máy in
+   +--> PrintDocument / PrintDialog              // in ra máy in theo đúng khổ 210x90mm và lề 0
    +--> TicketPdfExporter.XuatDanhSach(...)      // xuất PDF 300 DPI bằng PDFsharp
 ```
 
 ### Hàm gọi liên thông (static, gọi từ đâu cũng được)
 
 ```csharp
-// Cách 1 — phổ biến nhất: chỉ cần mã đơn vé
+// Chỉ cần truyền mã đơn vé vừa thanh toán
 FrmInVe.InDanhSachVe(maDon);
 FrmInVe.InDanhSachVe(maDon, this);          // modal trên form chủ
-
-// Cách 2 — khi đã giữ sẵn danh sách chi tiết vé trong bộ nhớ
-FrmInVe.InDanhSachVe(maDon, danhSachChiTietVe, this);
 ```
 
-Cả hai đều mở form xem trước, không trả về ngoại lệ ra ngoài: lỗi CSDL / đơn không còn vé hợp lệ
+Hàm mở form xem trước, không trả về ngoại lệ ra ngoài: lỗi CSDL / đơn không còn vé hợp lệ
 được chặn lại bằng `MessageBox` thân thiện.
 
 ---
@@ -100,17 +97,16 @@ bin\Debug\QuanLySuKienVaBanVe.exe
 Đăng nhập → **Bán vé** → chọn sự kiện/suất diễn → bấm một khối khu vực → chọn số lượng →
 thanh toán. Sau khi thanh toán thành công, nút **"In vé vừa đặt"** hiện ở góc dưới phải; bấm vào là mở `FrmInVe`.
 
-Trong `FrmInVe` có 6 nút:
+Trong `FrmInVe` có thanh công cụ tinh gọn gồm 3 nút chức năng và ô thư mục:
 
-| Nút | Chức năng |
+| Nút / Thành phần | Chức năng |
 |:---|:---|
-| ◀ Vé trước / Vé sau ▶ | chuyển giữa các vé trong cùng đơn (1 đơn mua nhiều vé) |
-| Xem trước khi in | `PrintPreviewDialog` — căn tỉ lệ, xem thử trước khi ra giấy |
-| In vé | `PrintDialog` → `PrintDocument.Print()` (mỗi vé một trang) |
-| Xuất PDF | ghi PDF 300 DPI vào thư mục ở ô "Thư mục PDF" |
-| Đóng | quay lại màn hình Bán vé |
+| In vé | `PrintDialog` → Cấu hình khổ giấy 210×90mm và lề 0 cho máy in → `PrintDocument.Print()` (mỗi vé một trang) |
+| Xuất PDF | Ghi file PDF 300 DPI chuẩn vào thư mục cấu hình ở ô "Thư mục PDF" |
+| Đóng | Quay lại màn hình Bán vé |
+| Ô "Thư mục PDF" | Cho phép tùy chỉnh thư mục lưu file PDF xuất ra (mặc định: `Documents\EventTicket\VeIn`) |
 
-Bấm vào chính chiếc vé trong vùng xem trước cũng mở hộp thoại in thử.
+Toàn bộ vé trong cùng một phiên mua được xếp chồng theo chiều dọc trên form xem trước, có thể cuộn lên/xuống để kiểm tra trực quan.
 
 ---
 
@@ -122,8 +118,7 @@ EventTicket_mave_[số_mã_vé].pdf
 
 `TicketPdfExporter.LayTenFile()` sinh tên theo đúng khuôn trên, trong đó
 **số mã vé = `ChiTietVe.MaCT`** — con số do CSDL cấp ngay khi bấm thanh toán.
-Nếu `MaCT` chưa có (goi từ `List<ChiTietVeDTO>` mà DTO chưa đổ khoá chính),
-hàm lấy chuỗi số liền cuối của `MaVeCode` (ví dụ `SK19-SD50-A1-4691` → `4691`),
+Nếu `MaCT` chưa có, hàm lấy chuỗi số liền cuối của `MaVeCode` (ví dụ `SK19-SD50-A1-4691` → `4691`),
 rồi cuối cùng fallback về `MaDon`. Chuỗi được làm sạch ký tự cấm của Windows nên không bao giờ lỗi path.
 
 Kiểm chứng với dữ liệu thật trong `dashboard_demo_data.sql`:
@@ -147,8 +142,8 @@ Vé phải ra được 3 nơi: màn hình, máy in và PDF. Nếu dùng `Label`/
 toạ độ phụ thuộc DPI Windows và font máy người dùng → **lệch hoạ tiết khi in**.
 Vì vậy module này vẽ toàn bộ vé vào một `Bitmap` bằng GDI+, rồi:
 
-- màn hình: `picTicket.Image = bitmap`
-- máy in: `e.Graphics.DrawImage(bitmap, ...)`
+- màn hình: `picTicket.Image = bitmap` (dùng `PictureBoxSizeMode.Zoom` mượt mà khi co giãn form)
+- máy in: `e.Graphics.DrawImage(bitmap, ...)` (chuẩn đơn vị `1/100 inch` không phụ thuộc DPI máy in)
 - PDF: nhúng bitmap vào trang `210mm x 90mm`
 
 Chỉ có **một nguồn vẽ duy nhất** nên không thể lệch giữa ba nơi.
@@ -166,65 +161,44 @@ trong đó `1 unit = 0.1 mm` → vé thật **210mm x 90mm**.
 ```
 
 Khi vẽ, `Render()` gọi `g.ScaleTransform(widthPx / 2100f, ...)` nên **cùng một bộ toạ độ**
-dùng được cho preview 1281px lẫn bản in 2480px @300DPI. Muốn đổi vị trí, chỉ cần sửa số
+dùng được cho preview lẫn bản in 2480px @300DPI. Muốn đổi vị trí, chỉ cần sửa số
 trong hệ 2100x900 — không phải tính lại theo DPI.
 
 ### 4.3. Bảng toạ độ đang dùng (thân vé)
 
 | Thành phần | Vùng `RectangleF(x, y, w, h)` | Cỡ chữ | Thuộc tính |
 |:---|:---|:---:|:---|
-| Logo `EventTicket` | gốc `(105, 78)` | 74 | **tĩnh** |
-| Tên sự kiện | `(105, 205, 1180, 120)` | 78→tự co | `TenSuKien` |
-| `Location: …` | `(105, 330, 1330, 62)` | 40→tự co | `DiaDiem` |
-| Ô Zone | `(100, 452, 300, 232)` | 76 | `Zone` ← `KhuVuc.TenKV` |
-| Ô Row \| Seat | `(424, 452, 448, 232)` | 76 | `Hang` / `Cot` |
-| Ô Time | `(896, 452, 434, 232)` | 76 | `ThoiGianBatDau` (`HH:mm`) |
-| Ngày diễn | `(100, 712, 1330, 150)` | 118 | `dd.MM.yyyy` |
-| Chùm nốt nhạc | `(1330, 55, 210, 330)` | — | trang trí tĩnh |
+| Logo `EventTicket` | `(90, 66, 430, 100)` | — | ảnh `logoEventTicket.png` |
+| Tên sự kiện | `(90, 209, 1040, 150)` | 112→tự co | `TenSuKien` |
+| `Location: …` | `(90, 353, 1040, 60)` | 40→tự co | `DiaDiem` |
+| Ô Zone | `(87, 487, 298, 205)` | 76 | `Zone` ← `KhuVuc.TenKV` |
+| Ô Row \| Seat | `(412, 487, 362, 205)` | 76 | `Hang` / `Cot` |
+| Ô Time | `(801, 487, 348, 205)` | 76 | `ThoiGianBatDau` (`HH:mm`) |
+| Ngày diễn | `(100, 715, 1100, 185)` | 150 | `dd.MM.yyyy` |
+| Chùm nốt nhạc | `(1304, 90, 120, 299)` | — | ảnh `MusicNote.png` |
 
 ### 4.4. Bảng toạ độ cuống vé (x bắt đầu từ 1575)
 
 | Thành phần | Vùng | Cỡ chữ |
 |:---|:---|:---:|
-| Logo `EventTicket` | `(1575, 62, 525, 74)` | 46 |
-| Ngày diễn | `(1589, 168, 497, 92)` | 62 |
-| `Row` + giá trị | `(1605, 292, 232, 170)` | 38 / 76 |
-| `Seat` + giá trị | `(1837, 292, 232, 170)` | 38 / 76 |
-| Tên sự kiện (tối đa 3 dòng) | `(1601, 480, 473, 170)` | 46→tự co |
-| Khung barcode trắng | `(1609, 690, 457, 150)` | — |
+| Logo `EventTicket` | `(1637, 55, 400, 93)` | — |
+| Ngày diễn | `(1595, 195, 485, 110)` | 84 |
+| `Row` + giá trị | `(1620, 300, 200, 136)` | 36 / 62 |
+| `Seat` + giá trị | `(1830, 300, 200, 136)` | 36 / 62 |
+| Tên sự kiện (tối đa 3 dòng) | `(1605, 465, 465, 170)` | 62→tự co |
+| Khung barcode trắng | `(1625, 676, 430, 175)` | — |
 
-### 4.5. Quy trình chỉnh toạ độ khi thấy lệch
+### 4.5. Dùng ảnh nền có sẵn và font Poppins
 
-1. Mở `GUI/Helpers/TicketRenderer.cs`, sửa số trong `DrawBody()` / `DrawStub()`.
-2. Build, chạy app, nhìn vé trong `FrmInVe`.
-3. Muốn so nhanh mà không cần CSDL: tạm gọi
-   `TicketRenderer.Render(veMau, 1281, 96f).Save(@"C:\temp\ve.png", ImageFormat.Png);`
-   rồi mở `C:\temp\ve.png` đặt cạnh mockup.
-4. Mẹo: `x` tăng → dịch phải; `y` tăng → dịch xuống; số trong hệ 2100x900 nên
-   **10 unit ≈ 1 mm ≈ 12 px ở bản in 300 DPI** để ước lượng nhanh.
+Bộ ảnh nền và logo được lưu tại `Resources/Ticket/`:
+- `ticket_bg.jpg`: nền thân vé
+- `stub_bg.jpg`: nền cuống vé
+- `logoEventTicket.png`: logo thương hiệu
+- `MusicNote.png`: nốt nhạc trang trí
 
-### 4.6. Dùng ảnh nền có sẵn thay cho nền vẽ bằng code
+Hàm `LoadImage()` nạp qua `FileStream` và tạo bitmap độc lập, tránh khóa file khi ứng dụng đang chạy. Nếu thiếu file ảnh, `TicketRenderer` tự động rơi về nền gradient uốn lượn được vẽ trực tiếp bằng code GDI+.
 
-`TicketRenderer` mặc định **tự vẽ nền gradient uốn lượn** (không cần file ảnh nào, chạy được ngay).
-Nếu nhóm đã có bộ ảnh nền *sạch* (không dính chữ), chỉ cần thả 2 file vào:
-
-```
-bin\Debug\Resources\Ticket\ticket_bg.jpg     // phần thân trái
-bin\Debug\Resources\Ticket\stub_bg.jpg       // phần cuống phải
-```
-
-hoặc trỏ thẳng tới thư mục dự án:
-
-```csharp
-TicketRenderer.BackgroundFolder = @"D:\DuAn\QuanLySuKienVaBanVe";
-```
-
-`TryLoadImage()` sẽ tự dò `Resources\Ticket\<ten>.jpg|.jpeg|.png`; thấy cả 2 file thì tô ảnh
-vào đúng vùng thân/cuống (cuống được làm tối thêm một lớp phủ), không thấy thì quay lại nền code.
-Vừa chép ảnh mới xong mà màn hình chưa đổi? gọi `TicketRenderer.ResetBackgroundCache()`.
-
-> Ảnh mockup nhóm đang có (đã burn sẵn chữ) **không** dùng làm nền được — sẽ bị đúp chữ.
-> Cần bản nền trắng chữ, đúng tỉ lệ 1575:525 cho thân:cuống.
+Bộ font `Poppins` gồm 4 file `.ttf` (`Poppins-Regular`, `Poppins-Medium`, `Poppins-SemiBold`, `Poppins-Bold`) trong `Resources/Fonts/` được cấu hình tự động copy ra thư mục build và nạp qua `PrivateFontCollection`, giúp phôi vé giữ đúng kiểu chữ thiết kế trên mọi máy tính ngay cả khi chưa cài đặt font Poppins vào Windows.
 
 ---
 
@@ -242,6 +216,7 @@ Vừa chép ảnh mới xong mà màn hình chưa đổi? gọi `TicketRenderer.
 | Barcode Code128 sinh từ mã vé | ✅ `ZXing.BarcodeWriter` + `CODE_128`, nội dung = `MaVeCode` |
 | Đường đứt nét xé vé + 2 lỗ tròn | ✅ `DrawTear()` |
 | PDF 300 DPI | ✅ render 2480 px cho trang 210 mm |
+| In vật lý đúng kích thước 210×90mm | ✅ cấu hình khổ giấy động, lề 0, không nhân phóng đại DPI |
 | Vé không bao giờ tràn chữ | ✅ `DrawFittedText()` tự co chữ, hết cỡ thì cắt dấu ba chấm |
 
 ---
@@ -251,11 +226,11 @@ Vừa chép ảnh mới xong mà màn hình chưa đổi? gọi `TicketRenderer.
 | File | Loại | Nội dung |
 |:---|:---|:---|
 | `DTO/ThongTinInVeDTO.cs` | mới | DTO in vé + định dạng `D2`, `dd.MM.yyyy`, `HH:mm`, suy `SoMaVe` |
-| `GUI/Helpers/TicketRenderer.cs` | mới | Toàn bộ GDI+: nền, logo, 3 ô thông tin, cuống vé, barcode, nốt nhạc |
+| `GUI/Helpers/TicketRenderer.cs` | mới | Toàn bộ GDI+: nền, logo, 3 ô thông tin, cuống vé, barcode, nốt nhạc, font Poppins |
 | `GUI/Helpers/TicketPdfExporter.cs` | mới | Nhúng ảnh vé vào PDFsharp, sinh tên file bắt buộc |
-| `GUI/FrmInVe.cs` | mới | Form xem trước + in + xuất PDF + 3 hàm static `InDanhSachVe` |
-| `BLL/DonVeBLL.cs` | sửa | thêm `LayDanhSachVeIn(int maDon)` (bỏ qua vé `DaHuy`) |
+| `GUI/FrmInVe.cs` | mới | Form xem trước dạng cuộn dọc + in máy in vật lý + xuất PDF |
+| `BLL/DonVeBLL.cs` | sửa | thêm `LayDanhSachVeIn(int maDon)` (kiểm tra đơn tồn tại và lọc bỏ vé `DaHuy`) |
 | `DTO/ChiTietVeDTO.cs` | sửa | thêm `Hang`, `Cot` (DAL vốn đã SELECT 2 cột này) |
 | `GUI/FrmBanVe.cs` | sửa | `btnInVe_Click` gọi thật `FrmInVe.InDanhSachVe(_lastPaidMaDon, this)` |
 | `GUI/FrmBanVe.Designer.cs` | sửa | nhãn nút bỏ chữ **"(Đang phát triển)"** |
-| `QuanLySuKienVaBanVe.csproj`, `packages.config` | sửa | khai báo 2 gói NuGet + 4 file compile mới |
+| `QuanLySuKienVaBanVe.csproj`, `packages.config` | sửa | khai báo 2 gói NuGet + font Poppins + tài nguyên Ticket |
