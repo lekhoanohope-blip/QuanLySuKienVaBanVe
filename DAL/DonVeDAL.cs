@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DTO;
@@ -14,10 +14,12 @@ namespace QuanLySuKienVaBanVe.DAL
         public static DataTable LayDanhSachDonVe()
         {
             string query = @"
-                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT,
+                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT, kh.Email,
                        dv.MaSuat, sd.MaSK, sk.TenSK, sd.ThoiGianBatDau, sd.DiaDiem,
                        dv.MaTK, tk.TenDangNhap AS TenNV,
-                       dv.NgayDat, dv.TongTien, dv.TrangThai
+                       dv.NgayDat, dv.TongTien, dv.TrangThai,
+                       (SELECT COUNT(1) FROM ChiTietVe ct WHERE ct.MaDon = dv.MaDon AND ct.TrangThai = N'HopLe') AS SoVeHopLe,
+                       (SELECT COUNT(1) FROM ChiTietVe ct WHERE ct.MaDon = dv.MaDon) AS TongSoVe
                 FROM DonVe dv
                 INNER JOIN KhachHang kh ON dv.MaKH = kh.MaKH
                 INNER JOIN SuatDien sd ON dv.MaSuat = sd.MaSuat
@@ -59,19 +61,29 @@ namespace QuanLySuKienVaBanVe.DAL
             string escapedTuKhoa = EscapeLikeLiteral(rawTuKhoa);
 
             string query = @"
-                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT,
+                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT, kh.Email,
                        dv.MaSuat, sd.MaSK, sk.TenSK, sd.ThoiGianBatDau, sd.DiaDiem,
                        dv.MaTK, tk.TenDangNhap AS TenNV,
-                       dv.NgayDat, dv.TongTien, dv.TrangThai
+                       dv.NgayDat, dv.TongTien, dv.TrangThai,
+                       (SELECT COUNT(1) FROM ChiTietVe ct WHERE ct.MaDon = dv.MaDon AND ct.TrangThai = N'HopLe') AS SoVeHopLe,
+                       (SELECT COUNT(1) FROM ChiTietVe ct WHERE ct.MaDon = dv.MaDon) AS TongSoVe
                 FROM DonVe dv
                 INNER JOIN KhachHang kh ON dv.MaKH = kh.MaKH
                 INNER JOIN SuatDien sd ON dv.MaSuat = sd.MaSuat
                 INNER JOIN SuKien sk ON sd.MaSK = sk.MaSK
                 INNER JOIN TaiKhoan tk ON dv.MaTK = tk.MaTK
-                WHERE (@MaDon > 0 AND dv.MaDon = @MaDon)
+                WHERE (@MaDon > 0 AND (dv.MaDon = @MaDon OR dv.MaDonGoc = @MaDon))
                    OR (kh.TenKH LIKE '%' + @TuKhoa + '%')
-                   OR (kh.SDT LIKE @TienTo + '%')
+                   OR (kh.SDT LIKE '%' + @TienTo + '%')
                    OR (sk.TenSK LIKE '%' + @TuKhoa + '%')
+                   OR EXISTS (
+                       SELECT 1
+                       FROM ChiTietVe ct
+                       INNER JOIN Ghe g ON ct.MaGhe = g.MaGhe
+                       WHERE ct.MaDon = dv.MaDon
+                         AND (ct.MaVeCode LIKE '%' + @TuKhoa + '%'
+                              OR g.MaGheHienThi LIKE @TienTo + '%')
+                   )
                 ORDER BY dv.NgayDat DESC, dv.MaDon DESC;";
 
             SqlParameter[] parameters = {
@@ -86,9 +98,10 @@ namespace QuanLySuKienVaBanVe.DAL
         public static DataRow LayThongTinDonVeVaSuatDien(int maDon)
         {
             string query = @"
-                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT,
+                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT, kh.Email,
                        dv.MaSuat, sd.MaSK, sk.TenSK, sd.ThoiGianBatDau, sd.ThoiGianKetThuc, sd.DiaDiem,
                        sd.TrangThai AS TrangThaiSuat,
+                       sk.TrangThai AS TrangThaiSK,
                        dv.MaTK, tk.TenDangNhap AS TenNV,
                        dv.NgayDat, dv.TongTien, dv.TrangThai
                 FROM DonVe dv
@@ -109,9 +122,10 @@ namespace QuanLySuKienVaBanVe.DAL
         public static DataRow LayThongTinDonVeVaSuatDien(int maDon, SqlConnection conn, SqlTransaction tran)
         {
             string query = @"
-                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT,
+                SELECT dv.MaDon, dv.MaDonGoc, dv.MaKH, kh.TenKH, kh.SDT, kh.Email,
                        dv.MaSuat, sd.MaSK, sk.TenSK, sd.ThoiGianBatDau, sd.ThoiGianKetThuc, sd.DiaDiem,
                        sd.TrangThai AS TrangThaiSuat,
+                       sk.TrangThai AS TrangThaiSK,
                        dv.MaTK, tk.TenDangNhap AS TenNV,
                        dv.NgayDat, dv.TongTien, dv.TrangThai
                 FROM DonVe dv WITH (UPDLOCK, ROWLOCK)
@@ -138,6 +152,7 @@ namespace QuanLySuKienVaBanVe.DAL
                 WHERE sd.MaSK = @MaSK
                   AND sd.ThoiGianBatDau > GETDATE()
                   AND sd.TrangThai = N'MoCuaBanVe'
+                  AND sk.TrangThai NOT IN (N'DaHuy', N'DaKetThuc')
                 ORDER BY sd.ThoiGianBatDau ASC;";
 
             SqlParameter[] parameters = {
@@ -171,10 +186,12 @@ namespace QuanLySuKienVaBanVe.DAL
             string query = @"
                 SELECT g.MaGhe, g.MaGheHienThi, g.Hang, g.Cot, g.TrangThai,
                        kv.MaKV, kv.TenKV, kv.HangVe, kv.GiaVe, kv.ChoPhepBanVe,
-                       sd.MaSuat, sd.MaSK, sd.ThoiGianBatDau, sd.TrangThai AS TrangThaiSuat
+                       sd.MaSuat, sd.MaSK, sd.ThoiGianBatDau, sd.TrangThai AS TrangThaiSuat,
+                       sk.TrangThai AS TrangThaiSK
                 FROM Ghe g WITH (UPDLOCK, ROWLOCK)
                 INNER JOIN KhuVuc kv WITH (UPDLOCK, ROWLOCK) ON g.MaKV = kv.MaKV
                 INNER JOIN SuatDien sd ON kv.MaSuat = sd.MaSuat
+                INNER JOIN SuKien sk ON sd.MaSK = sk.MaSK
                 WHERE g.MaGhe = @MaGhe;";
 
             SqlParameter[] parameters = {
@@ -248,23 +265,68 @@ namespace QuanLySuKienVaBanVe.DAL
         }
 
         /// <summary>
+        /// Khi một đơn phát sinh từ đổi vé (MaDonGoc IS NOT NULL) bị hủy toàn bộ,
+        /// nếu đơn gốc đang ở trạng thái 'DaDoi', không còn vé 'HopLe' nào và không còn
+        /// đơn con nào đang hoạt động ('DaThanhToan' hoặc 'DaDoi'), thì chuyển đơn gốc sang 'DaHuy'
+        /// để tránh ghi nhận doanh thu ảo từ khoản thanh toán gốc.
+        /// </summary>
+        public static void DongBoHuyDonGocNeuHetHieuLuc(int? maDonGoc, SqlConnection conn, SqlTransaction tran)
+        {
+            int? currentMaDonGoc = maDonGoc;
+            int depth = 0;
+            while (currentMaDonGoc.HasValue && currentMaDonGoc.Value > 0 && depth < 10)
+            {
+                depth++;
+                int parentId = currentMaDonGoc.Value;
+                string checkQuery = @"
+                    SELECT MaDonGoc, TrangThai
+                    FROM DonVe WITH (UPDLOCK, ROWLOCK)
+                    WHERE MaDon = @MaDonCha
+                      AND TrangThai = N'DaDoi'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM ChiTietVe ct
+                          WHERE ct.MaDon = @MaDonCha AND ct.TrangThai = N'HopLe'
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM DonVe child
+                          WHERE child.MaDonGoc = @MaDonCha
+                            AND child.TrangThai IN (N'DaThanhToan', N'DaDoi')
+                      );";
+
+                SqlParameter[] checkParams = {
+                    new SqlParameter("@MaDonCha", SqlDbType.Int) { Value = parentId }
+                };
+                DataTable dtParent = Database.ExecuteQuery(checkQuery, conn, tran, checkParams);
+                if (dtParent.Rows.Count == 0)
+                {
+                    break;
+                }
+
+                CapNhatTrangThai(parentId, TrangThaiDonVe.DaHuy, conn, tran);
+                object nextParent = dtParent.Rows[0]["MaDonGoc"];
+                currentMaDonGoc = (nextParent != null && nextParent != DBNull.Value)
+                    ? (int?)Convert.ToInt32(nextParent)
+                    : null;
+            }
+        }
+
+        /// <summary>
         /// Cập nhật trạng thái các ghế thuộc vé hợp lệ (HopLe) trong đơn về 'Trong' hoặc trạng thái chỉ định.
         /// Chỉ giải phóng các ghế của vé còn HopLe và chưa bị đơn khác bán lại (ngăn ngừa giải phóng nhầm ghế đã đổi và bán lại).
-        /// TODO [Tích hợp TV1]: Sau này có thể thay bằng GheDAL.CapNhatTrangThai khi TV1 bàn giao GheDAL.
         /// </summary>
         public static int CapNhatTrangThaiGheTheoDon(int maDon, string trangThaiGhe, SqlConnection conn, SqlTransaction tran)
         {
             string query = @"
                 UPDATE Ghe
-                SET TrangThai = @TrangThaiGhe, ThoiGianGiu = NULL
+                SET TrangThai = @TrangThaiGhe, ThoiGianGiu = NULL, MaPhienGiu = NULL
                 WHERE MaGhe IN (
-                    SELECT MaGhe FROM ChiTietVe 
+                    SELECT MaGhe FROM ChiTietVe
                     WHERE MaDon = @MaDon AND TrangThai = N'HopLe'
                 )
                 AND NOT EXISTS (
-                    SELECT 1 FROM ChiTietVe ct2 
-                    WHERE ct2.MaGhe = Ghe.MaGhe 
-                      AND ct2.TrangThai = N'HopLe' 
+                    SELECT 1 FROM ChiTietVe ct2
+                    WHERE ct2.MaGhe = Ghe.MaGhe
+                      AND ct2.TrangThai = N'HopLe'
                       AND ct2.MaDon != @MaDon
                 );";
 
@@ -277,13 +339,12 @@ namespace QuanLySuKienVaBanVe.DAL
 
         /// <summary>
         /// Cập nhật trạng thái của 1 ghế đơn lẻ.
-        /// TODO [Tích hợp TV1]: Thay bằng GheDAL.CapNhatTrangThai(maGhe, trangThai, conn, tran) khi TV1 bàn giao GheDAL.
         /// </summary>
         public static int CapNhatTrangThaiGhe(int maGhe, string trangThaiGhe, SqlConnection conn, SqlTransaction tran)
         {
             string query = @"
                 UPDATE Ghe
-                SET TrangThai = @TrangThaiGhe, ThoiGianGiu = NULL
+                SET TrangThai = @TrangThaiGhe, ThoiGianGiu = NULL, MaPhienGiu = NULL
                 WHERE MaGhe = @MaGhe;";
 
             SqlParameter[] parameters = {
@@ -295,7 +356,6 @@ namespace QuanLySuKienVaBanVe.DAL
 
         /// <summary>
         /// Ghi nhận lịch sử thao tác hệ thống vào bảng NhatKy.
-        /// TODO [Tích hợp TV1]: Có thể chuyển sang NhatKyDAL khi TV1 hoàn thiện.
         /// </summary>
         public static int GhiNhatKy(int maTK, string hanhDong, string chiTiet, SqlConnection conn, SqlTransaction tran)
         {

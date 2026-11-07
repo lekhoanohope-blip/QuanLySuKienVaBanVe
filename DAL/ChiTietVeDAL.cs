@@ -31,11 +31,12 @@ namespace QuanLySuKienVaBanVe.DAL
 
         public static ChiTietVeDTO LayChiTietVeTheoMa(int maCT, SqlConnection conn = null, SqlTransaction tran = null)
         {
-            string query = @"
+            string lockHint = (conn != null && tran != null) ? "WITH (UPDLOCK, ROWLOCK)" : string.Empty;
+            string query = $@"
                 SELECT ct.MaCT, ct.MaDon, ct.MaGhe, g.MaGheHienThi, g.Hang, g.Cot,
                        kv.MaKV, kv.TenKV, kv.HangVe, ct.GiaVe, ct.MaVeCode, ct.TrangThai
-                FROM ChiTietVe ct
-                INNER JOIN Ghe g ON ct.MaGhe = g.MaGhe
+                FROM ChiTietVe ct {lockHint}
+                INNER JOIN Ghe g {lockHint} ON ct.MaGhe = g.MaGhe
                 INNER JOIN KhuVuc kv ON g.MaKV = kv.MaKV
                 WHERE ct.MaCT = @MaCT;";
 
@@ -108,23 +109,29 @@ namespace QuanLySuKienVaBanVe.DAL
             return Database.ExecuteNonQuery(query, conn, tran, parameters);
         }
 
-        public static int DemSoVeHopLeTheoDon(int maDon, SqlConnection conn, SqlTransaction tran)
+        public static int DemSoVeHopLeTheoDon(int maDon, SqlConnection conn = null, SqlTransaction tran = null)
         {
-            string query = "SELECT COUNT(1) FROM ChiTietVe WHERE MaDon = @MaDon AND TrangThai = N'HopLe';";
+            string lockHint = (conn != null && tran != null) ? "WITH (UPDLOCK, ROWLOCK)" : string.Empty;
+            string query = $"SELECT COUNT(1) FROM ChiTietVe {lockHint} WHERE MaDon = @MaDon AND TrangThai = N'HopLe';";
             SqlParameter[] parameters = {
                 new SqlParameter("@MaDon", SqlDbType.Int) { Value = maDon }
             };
-            object result = Database.ExecuteScalar(query, conn, tran, parameters);
+            object result = (conn != null && tran != null)
+                ? Database.ExecuteScalar(query, conn, tran, parameters)
+                : Database.ExecuteScalar(query, parameters);
             return result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
         }
 
-        public static decimal TinhTongTienVeHopLe(int maDon, SqlConnection conn, SqlTransaction tran)
+        public static decimal TinhTongTienVeHopLe(int maDon, SqlConnection conn = null, SqlTransaction tran = null)
         {
-            string query = "SELECT ISNULL(SUM(GiaVe), 0) FROM ChiTietVe WHERE MaDon = @MaDon AND TrangThai = N'HopLe';";
+            string lockHint = (conn != null && tran != null) ? "WITH (UPDLOCK, ROWLOCK)" : string.Empty;
+            string query = $"SELECT ISNULL(SUM(GiaVe), 0) FROM ChiTietVe {lockHint} WHERE MaDon = @MaDon AND TrangThai = N'HopLe';";
             SqlParameter[] parameters = {
                 new SqlParameter("@MaDon", SqlDbType.Int) { Value = maDon }
             };
-            object result = Database.ExecuteScalar(query, conn, tran, parameters);
+            object result = (conn != null && tran != null)
+                ? Database.ExecuteScalar(query, conn, tran, parameters)
+                : Database.ExecuteScalar(query, parameters);
             return result != null && result != DBNull.Value ? Convert.ToDecimal(result) : 0m;
         }
 

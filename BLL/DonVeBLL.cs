@@ -136,6 +136,7 @@ namespace QuanLySuKienVaBanVe.BLL
         /// 1. Đơn vé phải tồn tại và đang ở trạng thái 'DaThanhToan'.
         /// 2. Suất diễn chưa diễn ra.
         /// 3. Thời điểm yêu cầu hủy phải TRƯỚC giờ diễn ít nhất 24 GIỜ.
+        /// 4. Đơn vé phải còn ít nhất 1 vé ở trạng thái 'HopLe'.
         /// </summary>
         public static DonVeResult KiemTraDieuKienHuy(int maDon)
         {
@@ -172,6 +173,12 @@ namespace QuanLySuKienVaBanVe.BLL
                     maDon);
             }
 
+            int soVeHopLe = ChiTietVeDAL.DemSoVeHopLeTheoDon(maDon);
+            if (soVeHopLe <= 0)
+            {
+                return DonVeResult.Fail($"Đơn vé #{maDon} không còn vé nào có hiệu lực để hủy.", maDon);
+            }
+
             return DonVeResult.Ok("Đơn vé đủ điều kiện hủy theo quy định.", maDon);
         }
 
@@ -180,6 +187,7 @@ namespace QuanLySuKienVaBanVe.BLL
         /// 1. Đơn vé phải tồn tại và đang ở trạng thái 'DaThanhToan'.
         /// 2. Suất diễn chưa diễn ra.
         /// 3. Thời điểm yêu cầu đổi phải TRƯỚC giờ diễn ít nhất 12 GIỜ.
+        /// 4. Đơn vé phải còn ít nhất 1 vé ở trạng thái 'HopLe'.
         /// </summary>
         public static DonVeResult KiemTraDieuKienDoi(int maDon)
         {
@@ -214,6 +222,12 @@ namespace QuanLySuKienVaBanVe.BLL
                 return DonVeResult.Fail(
                     $"Không đủ điều kiện đổi vé: Suất diễn bắt đầu lúc {thoiGianBatDau:dd/MM/yyyy HH:mm} (còn {thoiGianConLai.TotalHours:F1} giờ nữa).\nTheo quy định, yêu cầu đổi vé phải được thực hiện trước giờ diễn ít nhất 12 giờ.",
                     maDon);
+            }
+
+            int soVeHopLe = ChiTietVeDAL.DemSoVeHopLeTheoDon(maDon);
+            if (soVeHopLe <= 0)
+            {
+                return DonVeResult.Fail($"Đơn vé #{maDon} không còn vé nào có hiệu lực để đổi.", maDon);
             }
 
             return DonVeResult.Ok("Đơn vé đủ điều kiện đổi theo quy định.", maDon);
@@ -266,8 +280,9 @@ namespace QuanLySuKienVaBanVe.BLL
         /// 1. Kiểm tra lại điều kiện hủy với khóa dòng.
         /// 2. UPDATE DonVe -> 'DaHuy'.
         /// 3. UPDATE ChiTietVe -> 'DaHuy'.
-        /// 4. UPDATE Ghe -> 'Trong', ThoiGianGiu = NULL.
-        /// 5. INSERT NhatKy kiểm toán.
+        /// 4. UPDATE Ghe -> 'Trong', ThoiGianGiu = NULL, MaPhienGiu = NULL.
+        /// 5. Đồng bộ hủy đơn gốc (nếu là đơn đổi con bị hủy và đơn gốc không còn vé hiệu lực).
+        /// 6. INSERT NhatKy kiểm toán.
         /// Lỗi bất kỳ lập tức Rollback và ném ngoại lệ gốc, không nuốt lỗi.
         /// </summary>
         public static DonVeResult HuyVe(int maDon, int maTK = 0)
@@ -311,6 +326,17 @@ namespace QuanLySuKienVaBanVe.BLL
                             return DonVeResult.Fail("Thời gian đến giờ diễn hiện đã dưới 24 giờ, không thể hủy vé.", maDon);
                         }
 
+                        int soVeHopLe = ChiTietVeDAL.DemSoVeHopLeTheoDon(maDon, conn, tran);
+                        if (soVeHopLe <= 0)
+                        {
+                            tran.Rollback();
+                            return DonVeResult.Fail($"Đơn vé #{maDon} không còn vé nào có hiệu lực để hủy.", maDon);
+                        }
+
+                        int? maDonGoc = row.Table.Columns.Contains("MaDonGoc") && row["MaDonGoc"] != DBNull.Value
+                            ? (int?)Convert.ToInt32(row["MaDonGoc"])
+                            : null;
+
                         // 2. Chuyển trạng thái đơn vé sang 'DaHuy'
                         DonVeDAL.CapNhatTrangThai(maDon, TrangThaiDonVe.DaHuy, conn, tran);
 
@@ -321,7 +347,13 @@ namespace QuanLySuKienVaBanVe.BLL
                         // 4. Chuyển trạng thái tất cả vé trong đơn sang 'DaHuy'
                         ChiTietVeDAL.CapNhatTrangThaiTheoDon(maDon, TrangThaiChiTietVe.DaHuy, conn, tran);
 
-                        // 5. Ghi nhật ký kiểm toán hệ thống
+                        // 5. Đồng bộ hủy đơn gốc nếu đây là đơn đổi con và đơn gốc không còn vé/đơn con hiệu lực
+                        if (maDonGoc.HasValue)
+                        {
+                            DonVeDAL.DongBoHuyDonGocNeuHetHieuLuc(maDonGoc, conn, tran);
+                        }
+
+                        // 6. Ghi nhật ký kiểm toán hệ thống
                         if (maTK > 0)
                         {
                             string chiTiet = $"Hủy đơn vé #{maDon} của khách hàng {row["TenKH"]} (SĐT: {row["SDT"]}), tổng tiền: {Convert.ToDecimal(row["TongTien"]):N0} đ. Toàn bộ ghế trong đơn đã được trả về trạng thái Trống.";
@@ -375,6 +407,15 @@ namespace QuanLySuKienVaBanVe.BLL
                 return DonVeResult.Fail("Thông tin vé cũ hoặc ghế mới không hợp lệ.");
             }
 
+            // Chuẩn hóa phương thức thanh toán
+            if (string.IsNullOrWhiteSpace(phuongThuc) ||
+                (phuongThuc != PhuongThucThanhToan.TienMat &&
+                 phuongThuc != PhuongThucThanhToan.ChuyenKhoan &&
+                 phuongThuc != PhuongThucThanhToan.TheNganHang))
+            {
+                phuongThuc = PhuongThucThanhToan.TienMat;
+            }
+
             using (SqlConnection conn = Database.GetConnection())
             {
                 conn.Open();
@@ -403,10 +444,19 @@ namespace QuanLySuKienVaBanVe.BLL
                             return DonVeResult.Fail("Thời gian đến giờ diễn của đơn vé cũ hiện đã dưới 12 giờ, không thể đổi.", maDonCu);
                         }
 
+                        string trangThaiSKCu = rowDonCu.Table.Columns.Contains("TrangThaiSK")
+                            ? rowDonCu["TrangThaiSK"]?.ToString() ?? string.Empty
+                            : string.Empty;
+                        if (trangThaiSKCu == "DaHuy" || trangThaiSKCu == "DaKetThuc")
+                        {
+                            tran.Rollback();
+                            return DonVeResult.Fail("Sự kiện của đơn vé đã kết thúc hoặc bị hủy, không thể thực hiện đổi vé.", maDonCu);
+                        }
+
                         int maKH = Convert.ToInt32(rowDonCu["MaKH"]);
                         int maSKCu = Convert.ToInt32(rowDonCu["MaSK"]);
 
-                        // 2. Đọc thông tin vé cũ cần đổi
+                        // 2. Đọc thông tin vé cũ cần đổi với UPDLOCK, ROWLOCK
                         ChiTietVeDTO veCu = ChiTietVeDAL.LayChiTietVeTheoMa(maCTCu, conn, tran);
                         if (veCu == null || veCu.MaDon != maDonCu)
                         {
@@ -476,6 +526,15 @@ namespace QuanLySuKienVaBanVe.BLL
                             return DonVeResult.Fail("Suất diễn của vị trí ghế mới đã đóng bán hoặc không trong trạng thái mở bán vé.", maDonCu);
                         }
 
+                        string trangThaiSKMoi = rowGheMoi.Table.Columns.Contains("TrangThaiSK")
+                            ? rowGheMoi["TrangThaiSK"]?.ToString() ?? string.Empty
+                            : string.Empty;
+                        if (trangThaiSKMoi == "DaHuy" || trangThaiSKMoi == "DaKetThuc")
+                        {
+                            tran.Rollback();
+                            return DonVeResult.Fail("Sự kiện của suất diễn đích đã kết thúc hoặc bị hủy, không thể đổi vé.", maDonCu);
+                        }
+
                         // 4. Tính chênh lệch
                         decimal delta = TinhChenhLech(giaVeCu, giaVeMoi);
                         if (delta != chenhLechDaXacNhan)
@@ -489,7 +548,7 @@ namespace QuanLySuKienVaBanVe.BLL
                         // 5. Bước 1: UPDATE ChiTietVe cũ -> 'DaHuy'
                         ChiTietVeDAL.CapNhatTrangThaiTheoMaCT(maCTCu, TrangThaiChiTietVe.DaHuy, conn, tran);
 
-                        // 6. Bước 2: UPDATE Ghe cũ -> 'Trong', ThoiGianGiu = NULL
+                        // 6. Bước 2: UPDATE Ghe cũ -> 'Trong', ThoiGianGiu = NULL, MaPhienGiu = NULL
                         DonVeDAL.CapNhatTrangThaiGhe(maGheCu, "Trong", conn, tran);
 
                         // 7. Bước 3: INSERT DonVe mới (lưu MaDonGoc = MaDonCu)
@@ -517,14 +576,14 @@ namespace QuanLySuKienVaBanVe.BLL
                         for (int retry = 0; retry < maxRetries; retry++)
                         {
                             maVeCodeMoi = SinhMaVeCode(maSKMoi, maSuatMoi, maGheHienThiMoi, conn, tran);
-                        ChiTietVeDTO ctMoi = new ChiTietVeDTO
-                        {
-                            MaDon = maDonMoi,
-                            MaGhe = maGheMoi,
-                            GiaVe = giaVeMoi,
-                            MaVeCode = maVeCodeMoi,
-                            TrangThai = TrangThaiChiTietVe.HopLe
-                        };
+                            ChiTietVeDTO ctMoi = new ChiTietVeDTO
+                            {
+                                MaDon = maDonMoi,
+                                MaGhe = maGheMoi,
+                                GiaVe = giaVeMoi,
+                                MaVeCode = maVeCodeMoi,
+                                TrangThai = TrangThaiChiTietVe.HopLe
+                            };
                             try
                             {
                                 maCTMoi = ChiTietVeDAL.Them(ctMoi, conn, tran);
@@ -555,12 +614,12 @@ namespace QuanLySuKienVaBanVe.BLL
                         if (delta != 0m)
                         {
                             ThanhToanDTO ttMoi = new ThanhToanDTO
-                        {
-                            MaDon = maDonMoi,
-                            NgayThanhToan = DateTime.Now,
-                            SoTien = delta,
-                            PhuongThuc = phuongThuc ?? PhuongThucThanhToan.TienMat
-                        };
+                            {
+                                MaDon = maDonMoi,
+                                NgayThanhToan = DateTime.Now,
+                                SoTien = delta,
+                                PhuongThuc = phuongThuc
+                            };
                             ThanhToanDAL.Them(ttMoi, conn, tran);
                         }
 

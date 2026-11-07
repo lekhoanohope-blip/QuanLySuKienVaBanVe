@@ -180,6 +180,30 @@ try {
   }
   Sql-Exec ('UPDATE KhuVuc SET GiaVe=1000000,ChoPhepBanVe=0 WHERE MaKV='+$f.NewZone)
   Write-Output 'PASS Zone updates succeed after transaction releases locks'
+
+  # Test multi-criteria search
+  $f=Fixture
+  $foundByCode=[QuanLySuKienVaBanVe.BLL.DonVeBLL]::TimKiemDonVe('REVIEW-OLD')
+  if($foundByCode.Rows.Count -ne 1 -or [int]$foundByCode.Rows[0]['MaDon'] -ne $f.Ord){throw 'Search by MaVeCode failed'}
+  $foundByHash=[QuanLySuKienVaBanVe.BLL.DonVeBLL]::TimKiemDonVe('#'+$f.Ord)
+  if($foundByHash.Rows.Count -ne 1 -or [int]$foundByHash.Rows[0]['MaDon'] -ne $f.Ord){throw 'Search by #MaDon failed'}
+  Write-Output 'PASS Multi-criteria search by MaVeCode and #MaDon'
+
+  # Test child exchange cancellation sync to parent
+  $resExchange=Exchange $f
+  if(!$resExchange.Success){throw 'Exchange for sync test failed'}
+  $childOrd=$resExchange.MaDonMoi
+  if((Sql-Value ('SELECT TrangThai FROM DonVe WHERE MaDon='+$f.Ord)) -ne 'DaDoi'){throw 'Parent not DaDoi'}
+  $resCancel=[QuanLySuKienVaBanVe.BLL.DonVeBLL]::HuyVe($childOrd,$f.Actor)
+  if(!$resCancel.Success){throw 'Child cancel failed'}
+  if((Sql-Value ('SELECT TrangThai FROM DonVe WHERE MaDon='+$childOrd)) -ne 'DaHuy'){throw 'Child not DaHuy'}
+  if((Sql-Value ('SELECT TrangThai FROM DonVe WHERE MaDon='+$f.Ord)) -ne 'DaHuy'){throw 'Parent order was not synced to DaHuy'}
+  Write-Output 'PASS Child order cancellation automatically synchronizes parent order to DaHuy'
+
+  # Test cancel rejected when no HopLe tickets exist
+  $resReCancel=[QuanLySuKienVaBanVe.BLL.DonVeBLL]::HuyVe($childOrd,$f.Actor)
+  if($resReCancel.Success){throw 'Expected re-cancel to be rejected when no HopLe tickets exist'}
+  Write-Output 'PASS Cancel rejected when order has no HopLe tickets'
 } finally {
   [Data.SqlClient.SqlConnection]::ClearAllPools()
   if($master.State -eq 'Open') {
