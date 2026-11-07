@@ -118,7 +118,7 @@ namespace QuanLySuKienVaBanVe.GUI
             graphics.DrawImage(icon, dich);
         }
 
-        private static void FillRoundedRectangle(Graphics graphics, Rectangle bounds, int radius, Color color)
+        internal static void FillRoundedRectangle(Graphics graphics, Rectangle bounds, int radius, Color color)
         {
             int diameter = Math.Max(1, Math.Min(radius * 2, Math.Min(bounds.Width, bounds.Height)));
             using (GraphicsPath path = new GraphicsPath())

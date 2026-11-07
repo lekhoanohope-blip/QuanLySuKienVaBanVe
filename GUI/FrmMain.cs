@@ -119,7 +119,8 @@ namespace QuanLySuKienVaBanVe.GUI
 
             int rightEdge = showUser ? btnThongBao.Left : controlBoxMinimize.Left;
             int searchWidth = Math.Min(Px(450), rightEdge - txtTimKiem.Left - gap);
-            txtTimKiem.Visible = searchWidth >= Px(160);
+            bool hideForChild = currentFormChild is FrmQuanLyDonVe || currentFormChild is FrmBanVe;
+            txtTimKiem.Visible = (searchWidth >= Px(160)) && !hideForChild;
             if (txtTimKiem.Visible) txtTimKiem.Width = searchWidth;
         }
 
@@ -210,6 +211,7 @@ namespace QuanLySuKienVaBanVe.GUI
             Update();
 
             currentFormChild = childForm;
+            LayoutMainHeader();
             childForm.TopLevel = false;
             childForm.FormBorderStyle = FormBorderStyle.None;
             childForm.Dock = DockStyle.Fill;
