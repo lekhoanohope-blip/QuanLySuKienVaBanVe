@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="QuanLySuKienVaBanVe.csproj" Id="5e3a8a00-a27d-4141-91b0-e89c9d454f09" />
+  <Project Path="UnitTests/UnitTests.csproj" Id="847b0a5b-a81e-4833-ac6c-49c1f1ab4555" />
 </Solution>
