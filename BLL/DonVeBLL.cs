@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using QuanLySuKienVaBanVe.DAL;
@@ -84,6 +85,32 @@ namespace QuanLySuKienVaBanVe.BLL
         {
             if (maDon <= 0) return new DataTable();
             return ChiTietVeDAL.LayTheoMaDon(maDon);
+        }
+
+        /// <summary>
+        /// Module In vé (TV3): gom thông tin đơn + danh sách chi tiết vé thành DTO đã sẵn sàng binding lên vé.
+        /// Trả về danh sách rỗng (không ném lỗi) khi MaDon không tồn tại để GUI hiển thị thông báo thân thiện.
+        /// </summary>
+        public static List<ThongTinInVeDTO> LayDanhSachVeIn(int maDon)
+        {
+            List<ThongTinInVeDTO> dsVe = new List<ThongTinInVeDTO>();
+            if (maDon <= 0) return dsVe;
+
+            DataRow don = DonVeDAL.LayThongTinDonVeVaSuatDien(maDon);
+            if (don == null) return dsVe;
+            DataTable ct = ChiTietVeDAL.LayTheoMaDon(maDon);
+            if (ct == null) return dsVe;
+
+            foreach (DataRow row in ct.Rows)
+            {
+                if (string.Equals(row.Table.Columns.Contains("TrangThai")
+                        ? Convert.ToString(row["TrangThai"]) : TrangThaiChiTietVe.HopLe,
+                        TrangThaiChiTietVe.DaHuy, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                dsVe.Add(ThongTinInVeDTO.TuDongVaChiTietVe(don, row));
+            }
+            return dsVe;
         }
 
         public static DataTable LayThanhToanTheoDon(int maDon)

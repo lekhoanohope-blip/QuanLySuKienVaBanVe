@@ -1043,10 +1043,26 @@ namespace QuanLySuKienVaBanVe.GUI
         }
         #endregion
 
-        #region 7. In vé vừa đặt (Thông báo trung thực luồng TV1 - P2)
+        #region 7. In vé vừa đặt (FrmInVe - phân hệ TV3)
         private void btnInVe_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Chức năng in vé đang được phát triển bởi TV1.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (_lastPaidMaDon <= 0)
+            {
+                MessageBox.Show("Chưa có đơn vé nào vừa thanh toán trong phiên bán này.\n" +
+                    "Hãy chọn khu vực và hoàn tất thanh toán trước khi in vé.",
+                    "Chưa có vé để in", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                FrmInVe.InDanhSachVe(_lastPaidMaDon, this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không mở được màn hình in vé: " + ex.Message,
+                    "Lỗi in vé", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         #endregion
     }

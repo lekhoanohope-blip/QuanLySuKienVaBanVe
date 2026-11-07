@@ -27,6 +27,12 @@ namespace QuanLySuKienVaBanVe.DTO
         public string TenKV { get; set; }
         public string HangVe { get; set; }
 
+        /// <summary>Chữ cái hàng ghế (A, B...) - cột Ghe.Hang, phục vụ in ô "Row" trên vé.</summary>
+        public string Hang { get; set; }
+
+        /// <summary>Số cột ghế - cột Ghe.Cot, phục vụ in ô "Seat" trên vé (định dạng 2 chữ số).</summary>
+        public int Cot { get; set; }
+
         public ChiTietVeDTO()
         {
             MaVeCode = string.Empty;
@@ -34,6 +40,7 @@ namespace QuanLySuKienVaBanVe.DTO
             MaGheHienThi = string.Empty;
             TenKV = string.Empty;
             HangVe = string.Empty;
+            Hang = string.Empty;
         }
 
         public ChiTietVeDTO(int maCT, int maDon, int maGhe, decimal giaVe, string maVeCode, string trangThai)
@@ -70,6 +77,10 @@ namespace QuanLySuKienVaBanVe.DTO
                     TenKV = row["TenKV"].ToString();
                 if (row.Table.Columns.Contains("HangVe") && row["HangVe"] != DBNull.Value)
                     HangVe = row["HangVe"].ToString();
+                if (row.Table.Columns.Contains("Hang"))
+                    Hang = row["Hang"]?.ToString() ?? string.Empty;
+                if (row.Table.Columns.Contains("Cot") && row["Cot"] != DBNull.Value)
+                    Cot = Convert.ToInt32(row["Cot"]);
             }
         }
     }
