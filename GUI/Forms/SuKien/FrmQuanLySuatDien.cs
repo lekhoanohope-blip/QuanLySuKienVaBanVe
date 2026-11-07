@@ -1,0 +1,249 @@
+﻿using System;
+using System.Data;
+using System.Drawing;
+using System.Windows.Forms;
+using System.ComponentModel;
+using QuanLySuKienVaBanVe.BLL;
+
+namespace QuanLySuKienVaBanVe.GUI
+{
+    public partial class FrmQuanLySuatDien : Form
+    {
+        #region Fields & Properties
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int? MaSKCanLoc { get; set; }
+
+        private Form currentChildForm;
+
+        private DataTable _dtSuatDienGoc;
+        private readonly Action updateListState;
+
+        #endregion
+
+        #region Constructors & Initialization
+        public FrmQuanLySuatDien()
+        {
+            InitializeComponent();
+            HieuUng.GanChoForm(this);
+            this.DoubleBuffered = true;
+            ManagementFormLayout.Attach(pnlHeader, txtTimKiem, btnThem, btnSua, btnXoa);
+
+            updateListState = ManagementUi.AttachListState(dgvSuatDien, txtTimKiem, btnSua, btnXoa);
+            txtTimKiem.TextChanged += (s, e) => ApDungBoLocSuatDien();
+            pnlBottom.SizeChanged += (s, e) => {
+                if (lblPagination != null)
+                {
+                    lblPagination.Location = new Point(Math.Max(10, pnlBottom.Width - lblPagination.Width - 20), (pnlBottom.Height - lblPagination.Height) / 2);
+                }
+            };
+        }
+
+        #endregion
+
+        #region Data Binding & Loading
+        private void FrmQuanLySuatDien_Load(object sender, EventArgs e)
+        {
+            LoadData();
+        }
+
+        private void LoadData()
+        {
+            try
+            {
+                _dtSuatDienGoc = SuatDienBLL.LayDanhSach();
+                ApDungBoLocSuatDien();
+            }
+            catch (Exception ex) { MessageBox.Show("Lỗi tải danh sách suất diễn: " + ex.Message); }
+        }
+
+        private void ApDungBoLocSuatDien()
+        {
+            if (_dtSuatDienGoc == null) return;
+            string keyword = txtTimKiem.Text.Trim();
+
+            dgvSuatDien.Rows.Clear();
+            foreach (DataRow row in _dtSuatDienGoc.Rows)
+            {
+                string tenSK = row["TenSK"]?.ToString() ?? "";
+                string tgFormatted = Convert.ToDateTime(row["ThoiGianBatDau"]).ToString("dd/MM/yyyy HH:mm");
+                string diaDiem = row["DiaDiem"]?.ToString() ?? "";
+                string trangThai = row["TrangThai"]?.ToString() ?? "";
+
+                if (!string.IsNullOrEmpty(keyword))
+                {
+                    bool match = ManagementUi.Matches(keyword, tenSK, tgFormatted, diaDiem, trangThai, ManagementUi.StatusText(trangThai));
+                    if (!match) continue;
+                }
+
+                int idx = dgvSuatDien.Rows.Add();
+                dgvSuatDien.Rows[idx].Cells["colMaSuat"].Value = row["MaSuat"];
+                dgvSuatDien.Rows[idx].Cells["colTenSK"].Value = tenSK;
+                dgvSuatDien.Rows[idx].Cells["colThoiGian"].Value = tgFormatted;
+                dgvSuatDien.Rows[idx].Cells["colDiaDiem"].Value = diaDiem;
+                dgvSuatDien.Rows[idx].Cells["colTrangThai"].Value = trangThai;
+            }
+
+            if (lblPagination != null)
+            {
+                lblPagination.Text = $"Tổng: {dgvSuatDien.Rows.Count} suất";
+                lblPagination.Width = 140;
+                lblPagination.Location = new Point(Math.Max(10, pnlBottom.Width - lblPagination.Width - 20), (pnlBottom.Height - lblPagination.Height) / 2);
+            }
+            updateListState();
+        }
+
+        // ================= CHUYỂN ĐỔI MENU PHỤ =================
+        #endregion
+
+        #region Event Handlers
+        private void btnMenuSuatDien_Click(object sender, EventArgs e)
+        {
+            // Ẩn Khu vực (nếu đang mở)
+            if (currentChildForm != null)
+            {
+                currentChildForm.Close();
+                if (!currentChildForm.IsDisposed) return;
+                pnlMainContent.Controls.Remove(currentChildForm);
+                currentChildForm.Dispose();
+                currentChildForm = null;
+            }
+
+            pnlHeader.Visible = true;
+            dgvSuatDien.Visible = true;
+            pnlBottom.Visible = true;
+
+            btnMenuSuatDien.FillColor = Color.FromArgb(16, 185, 129);
+            btnMenuSuatDien.ForeColor = Color.White;
+            btnMenuKhuVuc.FillColor = Color.Transparent;
+            btnMenuKhuVuc.ForeColor = Color.Gray;
+
+            LoadData();
+        }
+
+        private void btnMenuKhuVuc_Click(object sender, EventArgs e)
+        {
+            if (currentChildForm != null)
+            {
+                currentChildForm.Close();
+                if (!currentChildForm.IsDisposed) return;
+                pnlMainContent.Controls.Remove(currentChildForm);
+                currentChildForm.Dispose();
+                currentChildForm = null;
+            }
+
+            // Ẩn các control của Suất diễn
+            pnlHeader.Visible = false;
+            dgvSuatDien.Visible = false;
+            pnlBottom.Visible = false;
+
+
+            btnMenuKhuVuc.FillColor = Color.FromArgb(16, 185, 129);
+            btnMenuKhuVuc.ForeColor = Color.White;
+            btnMenuSuatDien.FillColor = Color.Transparent;
+            btnMenuSuatDien.ForeColor = Color.Gray;
+
+
+            int? maSuat = null;
+            if (dgvSuatDien.CurrentRow != null && dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value != null)
+            {
+                if (int.TryParse(dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value.ToString(), out int parsedMaSuat))
+                {
+                    maSuat = parsedMaSuat;
+                }
+            }
+
+            FrmQuanLyKhuVuc frm = new FrmQuanLyKhuVuc(maSuat);
+            currentChildForm = frm;
+            frm.TopLevel = false;
+            frm.FormBorderStyle = FormBorderStyle.None;
+            frm.Dock = DockStyle.Fill;
+            pnlMainContent.Controls.Add(frm);
+            frm.BringToFront();
+            frm.Show();
+        }
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (currentChildForm != null && !currentChildForm.IsDisposed)
+            {
+                currentChildForm.Close();
+                if (!currentChildForm.IsDisposed) { e.Cancel = true; return; }
+            }
+            base.OnFormClosing(e);
+        }
+
+        private void btnThem_Click(object sender, EventArgs e)
+        {
+            using (FrmChiTietSuatDien frm = new FrmChiTietSuatDien())
+            {
+                if (frm.ShowDialog() == DialogResult.OK) LoadData();
+            }
+        }
+
+        private void btnSua_Click(object sender, EventArgs e)
+        {
+            if (dgvSuatDien.CurrentRow == null) { MessageBox.Show("Vui lòng chọn suất diễn trên bảng!"); return; }
+            int maSuat = Convert.ToInt32(dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value);
+            using (FrmChiTietSuatDien frm = new FrmChiTietSuatDien(maSuat))
+            {
+                if (frm.ShowDialog() == DialogResult.OK) LoadData();
+            }
+        }
+
+        private void btnXoa_Click(object sender, EventArgs e)
+        {
+            if (dgvSuatDien.CurrentRow == null) { MessageBox.Show("Vui lòng chọn suất diễn trên bảng!"); return; }
+            int maSuat = Convert.ToInt32(dgvSuatDien.CurrentRow.Cells["colMaSuat"].Value);
+
+            if (MessageBox.Show("Bạn có chắc muốn xóa suất diễn này?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+            {
+                string result = SuatDienBLL.Xoa(maSuat);
+                if (result == "Success")
+                {
+                    LoadData();
+                }
+                else
+                {
+                    MessageBox.Show(result, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
+
+        private void dgvSuatDien_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Button != MouseButtons.Left) return;
+            if (dgvSuatDien.Columns[e.ColumnIndex].Name != "colThaoTac") return;
+
+            dgvSuatDien.CurrentCell = dgvSuatDien.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            Rectangle cell = new Rectangle(Point.Empty,
+                dgvSuatDien.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false).Size);
+            Point location = new Point(e.X, e.Y);
+            if (ManagementGridRenderer.GetActionBounds(dgvSuatDien, cell, false).Contains(location))
+                btnSua_Click(sender, EventArgs.Empty);
+            else if (ManagementGridRenderer.GetActionBounds(dgvSuatDien, cell, true).Contains(location))
+                btnXoa_Click(sender, EventArgs.Empty);
+        }
+
+        private void dgvSuatDien_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            string column = dgvSuatDien.Columns[e.ColumnIndex].Name;
+            if (column == "colTrangThai")
+            {
+                string status = Convert.ToString(e.Value);
+                Color badgeColor = Color.FromArgb(241, 245, 249);
+                Color textColor = Color.FromArgb(71, 85, 105);
+                string displayStatus = ManagementUi.StatusText(status);
+                if (status == "MoCuaBanVe") { badgeColor = Color.FromArgb(209, 250, 229); textColor = Color.FromArgb(6, 95, 70); }
+                else if (status == "DongBanVe") { badgeColor = Color.FromArgb(254, 243, 199); textColor = Color.FromArgb(146, 64, 14); }
+                else if (status == "DangDien") { badgeColor = Color.FromArgb(219, 234, 254); textColor = Color.FromArgb(30, 64, 175); }
+                else if (status == "DaKetThuc") { badgeColor = Color.FromArgb(241, 245, 249); textColor = Color.FromArgb(71, 85, 105); }
+                ManagementGridRenderer.PaintStatus(dgvSuatDien, e, displayStatus, badgeColor, textColor);
+            }
+            else if (column == "colThaoTac")
+            {
+                ManagementGridRenderer.PaintActions(dgvSuatDien, e);
+            }
+        }
+        #endregion
+    }
+}
