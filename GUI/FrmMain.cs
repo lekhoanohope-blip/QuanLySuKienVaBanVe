@@ -12,6 +12,8 @@ namespace QuanLySuKienVaBanVe.GUI
         private Form currentFormChild;
         private bool adjustingWindow;
         private bool compactLogo;
+        private Image brandLogo;
+        private Image brandLogoSource;
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
@@ -35,6 +37,7 @@ namespace QuanLySuKienVaBanVe.GUI
             if (btnDangXuat != null) btnDangXuat.Click += btnDangXuat_Click;
             if (btnCaiDat != null) btnCaiDat.Click += btnCaiDat_Click;
             ApplyPhanQuyen();
+            TaiLogoBrand();
 
             Shown += FrmMain_Shown;
             SizeChanged += (s, e) => { LayoutMainHeader(); LayoutSidebar(); };
@@ -75,6 +78,46 @@ namespace QuanLySuKienVaBanVe.GUI
         private int Px(int logicalPixels)
         {
             return (int)Math.Round(logicalPixels * DeviceDpi / 96f);
+        }
+
+        private void TaiLogoBrand()
+        {
+            if (lblLogo == null) return;
+            if (brandLogoSource == null)
+            {
+                string duongDan = System.IO.Path.Combine(Application.StartupPath, @"Resources\Ticket\logoEventTicket.png");
+                if (!System.IO.File.Exists(duongDan)) return;
+                try
+                {
+                    byte[] bytes = System.IO.File.ReadAllBytes(duongDan);
+                    using (System.IO.MemoryStream ms = new System.IO.MemoryStream(bytes))
+                    using (Image tam = Image.FromStream(ms))
+                        brandLogoSource = new Bitmap(tam);
+                }
+                catch { return; }
+            }
+
+            int w = lblLogo.Width, h = lblLogo.Height;
+            if (w <= 1 || h <= 1) return;
+
+            float k = Math.Min(w / (float)brandLogoSource.Width, h / (float)brandLogoSource.Height);
+            int dw = Math.Max(1, (int)Math.Round(brandLogoSource.Width * k));
+            int dh = Math.Max(1, (int)Math.Round(brandLogoSource.Height * k));
+            if (brandLogo != null && brandLogo.Width == dw && brandLogo.Height == dh) return;
+
+            Bitmap moi = new Bitmap(dw, dh, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (Graphics g = Graphics.FromImage(moi))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.DrawImage(brandLogoSource, new Rectangle(0, 0, dw, dh));
+            }
+
+            Image cu = brandLogo;
+            brandLogo = moi;
+            lblLogo.Image = moi;
+            if (cu != null) cu.Dispose();
         }
 
         private void FrmMain_Shown(object sender, EventArgs e)
@@ -182,12 +225,19 @@ namespace QuanLySuKienVaBanVe.GUI
                 compactLogo = compact;
                 lblLogo.Font = new Font("Segoe UI", compact ? 14f : 18f, FontStyle.Bold);
             }
-            // Logo kiểu mới: icon vé + tên + dòng phụ, bám theo chiều rộng sidebar.
+            // Logo kiểu mới: icon vé + ảnh logo + dòng phụ, bám theo chiều rộng sidebar.
             int iconSize = Px(compact ? 36 : 44);
             picLogo.SetBounds(Px(compact ? 14 : 20), Px(38), iconSize, iconSize);
-            lblLogo.Location = new Point(Px(compact ? 58 : 72), Px(compact ? 42 : 40));
             lblSubtitle.Location = new Point(Px(compact ? 58 : 72), Px(compact ? 64 : 68));
             lblSubtitle.Visible = !compact;
+
+            int logoLeft = Px(compact ? 58 : 72);
+            int logoTop = Px(compact ? 34 : 32);
+            int logoBottom = !compact ? lblSubtitle.Top - Px(4) : logoTop + Px(32);
+            int logoWidth = viewportWidth - logoLeft - Px(compact ? 12 : 16);
+            lblLogo.SetBounds(logoLeft, logoTop,
+                Math.Max(Px(60), logoWidth), Math.Max(Px(18), logoBottom - logoTop));
+            TaiLogoBrand();
         }
 
         public void OpenChildForm(Form childForm, Guna.UI2.WinForms.Guna2Button btnActive)

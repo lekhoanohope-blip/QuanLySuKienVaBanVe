@@ -181,6 +181,7 @@
     </Compile>
     <Compile Include="GUI\FrmQuanLyDonVe.Layout.cs">
       <DependentUpon>FrmQuanLyDonVe.cs</DependentUpon>
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\FrmQuanLyDonVe.Designer.cs">
       <DependentUpon>FrmQuanLyDonVe.cs</DependentUpon>
@@ -190,6 +191,7 @@
     </Compile>
     <Compile Include="GUI\FrmDoiVe.Layout.cs">
       <DependentUpon>FrmDoiVe.cs</DependentUpon>
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\FrmDoiVe.Designer.cs">
       <DependentUpon>FrmDoiVe.cs</DependentUpon>
