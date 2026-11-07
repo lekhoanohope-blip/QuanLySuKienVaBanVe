@@ -1,8 +1,10 @@
--- ==============================================================
+-- ============================================================================
 -- ĐỀ TÀI 20: QUẢN LÝ SỰ KIỆN VÀ BÁN VÉ
--- Script migration độc lập của TV3 (Bán vé):
--- Bổ sung ThoiGianGiu, MaPhienGiu, MauSac, chuẩn hóa mã vùng & màu sắc
--- ==============================================================
+-- File: migrations/03_AddSeatHoldAndZoneColor.sql
+-- Mục đích: Chuẩn hóa cơ chế giữ ghế bằng token MaPhienGiu, chỉ mục lọc trên Ghe,
+--           định dạng mã màu hex (#RRGGBB) và ánh xạ MaVung cho dữ liệu khu vực cũ.
+-- Lưu ý: Script idempotent, an toàn khi chạy nhiều lần.
+-- ============================================================================
 
 USE QuanLySuKienVaBanVe;
 GO
@@ -11,47 +13,45 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
--- 1. Bổ sung cột ThoiGianGiu và MaPhienGiu vào bảng Ghe
+-- 1. Đảm bảo các cột giữ ghế tạm thời tồn tại trên bảng Ghe
 IF COL_LENGTH('dbo.Ghe', 'ThoiGianGiu') IS NULL
 BEGIN
     ALTER TABLE dbo.Ghe ADD ThoiGianGiu DATETIME NULL;
-    PRINT N'Đã thêm cột ThoiGianGiu vào bảng Ghe.';
 END
 GO
 
 IF COL_LENGTH('dbo.Ghe', 'MaPhienGiu') IS NULL
 BEGIN
     ALTER TABLE dbo.Ghe ADD MaPhienGiu UNIQUEIDENTIFIER NULL;
-    PRINT N'Đã thêm cột MaPhienGiu vào bảng Ghe.';
 END
 GO
 
--- MaPhienGiu là token sở hữu lượt giữ ghế, không còn là khóa ngoại tới bảng phiên.
--- Chỉ gỡ ràng buộc cũ của Ghe; giữ nguyên dữ liệu phiên và liên kết lịch sử của DonVe.
+-- Gỡ khóa ngoại phiên giữ ghế cũ (nếu có) vì MaPhienGiu được dùng làm token sở hữu độc lập
 IF EXISTS (
     SELECT 1 FROM sys.foreign_keys
     WHERE name = 'FK_Ghe_PhienGiuGhe'
       AND parent_object_id = OBJECT_ID('dbo.Ghe')
-      AND referenced_object_id = OBJECT_ID('dbo.PhienGiuGhe')
 )
 BEGIN
     ALTER TABLE dbo.Ghe DROP CONSTRAINT FK_Ghe_PhienGiuGhe;
-    PRINT N'Đã gỡ khóa ngoại phiên giữ ghế cũ; MaPhienGiu được dùng làm token sở hữu.';
 END
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Ghe_MaPhienGiu' AND object_id = OBJECT_ID('dbo.Ghe'))
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_Ghe_MaPhienGiu' AND object_id = OBJECT_ID('dbo.Ghe')
+)
 BEGIN
-    CREATE INDEX IX_Ghe_MaPhienGiu ON dbo.Ghe(MaPhienGiu) WHERE MaPhienGiu IS NOT NULL;
-    PRINT N'Đã tạo chỉ mục IX_Ghe_MaPhienGiu.';
+    CREATE INDEX IX_Ghe_MaPhienGiu
+        ON dbo.Ghe(MaPhienGiu)
+        WHERE MaPhienGiu IS NOT NULL;
 END
 GO
 
--- 2. Bổ sung cột MauSac vào bảng KhuVuc và dọn màu không hợp lệ
+-- 2. Đảm bảo cột MauSac tồn tại và làm sạch các giá trị không đúng chuẩn #RRGGBB
 IF COL_LENGTH('dbo.KhuVuc', 'MauSac') IS NULL
 BEGIN
     ALTER TABLE dbo.KhuVuc ADD MauSac VARCHAR(20) NULL;
-    PRINT N'Đã thêm cột MauSac vào bảng KhuVuc.';
 END
 GO
 
@@ -61,8 +61,17 @@ WHERE MauSac IS NOT NULL
   AND MauSac NOT LIKE '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]';
 GO
 
--- 3. Chỉ ánh xạ tên nhận diện được; không suy ra vị trí vật lý từ ID hoặc hạng vé.
--- Tên mơ hồ, mã bị trùng và cấu hình có sẵn được giữ nguyên để Admin kiểm tra.
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_KhuVuc_MauSac')
+BEGIN
+    ALTER TABLE dbo.KhuVuc WITH CHECK
+        ADD CONSTRAINT CK_KhuVuc_MauSac CHECK (
+            MauSac IS NULL
+            OR MauSac LIKE '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'
+        );
+END
+GO
+
+-- 3. Tự động ánh xạ MaVung cho các khu vực cũ có tên nhận diện rõ ràng và không xung đột
 ;WITH Names AS (
     SELECT MaKV, MaSuat, TenKV,
            N' ' + UPPER(REPLACE(LTRIM(RTRIM(TenKV)), N'_', N' ')) + N' ' AS NormalizedName
@@ -82,8 +91,10 @@ GO
            CASE WHEN TenKV IN (N'Khu VIP Khán Đài Trực Diện', N'[DEMO] Khu VIP')
                 THEN 'VIP_A' ELSE 'CAT' END
     FROM Names
-    WHERE TenKV IN (N'Khu VIP Khán Đài Trực Diện', N'[DEMO] Khu VIP',
-                    N'Khu Thường Tiêu Chuẩn', N'[DEMO] Khu tiêu chuẩn')
+    WHERE TenKV IN (
+        N'Khu VIP Khán Đài Trực Diện', N'[DEMO] Khu VIP',
+        N'Khu Thường Tiêu Chuẩn', N'[DEMO] Khu tiêu chuẩn'
+    )
 ), Ranked AS (
     SELECT *, DENSE_RANK() OVER (PARTITION BY MaKV ORDER BY LEN(MaVung) DESC) AS Specificity
     FROM Matches
@@ -95,14 +106,14 @@ GO
     SELECT *, COUNT(*) OVER (PARTITION BY MaSuat, MaVung) AS ZoneMatches
     FROM NamedCandidates WHERE NameMatches = 1
 )
-UPDATE kv SET MaVung = c.MaVung
-FROM dbo.KhuVuc kv JOIN Candidates c ON c.MaKV = kv.MaKV
-WHERE c.NameMatches = 1 AND c.ZoneMatches = 1
+UPDATE kv
+SET MaVung = c.MaVung
+FROM dbo.KhuVuc kv
+JOIN Candidates c ON c.MaKV = kv.MaKV
+WHERE c.NameMatches = 1
+  AND c.ZoneMatches = 1
   AND NOT EXISTS (
       SELECT 1 FROM dbo.KhuVuc existing
       WHERE existing.MaSuat = c.MaSuat AND existing.MaVung = c.MaVung
   );
-GO
-
-PRINT N'=== HOÀN TẤT MIGRATION BÁN VÉ TV3 THÀNH CÔNG ===';
 GO
