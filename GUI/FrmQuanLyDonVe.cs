@@ -17,33 +17,83 @@ namespace QuanLySuKienVaBanVe.GUI
         private DataTable dtDonVeGoc;
         private bool updatingLayout;
         private bool cancellingOrder;
-        private static double preferredMasterRatio = 0.70;
+        private static double preferredMasterRatio = 0.52;
 
         public FrmQuanLyDonVe()
         {
             InitializeComponent();
             DoubleBuffered = true;
-            dgvDonVe.AutoGenerateColumns = false;
-            dgvChiTietVe.AutoGenerateColumns = false;
+            KhoiTaoCotDgv();
+            InitializeOrderSpacing();
+
 
             pnlHeader.SizeChanged += PnlHeader_SizeChanged;
             ClientSizeChanged += PnlHeader_SizeChanged;
             Shown += PnlHeader_SizeChanged;
             splitContainer.SizeChanged += PnlHeader_SizeChanged;
-            pnlMasterHeader.SizeChanged += PnlHeader_SizeChanged;
-            lblDonVeTomTat.TextChanged += PnlHeader_SizeChanged;
-            lblDetailTitle.TextChanged += PnlHeader_SizeChanged;
-            lblRuleBadge.TextChanged += PnlHeader_SizeChanged;
             splitContainer.SplitterMoved += (sender, args) =>
             {
-                int available = splitContainer.Height - splitContainer.SplitterWidth;
+                int available = splitContainer.Width - splitContainer.SplitterWidth;
                 if (!updatingLayout && available > 0)
                     preferredMasterRatio = (double)splitContainer.SplitterDistance / available;
             };
-            AutoScroll = true;
+            AutoScroll = false;
             txtTimKiem.AccessibleName = "Tìm đơn vé";
             cboLocTrangThai.AccessibleName = "Lọc trạng thái đơn vé";
             PnlHeader_SizeChanged(this, EventArgs.Empty);
+        }
+
+        private void KhoiTaoCotDgv()
+        {
+            dgvDonVe.AutoGenerateColumns = false;
+            dgvDonVe.Columns.Clear();
+            colMaDon = new DataGridViewTextBoxColumn
+            {
+                Name = "colMaDon",
+                DataPropertyName = "MaDon",
+                HeaderText = "Mã đơn",
+                ReadOnly = true,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                Visible = true
+            };
+            colMaDonGoc = new DataGridViewTextBoxColumn { Name = "colMaDonGoc", DataPropertyName = "MaDonGoc", HeaderText = "Đơn gốc", ReadOnly = true, Visible = false };
+            colTenKH = new DataGridViewTextBoxColumn { Name = "colTenKH", DataPropertyName = "TenKH", HeaderText = "Khách hàng", ReadOnly = true, Visible = false };
+            colSDT = new DataGridViewTextBoxColumn { Name = "colSDT", DataPropertyName = "SDT", HeaderText = "Số ĐT", ReadOnly = true, Visible = false };
+            colEmail = new DataGridViewTextBoxColumn { Name = "colEmail", DataPropertyName = "Email", HeaderText = "Email", ReadOnly = true, Visible = false };
+            colTenSK = new DataGridViewTextBoxColumn { Name = "colTenSK", DataPropertyName = "TenSK", HeaderText = "Sự kiện", ReadOnly = true, Visible = false };
+            colThoiGianBatDau = new DataGridViewTextBoxColumn { Name = "colThoiGianBatDau", DataPropertyName = "ThoiGianBatDau", HeaderText = "Giờ diễn", ReadOnly = true, Visible = false };
+            colNgayDat = new DataGridViewTextBoxColumn { Name = "colNgayDat", DataPropertyName = "NgayDat", HeaderText = "Ngày đặt", ReadOnly = true, Visible = false };
+            colTongTien = new DataGridViewTextBoxColumn { Name = "colTongTien", DataPropertyName = "TongTien", HeaderText = "Tổng tiền", ReadOnly = true, Visible = false };
+            colTrangThai = new DataGridViewTextBoxColumn { Name = "colTrangThai", DataPropertyName = "TrangThai", HeaderText = "Trạng thái", ReadOnly = true, Visible = false };
+            colSoVeHopLe = new DataGridViewTextBoxColumn { Name = "colSoVeHopLe", DataPropertyName = "SoVeHopLe", HeaderText = "Số vé hợp lệ", ReadOnly = true, Visible = false };
+            colTongSoVe = new DataGridViewTextBoxColumn { Name = "colTongSoVe", DataPropertyName = "TongSoVe", HeaderText = "Tổng số vé", ReadOnly = true, Visible = false };
+
+            dgvDonVe.Columns.AddRange(new DataGridViewColumn[] {
+                colMaDon, colMaDonGoc, colTenKH, colSDT, colEmail, colTenSK,
+                colThoiGianBatDau, colNgayDat, colTongTien, colTrangThai, colSoVeHopLe, colTongSoVe
+            });
+
+            dgvChiTietVe.AutoGenerateColumns = false;
+            dgvChiTietVe.Columns.Clear();
+            colMaGheHienThi = new DataGridViewTextBoxColumn
+            {
+                Name = "colMaGheHienThi",
+                DataPropertyName = "MaGheHienThi",
+                HeaderText = "Ghế ngồi",
+                ReadOnly = true,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                Visible = true
+            };
+            colMaCT = new DataGridViewTextBoxColumn { Name = "colMaCT", DataPropertyName = "MaCT", HeaderText = "Mã vé", ReadOnly = true, Visible = false };
+            colMaVeCode = new DataGridViewTextBoxColumn { Name = "colMaVeCode", DataPropertyName = "MaVeCode", HeaderText = "Mã tra cứu", ReadOnly = true, Visible = false };
+            colTenKV = new DataGridViewTextBoxColumn { Name = "colTenKV", DataPropertyName = "TenKV", HeaderText = "Khu vực", ReadOnly = true, Visible = false };
+            colHangVe = new DataGridViewTextBoxColumn { Name = "colHangVe", DataPropertyName = "HangVe", HeaderText = "Hạng vé", ReadOnly = true, Visible = false };
+            colGiaVe = new DataGridViewTextBoxColumn { Name = "colGiaVe", DataPropertyName = "GiaVe", HeaderText = "Giá vé", ReadOnly = true, Visible = false };
+            colTrangThaiVe = new DataGridViewTextBoxColumn { Name = "colTrangThaiVe", DataPropertyName = "TrangThai", HeaderText = "Trạng thái", ReadOnly = true, Visible = false };
+
+            dgvChiTietVe.Columns.AddRange(new DataGridViewColumn[] {
+                colMaGheHienThi, colMaCT, colMaVeCode, colTenKV, colHangVe, colGiaVe, colTrangThaiVe
+            });
         }
 
         private void PnlHeader_SizeChanged(object sender, EventArgs e)
@@ -56,116 +106,7 @@ namespace QuanLySuKienVaBanVe.GUI
             return (int)Math.Round(pixels * scale);
         }
 
-        private static int WrappedHeight(Label label, int width)
-        {
-            return TextRenderer.MeasureText(label.Text, label.Font,
-                new Size(Math.Max(1, width), int.MaxValue),
-                TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl |
-                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Height;
-        }
 
-        private void ApplyResponsiveLayout(float scale)
-        {
-            if (updatingLayout || IsDisposed) return;
-            updatingLayout = true;
-            try
-            {
-                // A vertical scrollbar can change the available width; settle both layouts.
-                for (int pass = 0; pass < 2; pass++)
-                {
-                    LayoutToolbar(scale);
-                    int padding = ScalePixels(14, scale);
-                    int gap = ScalePixels(8, scale);
-                    int summaryWidth = Math.Max(1, pnlMasterHeader.ClientSize.Width - padding * 2);
-                    lblMasterTitle.Location = new Point(padding, gap);
-                    lblDonVeTomTat.SetBounds(padding, lblMasterTitle.Bottom + gap,
-                        summaryWidth, WrappedHeight(lblDonVeTomTat, summaryWidth));
-                    pnlMasterHeader.Height = lblDonVeTomTat.Bottom + gap;
-
-                    int detailWidth = pnlDetailHeader.ClientSize.Width;
-                    int actionWidth = ScalePixels(146, scale);
-                    int actionHeight = ScalePixels(36, scale);
-                    int titleWidth = Math.Max(1, detailWidth - padding * 2 - actionWidth - gap);
-                    bool stacked = TextRenderer.MeasureText(lblDetailTitle.Text,
-                        lblDetailTitle.Font).Width > titleWidth;
-                    if (stacked) titleWidth = Math.Max(1, detailWidth - padding * 2);
-                    lblDetailTitle.SetBounds(padding, gap, titleWidth,
-                        WrappedHeight(lblDetailTitle, titleWidth));
-                    btnDoiVe.SetBounds(Math.Max(0, detailWidth - padding - actionWidth),
-                        stacked ? lblDetailTitle.Bottom + gap : gap, actionWidth, actionHeight);
-                    pnlDetailHeader.Height = Math.Max(lblDetailTitle.Bottom, btnDoiVe.Bottom) + gap;
-
-                    int ruleWidth = Math.Max(1, pnlRuleBanner.ClientSize.Width - padding * 2);
-                    lblRuleBadge.Padding = new Padding(padding, gap, padding, gap);
-                    pnlRuleBanner.Height = WrappedHeight(lblRuleBadge, ruleWidth) + gap * 2;
-                    lblSearchHint.Height = WrappedHeight(lblSearchHint,
-                        Math.Max(1, lblSearchHint.Width)) + gap * 2;
-
-                    int scrollHeight = SystemInformation.HorizontalScrollBarHeight;
-                    int masterMinimum = pnlMasterHeader.Height + dgvDonVe.ColumnHeadersHeight +
-                        dgvDonVe.RowTemplate.Height * 2 + scrollHeight + ScalePixels(4, scale);
-                    int detailMinimum = pnlDetailHeader.Height + pnlRuleBanner.Height +
-                        dgvChiTietVe.ColumnHeadersHeight + dgvChiTietVe.RowTemplate.Height +
-                        scrollHeight + ScalePixels(4, scale);
-
-                    // Keep full rows visible, including when long text needs extra lines.
-                    splitContainer.Panel1MinSize = 0;
-                    splitContainer.Panel2MinSize = 0;
-                    int minimumContentHeight =
-                        (pnlTitle.Visible ? pnlTitle.Height : 0) + pnlHeader.Height +
-                        pnlFooter.Height + lblSearchHint.Height + masterMinimum +
-                        detailMinimum + splitContainer.SplitterWidth;
-                    pnlPageContent.Height = Math.Max(minimumContentHeight,
-                        ClientSize.Height - Padding.Vertical);
-                    PerformLayout();
-                    pnlPageContent.PerformLayout();
-                    int available = splitContainer.Height - splitContainer.SplitterWidth;
-                    if (available >= masterMinimum + detailMinimum)
-                    {
-                        int desired = (int)Math.Round(available * preferredMasterRatio);
-                        splitContainer.SplitterDistance = Math.Max(masterMinimum,
-                            Math.Min(desired, available - detailMinimum));
-                        splitContainer.Panel1MinSize = masterMinimum;
-                        splitContainer.Panel2MinSize = detailMinimum;
-                    }
-                }
-            }
-            finally
-            {
-                updatingLayout = false;
-            }
-        }
-
-        private void LayoutToolbar(float scale)
-        {
-            int width = pnlHeader.ClientSize.Width;
-            int gap = ScalePixels(12, scale);
-            int top = ScalePixels(8, scale);
-            int labelHeight = Math.Max(lblTimKiem.PreferredHeight, lblLocTrangThai.PreferredHeight);
-            int fieldTop = top + labelHeight + ScalePixels(6, scale);
-            int height = Math.Max(ScalePixels(36, scale), txtTimKiem.Font.Height + gap);
-            int actionWidth = ScalePixels(150, scale);
-            int filterWidth = ScalePixels(180, scale);
-            int searchMinimum = ScalePixels(220, scale);
-            bool oneRow = width >= searchMinimum + filterWidth + actionWidth + gap * 2;
-            bool fieldsTogether = width >= searchMinimum + filterWidth + gap;
-            int searchWidth = oneRow
-                ? Math.Min(ScalePixels(350, scale), width - filterWidth - actionWidth - gap * 2)
-                : fieldsTogether ? width - filterWidth - gap : width;
-            txtTimKiem.SetBounds(0, fieldTop, Math.Max(1, searchWidth), height);
-            lblTimKiem.SetBounds(0, top, txtTimKiem.Width, labelHeight);
-            int filterX = fieldsTogether ? txtTimKiem.Right + gap : 0;
-            int filterTop = fieldsTogether ? fieldTop : txtTimKiem.Bottom + gap + labelHeight + ScalePixels(6, scale);
-            cboLocTrangThai.ItemHeight = Math.Max(1, height - 6);
-            cboLocTrangThai.SetBounds(filterX, filterTop,
-                Math.Min(filterWidth, Math.Max(1, width)), height);
-            lblLocTrangThai.SetBounds(filterX, filterTop - labelHeight - ScalePixels(6, scale),
-                cboLocTrangThai.Width, labelHeight);
-            int actionTop = oneRow ? fieldTop : Math.Max(txtTimKiem.Bottom, cboLocTrangThai.Bottom) + gap;
-            btnHuyVe.SetBounds(Math.Max(0, width - actionWidth), actionTop,
-                Math.Min(actionWidth, Math.Max(1, width)), height);
-            pnlHeader.Height = Math.Max(cboLocTrangThai.Bottom, btnHuyVe.Bottom) + gap;
-        }
 
         private async void FrmQuanLyDonVe_Load(object sender, EventArgs e)
         {
@@ -184,7 +125,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private void KhoiTaoLocTrangThai()
         {
             cboLocTrangThai.Items.Clear();
-            cboLocTrangThai.Items.Add("— Tất cả trạng thái —");
+            cboLocTrangThai.Items.Add("Tất cả trạng thái");
             cboLocTrangThai.Items.Add("Đã thanh toán");
             cboLocTrangThai.Items.Add("Đã hủy");
             cboLocTrangThai.Items.Add("Đã đổi");
@@ -197,7 +138,7 @@ namespace QuanLySuKienVaBanVe.GUI
             int version = ++requestVersion;
             string keyword = txtTimKiem.Text.Trim();
             loading = true;
-            lblCount.Text = "Đang tải dữ liệu đơn vé…";
+            lblCount.Text = "Đang tải dữ liệu...";
             CapNhatTrangThaiNutThaoTac();
 
             try
@@ -213,7 +154,7 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (IsDisposed || version != requestVersion) return;
                 dgvDonVe.DataSource = null;
                 dgvChiTietVe.DataSource = null;
-                lblCount.Text = "Không thể tải dữ liệu đơn vé: " + ex.Message;
+                lblCount.Text = "Lỗi tải: " + ex.Message;
             }
             finally
             {
@@ -252,29 +193,12 @@ namespace QuanLySuKienVaBanVe.GUI
                 dtDisplay = dv.ToTable();
             }
 
-            // Xóa ngay danh sách chi tiết vé cũ để tránh chọn nhầm vé của đơn trước
             dgvChiTietVe.DataSource = null;
             dgvDonVe.DataSource = dtDisplay;
 
-            // Định dạng cột
-            if (dgvDonVe.Columns["colTongTien"] != null)
-            {
-                dgvDonVe.Columns["colTongTien"].DefaultCellStyle.Format = "N0";
-                dgvDonVe.Columns["colTongTien"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                dgvDonVe.Columns["colTongTien"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-            }
-            if (dgvDonVe.Columns["colThoiGianBatDau"] != null)
-            {
-                dgvDonVe.Columns["colThoiGianBatDau"].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
-            }
-            if (dgvDonVe.Columns["colNgayDat"] != null)
-            {
-                dgvDonVe.Columns["colNgayDat"].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
-            }
+            lblCount.Text = string.Format("{0:N0} đơn vé", dtDisplay.Rows.Count);
 
-            lblCount.Text = string.Format("Tổng số: {0:N0} đơn vé", dtDisplay.Rows.Count);
-
-            if (dtDisplay.Rows.Count > 0)
+            if (dgvDonVe.Rows.Count > 0)
             {
                 int index = 0;
                 if (selectMaDon > 0)
@@ -289,17 +213,29 @@ namespace QuanLySuKienVaBanVe.GUI
                     }
                 }
 
-                dgvDonVe.ClearSelection();
-                dgvDonVe.Rows[index].Selected = true;
-                dgvDonVe.CurrentCell = dgvDonVe.Rows[index].Cells["colTenKH"];
+                if (index >= 0 && index < dgvDonVe.Rows.Count)
+                {
+                    dgvDonVe.ClearSelection();
+                    dgvDonVe.Rows[index].Selected = true;
+                    if (colMaDon != null && colMaDon.Visible)
+                    {
+                        dgvDonVe.CurrentCell = dgvDonVe.Rows[index].Cells["colMaDon"];
+                    }
+                }
             }
             else
             {
                 dgvChiTietVe.DataSource = null;
-                lblDetailTitle.Text = "CHI TIẾT VÉ TRONG ĐƠN: (Trống)";
-                lblDonVeTomTat.Text = "Không có đơn vé nào phù hợp";
+                lblDetailTitle.Text = "Đơn vé: —";
+                lblDetailBadge.Text = "";
+                lblCustomerName.Text = "Chưa chọn đơn vé";
+                lblCustomerPhone.Text = "—";
+                lblCustomerEmail.Visible = false;
+                lblDetailEventName.Text = "—";
+                lblDetailEventTime.Text = "—";
                 lblRuleBadge.Text = "Không có đơn vé nào phù hợp điều kiện tìm kiếm.";
                 lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
+                lblTicketsTitle.Text = "Vé trong đơn";
             }
 
             CapNhatTrangThaiNutThaoTac();
@@ -309,13 +245,19 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (dgvDonVe.SelectedRows.Count > 0)
             {
-                return dgvDonVe.SelectedRows[0];
+                var r = dgvDonVe.SelectedRows[0];
+                if (r.Index >= 0 && r.Index < dgvDonVe.Rows.Count) return r;
             }
             if (dgvDonVe.CurrentRow != null && dgvDonVe.CurrentRow.Selected)
             {
+                if (dgvDonVe.CurrentRow.Index >= 0 && dgvDonVe.CurrentRow.Index < dgvDonVe.Rows.Count)
+                    return dgvDonVe.CurrentRow;
+            }
+            if (dgvDonVe.CurrentRow != null && dgvDonVe.CurrentRow.Index >= 0 && dgvDonVe.CurrentRow.Index < dgvDonVe.Rows.Count)
+            {
                 return dgvDonVe.CurrentRow;
             }
-            return dgvDonVe.CurrentRow;
+            return null;
         }
 
         private async void dgvDonVe_SelectionChanged(object sender, EventArgs e)
@@ -324,23 +266,25 @@ namespace QuanLySuKienVaBanVe.GUI
             await LoadChiTietVeAsync();
         }
 
-        private async void dgvDonVe_CurrentCellChanged(object sender, EventArgs e)
-        {
-            if (loading) return;
-            await LoadChiTietVeAsync();
-        }
-
         private async Task LoadChiTietVeAsync()
         {
             var row = LayDongDonVeDangChon();
-            if (row == null || row.Index < 0 || loading)
+            if (row == null || row.Index < 0 || row.Index >= dgvDonVe.Rows.Count || loading)
             {
                 detailRequestVersion++;
                 dgvChiTietVe.DataSource = null;
-                lblDetailTitle.Text = "CHI TIẾT VÉ TRONG ĐƠN: (Trống)";
-                lblDonVeTomTat.Text = "Chưa chọn đơn vé nào";
-                lblRuleBadge.Text = "Vui lòng chọn một đơn vé trong danh sách để xem chi tiết.";
+                lblDetailTitle.Text = "Đơn vé: —";
+                lblDetailBadge.Text = "";
+                lblCustomerName.Text = "Chưa chọn đơn vé";
+                lblCustomerPhone.Text = "—";
+                lblCustomerEmail.Visible = false;
+                lblDetailEventName.Text = "—";
+                lblDetailEventTime.Text = "—";
+                lblRuleBadge.Text = (dgvDonVe.Rows.Count == 0)
+                    ? "Không có đơn vé nào phù hợp điều kiện tìm kiếm."
+                    : "Vui lòng chọn một đơn vé trong danh sách để xem chi tiết.";
                 lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
+                lblTicketsTitle.Text = "Vé trong đơn";
                 CapNhatTrangThaiNutThaoTac();
                 return;
             }
@@ -350,20 +294,57 @@ namespace QuanLySuKienVaBanVe.GUI
             dgvChiTietVe.DataSource = null;
             CapNhatTrangThaiNutThaoTac();
 
-            int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
-            string trangThai = row.Cells["colTrangThai"].Value?.ToString() ?? "";
-            string tenKH = row.Cells["colTenKH"].Value?.ToString() ?? "";
-            string sdt = row.Cells["colSDT"].Value?.ToString() ?? "";
-            string tenSK = row.Cells["colTenSK"].Value?.ToString() ?? "";
-            DateTime thoiGianBatDau = Convert.ToDateTime(row.Cells["colThoiGianBatDau"].Value);
+            object maDonObj = row.Cells["colMaDon"]?.Value;
+            if (maDonObj == null || maDonObj == DBNull.Value) return;
+            int maDon = Convert.ToInt32(maDonObj);
+            string trangThai = row.Cells["colTrangThai"]?.Value?.ToString() ?? "";
+            string tenKH = row.Cells["colTenKH"]?.Value?.ToString() ?? "";
+            string sdt = row.Cells["colSDT"]?.Value?.ToString() ?? "";
+            string email = row.Cells["colEmail"]?.Value?.ToString()?.Trim() ?? "";
+            string tenSK = row.Cells["colTenSK"]?.Value?.ToString() ?? "";
+            DateTime thoiGianBatDau = DateTime.MinValue;
+            if (row.Cells["colThoiGianBatDau"]?.Value != null && row.Cells["colThoiGianBatDau"]?.Value != DBNull.Value)
+            {
+                DateTime.TryParse(row.Cells["colThoiGianBatDau"].Value.ToString(), out thoiGianBatDau);
+            }
             TimeSpan timeSpan = thoiGianBatDau - DateTime.Now;
 
             string trangThaiVN = trangThai == TrangThaiDonVe.DaThanhToan ? "Đã thanh toán"
                 : (trangThai == TrangThaiDonVe.DaHuy ? "Đã hủy"
                 : (trangThai == TrangThaiDonVe.DaDoi ? "Đã đổi" : trangThai));
 
-            lblDetailTitle.Text = string.Format("CHI TIẾT VÉ TRONG ĐƠN: #{0} ({1})", maDon, trangThaiVN);
-            lblDonVeTomTat.Text = string.Format("Khách hàng: {0} ({1})\nSự kiện: {2}", tenKH, sdt, tenSK);
+            lblDetailTitle.Text = string.Format("Đơn #{0}", maDon);
+            lblDetailBadge.Text = trangThaiVN;
+            if (trangThai == TrangThaiDonVe.DaThanhToan)
+            {
+                lblDetailBadge.ForeColor = Color.FromArgb(6, 95, 70);
+                lblDetailBadge.BackColor = Color.FromArgb(209, 250, 229);
+            }
+            else if (trangThai == TrangThaiDonVe.DaHuy)
+            {
+                lblDetailBadge.ForeColor = Color.FromArgb(153, 27, 27);
+                lblDetailBadge.BackColor = Color.FromArgb(254, 226, 226);
+            }
+            else if (trangThai == TrangThaiDonVe.DaDoi)
+            {
+                lblDetailBadge.ForeColor = Color.FromArgb(30, 64, 175);
+                lblDetailBadge.BackColor = Color.FromArgb(219, 234, 254);
+            }
+            else
+            {
+                lblDetailBadge.ForeColor = Color.FromArgb(71, 85, 105);
+                lblDetailBadge.BackColor = Color.FromArgb(241, 245, 249);
+            }
+
+            lblCustomerName.Text = tenKH;
+            lblCustomerPhone.Text = !string.IsNullOrWhiteSpace(sdt) ? sdt : "—";
+
+            lblCustomerEmail.Text = email;
+            lblCustomerEmail.Visible = !string.IsNullOrWhiteSpace(email);
+            lblCustomerPhone.Visible = !string.IsNullOrWhiteSpace(sdt);
+
+            lblDetailEventName.Text = tenSK;
+            lblDetailEventTime.Text = thoiGianBatDau.ToString("dd/MM/yyyy · HH:mm");
 
             // Cập nhật banner trạng thái quy định
             if (trangThai == TrangThaiDonVe.DaHuy)
@@ -381,28 +362,28 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (timeSpan.TotalMinutes <= 0)
                 {
                     lblRuleBadge.ForeColor = Color.FromArgb(100, 116, 139);
-                    lblRuleBadge.Text = string.Format("Suất diễn đã diễn ra lúc {0:dd/MM/yyyy HH:mm} · Không thể đổi vé · Không thể hủy đơn", thoiGianBatDau);
+                    lblRuleBadge.Text = string.Format("Suất diễn đã diễn ra ({0:dd/MM/yyyy HH:mm})", thoiGianBatDau);
                 }
                 else
                 {
                     string thoiGianStr = timeSpan.Days > 0
-                        ? string.Format("Còn {0} ngày {1} giờ {2} phút", timeSpan.Days, timeSpan.Hours, timeSpan.Minutes)
+                        ? string.Format("Còn {0} ngày {1} giờ", timeSpan.Days, timeSpan.Hours)
                         : string.Format("Còn {0} giờ {1} phút", (int)Math.Floor(timeSpan.TotalHours), timeSpan.Minutes);
 
                     if (timeSpan.TotalHours >= 24.0)
                     {
                         lblRuleBadge.ForeColor = Color.FromArgb(22, 101, 52);
-                        lblRuleBadge.Text = string.Format("{0} · Có thể hủy đơn · Có thể đổi vé", thoiGianStr);
+                        lblRuleBadge.Text = string.Format("{0} · Có thể hủy hoặc đổi vé", thoiGianStr);
                     }
                     else if (timeSpan.TotalHours >= 12.0)
                     {
                         lblRuleBadge.ForeColor = Color.FromArgb(146, 64, 14);
-                        lblRuleBadge.Text = string.Format("{0} · Có thể đổi vé · Không thể hủy đơn", thoiGianStr);
+                        lblRuleBadge.Text = string.Format("{0} · Có thể đổi vé (Hết hạn hủy)", thoiGianStr);
                     }
                     else
                     {
                         lblRuleBadge.ForeColor = Color.FromArgb(185, 28, 28);
-                        lblRuleBadge.Text = string.Format("{0} · Không thể đổi vé · Không thể hủy đơn", thoiGianStr);
+                        lblRuleBadge.Text = string.Format("{0} · Không thể đổi vé hoặc hủy đơn", thoiGianStr);
                     }
                 }
             }
@@ -412,27 +393,24 @@ namespace QuanLySuKienVaBanVe.GUI
                 DataTable dtCT = await Task.Run(() => DonVeBLL.LayChiTietVeTheoDon(maDon));
                 if (IsDisposed || version != detailRequestVersion) return;
 
-                // Kiểm tra xem dòng đang chọn hiện tại có còn là maDon này không
                 var currentRow = LayDongDonVeDangChon();
                 if (currentRow == null || currentRow.Index < 0 || Convert.ToInt32(currentRow.Cells["colMaDon"].Value) != maDon)
                 {
-                    // Dòng hiện tại đã đổi trong khi đang tải -> Kích hoạt tải đơn mới ngay
                     _ = LoadChiTietVeAsync();
                     return;
                 }
 
                 dgvChiTietVe.DataSource = dtCT;
-                if (dgvChiTietVe.Columns["colGiaVe"] != null)
-                {
-                    dgvChiTietVe.Columns["colGiaVe"].DefaultCellStyle.Format = "N0";
-                    dgvChiTietVe.Columns["colGiaVe"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                    dgvChiTietVe.Columns["colGiaVe"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
-                }
+                lblTicketsTitle.Text = string.Format("Vé trong đơn ({0})", dtCT.Rows.Count);
 
-                if (dtCT.Rows.Count > 0)
+                if (dgvChiTietVe.Rows.Count > 0)
                 {
                     dgvChiTietVe.ClearSelection();
                     dgvChiTietVe.Rows[0].Selected = true;
+                    if (colMaGheHienThi != null && colMaGheHienThi.Visible)
+                    {
+                        dgvChiTietVe.CurrentCell = dgvChiTietVe.Rows[0].Cells["colMaGheHienThi"];
+                    }
                 }
             }
             catch (Exception ex)
@@ -454,11 +432,12 @@ namespace QuanLySuKienVaBanVe.GUI
         private void CapNhatTrangThaiNutThaoTac()
         {
             var row = LayDongDonVeDangChon();
-            bool coDonChon = !loading && !loadingDetail && !cancellingOrder && row != null && row.Index >= 0;
+            bool coDonChon = !loading && !loadingDetail && !cancellingOrder && row != null && row.Index >= 0 && row.Index < dgvDonVe.Rows.Count;
             if (!coDonChon)
             {
                 btnHuyVe.Enabled = false;
                 btnDoiVe.Enabled = false;
+                if (btnInVe != null) btnInVe.Enabled = false;
                 return;
             }
 
@@ -467,10 +446,14 @@ namespace QuanLySuKienVaBanVe.GUI
             DateTime thoiGianBatDau = Convert.ToDateTime(row.Cells["colThoiGianBatDau"].Value);
             double gioConLai = (thoiGianBatDau - DateTime.Now).TotalHours;
 
-            bool hopLeHuy = (trangThai == TrangThaiDonVe.DaThanhToan && gioConLai >= 24.0);
+            int soVeHopLe = 0;
+            if (row.Cells["colSoVeHopLe"]?.Value != null && row.Cells["colSoVeHopLe"].Value != DBNull.Value)
+                int.TryParse(row.Cells["colSoVeHopLe"].Value.ToString(), out soVeHopLe);
+
+            bool hopLeHuy = (trangThai == TrangThaiDonVe.DaThanhToan && gioConLai >= 24.0 && soVeHopLe > 0);
 
             bool hopLeDoi = false;
-            if (trangThai == TrangThaiDonVe.DaThanhToan && gioConLai >= 12.0 && dgvChiTietVe.CurrentRow != null && dgvChiTietVe.CurrentRow.Index >= 0)
+            if (trangThai == TrangThaiDonVe.DaThanhToan && gioConLai >= 12.0 && dgvChiTietVe.CurrentRow != null && dgvChiTietVe.CurrentRow.Index >= 0 && dgvChiTietVe.CurrentRow.Index < dgvChiTietVe.Rows.Count)
             {
                 var drv = dgvChiTietVe.CurrentRow.DataBoundItem as DataRowView;
                 if (drv != null && Convert.ToInt32(drv["MaDon"]) == maDon)
@@ -483,13 +466,72 @@ namespace QuanLySuKienVaBanVe.GUI
                 }
             }
 
+            bool hopLeIn = (trangThai == TrangThaiDonVe.DaThanhToan);
+            if (!hopLeIn && dgvChiTietVe.Rows.Count > 0)
+            {
+                foreach (DataGridViewRow r in dgvChiTietVe.Rows)
+                {
+                    if (r.Cells["colTrangThaiVe"].Value?.ToString() == TrangThaiChiTietVe.HopLe)
+                    {
+                        hopLeIn = true;
+                        break;
+                    }
+                }
+            }
+
             btnHuyVe.Enabled = hopLeHuy;
             btnDoiVe.Enabled = hopLeDoi;
+            if (btnInVe != null) btnInVe.Enabled = hopLeIn;
         }
 
         private void dgvChiTietVe_SelectionChanged(object sender, EventArgs e)
         {
             CapNhatTrangThaiNutThaoTac();
+        }
+
+        private void btnCopyMaVe_Click(object sender, EventArgs e)
+        {
+            var ctRow = dgvChiTietVe.CurrentRow;
+            if (ctRow == null || ctRow.Index < 0 || ctRow.Index >= dgvChiTietVe.Rows.Count)
+            {
+                MessageBox.Show(this, "Vui lòng chọn một vé trong danh sách để sao chép mã tra cứu.", "Chưa chọn vé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            string maVeCode = ctRow.Cells["colMaVeCode"]?.Value?.ToString() ?? "";
+            if (string.IsNullOrWhiteSpace(maVeCode))
+            {
+                MessageBox.Show(this, "Vé này chưa có mã tra cứu.", "Không có mã vé", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            try
+            {
+                Clipboard.SetText(maVeCode);
+                if (btnCopyMaVe != null)
+                {
+                    btnCopyMaVe.Text = "Đã chép mã!";
+                    Timer t = new Timer { Interval = 1500 };
+                    t.Tick += (s, args) =>
+                    {
+                        t.Stop();
+                        t.Dispose();
+                        if (!IsDisposed && btnCopyMaVe != null && !btnCopyMaVe.IsDisposed)
+                            btnCopyMaVe.Text = "Sao chép mã";
+                    };
+                    t.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Không thể sao chép vào bộ nhớ tạm: " + ex.Message, "Lỗi sao chép", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void btnInVe_Click(object sender, EventArgs e)
+        {
+            var row = LayDongDonVeDangChon();
+            if (row == null || row.Index < 0) return;
+            int maDon = Convert.ToInt32(row.Cells["colMaDon"].Value);
+            FrmInVe.InDanhSachVe(maDon, this);
         }
 
         private async void btnHuyVe_Click(object sender, EventArgs e)
@@ -594,9 +636,9 @@ namespace QuanLySuKienVaBanVe.GUI
                 return;
             }
 
-            if (dgvChiTietVe.CurrentRow == null || dgvChiTietVe.CurrentRow.Index < 0)
+            if (dgvChiTietVe.CurrentRow == null || dgvChiTietVe.CurrentRow.Index < 0 || dgvChiTietVe.CurrentRow.Index >= dgvChiTietVe.Rows.Count)
             {
-                MessageBox.Show(this, "Vui lòng chọn 1 vé trong bảng Chi tiết vé bên dưới để thực hiện đổi vé!", "Chưa chọn vé cần đổi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "Vui lòng chọn 1 vé trong danh sách Vé trong đơn để thực hiện đổi vé!", "Chưa chọn vé cần đổi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -635,6 +677,18 @@ namespace QuanLySuKienVaBanVe.GUI
                 {
                     int maDonMoi = frm.MaDonMoiDaTao;
                     await LoadDanhSachDonVeAsync(maDonMoi > 0 ? maDonMoi : maDon);
+                    if (maDonMoi > 0)
+                    {
+                        DialogResult inNgay = MessageBox.Show(this,
+                            string.Format("Đổi vé thành công! Đơn vé mới đã được tạo với mã #{0}.\nBạn có muốn in vé mới ngay bây giờ không?", maDonMoi),
+                            "In vé đổi thành công",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question);
+                        if (inNgay == DialogResult.Yes)
+                        {
+                            FrmInVe.InDanhSachVe(maDonMoi, this);
+                        }
+                    }
                 }
             }
         }
@@ -673,131 +727,228 @@ namespace QuanLySuKienVaBanVe.GUI
 
         private void dgvDonVe_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            string colName = dgvDonVe.Columns[e.ColumnIndex].Name;
+            if (e.RowIndex < 0 || e.RowIndex >= dgvDonVe.Rows.Count || colMaDon == null || e.ColumnIndex != colMaDon.Index) return;
 
-            if (colName == "colTrangThai")
+            float scale = DeviceDpi / 96f;
+            e.Handled = true;
+            Graphics g = e.Graphics;
+            Rectangle bounds = e.CellBounds;
+            bool isSelected = (e.State & DataGridViewElementStates.Selected) != 0;
+
+            Color bg = isSelected ? Color.FromArgb(236, 253, 245) : Color.White;
+            using (Brush b = new SolidBrush(bg))
             {
-                string status = e.Value?.ToString() ?? "";
-                Color bg = Color.FromArgb(241, 245, 249);
-                Color fg = Color.FromArgb(71, 85, 105);
-                string text = status;
+                g.FillRectangle(b, bounds);
+            }
 
-                if (status == TrangThaiDonVe.DaThanhToan)
-                {
-                    bg = Color.FromArgb(209, 250, 229);
-                    fg = Color.FromArgb(6, 95, 70);
-                    text = "Đã thanh toán";
-                }
-                else if (status == TrangThaiDonVe.DaHuy)
-                {
-                    bg = Color.FromArgb(254, 226, 226);
-                    fg = Color.FromArgb(153, 27, 27);
-                    text = "Đã hủy";
-                }
-                else if (status == TrangThaiDonVe.DaDoi)
-                {
-                    bg = Color.FromArgb(219, 234, 254);
-                    fg = Color.FromArgb(30, 64, 175);
-                    text = "Đã đổi";
-                }
+            using (Pen p = new Pen(Color.FromArgb(241, 245, 249)))
+            {
+                g.DrawLine(p, bounds.Left, bounds.Bottom - 1, bounds.Right, bounds.Bottom - 1);
+            }
 
-                ManagementGridRenderer.PaintStatus(dgvDonVe, e, text, bg, fg);
+            if (isSelected)
+            {
+                using (Brush b = new SolidBrush(Color.FromArgb(16, 185, 129)))
+                {
+                    g.FillRectangle(b, bounds.Left, bounds.Top, ScalePixels(4, scale), bounds.Height);
+                }
+            }
+
+            var row = dgvDonVe.Rows[e.RowIndex];
+            string maDon = row.Cells["colMaDon"].Value?.ToString() ?? "";
+            string tenKH = row.Cells["colTenKH"].Value?.ToString() ?? "";
+            string tenSK = row.Cells["colTenSK"].Value?.ToString() ?? "";
+            string trangThai = row.Cells["colTrangThai"].Value?.ToString() ?? "";
+            object maDonGocObj = row.Cells["colMaDonGoc"].Value;
+            string maDonGoc = (maDonGocObj != null && maDonGocObj != DBNull.Value) ? maDonGocObj.ToString() : "";
+            int tongSoVe = 0;
+            if (row.Cells["colTongSoVe"].Value != null && row.Cells["colTongSoVe"].Value != DBNull.Value)
+                int.TryParse(row.Cells["colTongSoVe"].Value.ToString(), out tongSoVe);
+            int soVeHopLe = 0;
+            if (row.Cells["colSoVeHopLe"].Value != null && row.Cells["colSoVeHopLe"].Value != DBNull.Value)
+                int.TryParse(row.Cells["colSoVeHopLe"].Value.ToString(), out soVeHopLe);
+            decimal tongTien = 0m;
+            if (row.Cells["colTongTien"].Value != null && row.Cells["colTongTien"].Value != DBNull.Value)
+                decimal.TryParse(row.Cells["colTongTien"].Value.ToString(), out tongTien);
+
+            int padLeft = bounds.Left + ScalePixels(20, scale);
+            int padRight = bounds.Right - ScalePixels(20, scale);
+
+            string statusText = trangThai == TrangThaiDonVe.DaThanhToan ? "Đã thanh toán"
+                : (trangThai == TrangThaiDonVe.DaHuy ? "Đã hủy"
+                : (trangThai == TrangThaiDonVe.DaDoi ? "Đã đổi" : trangThai));
+            Color badgeBg = trangThai == TrangThaiDonVe.DaThanhToan ? Color.FromArgb(209, 250, 229)
+                : (trangThai == TrangThaiDonVe.DaHuy ? Color.FromArgb(254, 226, 226)
+                : Color.FromArgb(219, 234, 254));
+            Color badgeFg = trangThai == TrangThaiDonVe.DaThanhToan ? Color.FromArgb(6, 95, 70)
+                : (trangThai == TrangThaiDonVe.DaHuy ? Color.FromArgb(153, 27, 27)
+                : Color.FromArgb(30, 64, 175));
+
+            int badgeX = padRight;
+            using (Font badgeFont = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+            {
+                Size badgeSize = TextRenderer.MeasureText(statusText, badgeFont);
+                int badgeW = badgeSize.Width + ScalePixels(24, scale);
+                int badgeH = Math.Max(badgeSize.Height + ScalePixels(10, scale), ScalePixels(28, scale));
+                badgeX = padRight - badgeW;
+                int badgeY = bounds.Top + ScalePixels(14, scale);
+                Rectangle badgeRect = new Rectangle(badgeX, badgeY, badgeW, badgeH);
+
+                ManagementGridRenderer.FillRoundedRectangle(g, badgeRect, 4, badgeBg);
+                TextRenderer.DrawText(g, statusText, badgeFont, badgeRect, badgeFg,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+
+                using (Font orderFont = new Font("Segoe UI", 10f, FontStyle.Bold))
+                using (Font nameFont = new Font("Segoe UI", 10f, FontStyle.Bold))
+                {
+                    string orderStr = "#" + maDon;
+                    Size orderSize = TextRenderer.MeasureText(orderStr, orderFont);
+                    Rectangle orderRect = new Rectangle(padLeft, bounds.Top + ScalePixels(16, scale), orderSize.Width, orderSize.Height);
+                    TextRenderer.DrawText(g, orderStr, orderFont, orderRect, Color.FromArgb(15, 23, 42), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+                    int nameLeft = orderRect.Right + ScalePixels(8, scale);
+                    int maxNameW = Math.Max(10, badgeX - nameLeft - ScalePixels(8, scale));
+                    Rectangle nameRect = new Rectangle(nameLeft, bounds.Top + ScalePixels(16, scale), maxNameW, orderSize.Height);
+                    TextRenderer.DrawText(g, tenKH, nameFont, nameRect, Color.FromArgb(15, 23, 42), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
+            }
+
+            using (Font eventFont = new Font("Segoe UI", 9f, FontStyle.Regular))
+            {
+                int eventW = Math.Max(10, bounds.Width - ScalePixels(40, scale));
+                Rectangle eventRect = new Rectangle(padLeft, bounds.Top + ScalePixels(46, scale), eventW, eventFont.Height + ScalePixels(4, scale));
+                TextRenderer.DrawText(g, tenSK, eventFont, eventRect, Color.FromArgb(71, 85, 105), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+
+            using (Font summaryFont = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+            using (Font originFont = new Font("Segoe UI", 8.5f, FontStyle.Regular))
+            {
+                string ticketCountStr = (soVeHopLe > 0 && soVeHopLe < tongSoVe)
+                    ? string.Format("{0} vé hiệu lực / {1} vé", soVeHopLe, tongSoVe)
+                    : string.Format("{0} vé", tongSoVe);
+                string sumStr = string.Format("{0}  ·  {1:N0}đ", ticketCountStr, tongTien);
+                Size sumSize = TextRenderer.MeasureText(sumStr, summaryFont);
+                Rectangle sumRect = new Rectangle(padLeft, bounds.Top + ScalePixels(76, scale), sumSize.Width, sumSize.Height);
+                TextRenderer.DrawText(g, sumStr, summaryFont, sumRect, Color.FromArgb(6, 95, 70), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+                if (!string.IsNullOrEmpty(maDonGoc))
+                {
+                    string originStr = string.Format(" · Đổi từ #{0}", maDonGoc);
+                    int originLeft = sumRect.Right + 2;
+                    int maxOriginW = Math.Max(10, padRight - originLeft);
+                    Rectangle originRect = new Rectangle(originLeft, bounds.Top + ScalePixels(77, scale), maxOriginW, originFont.Height + ScalePixels(4, scale));
+                    TextRenderer.DrawText(g, originStr, originFont, originRect, Color.FromArgb(71, 85, 105), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
             }
         }
-
-        private void dgvDonVe_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            string colName = dgvDonVe.Columns[e.ColumnIndex].Name;
-
-            if (colName == "colMaDon")
-            {
-                if (e.Value != null && e.Value != DBNull.Value)
-                {
-                    e.Value = "#" + e.Value.ToString();
-                    e.FormattingApplied = true;
-                }
-            }
-            else if (colName == "colMaDonGoc")
-            {
-                if (e.Value == null || e.Value == DBNull.Value || string.IsNullOrEmpty(e.Value.ToString()))
-                {
-                    e.Value = "—";
-                    e.CellStyle.ForeColor = Color.FromArgb(156, 163, 175);
-                    e.FormattingApplied = true;
-                }
-                else
-                {
-                    e.Value = "#" + e.Value.ToString();
-                    e.CellStyle.ForeColor = Color.FromArgb(71, 85, 105);
-                    e.FormattingApplied = true;
-                }
-            }
-            else if (colName == "colTrangThai")
-            {
-                if (e.Value != null)
-                {
-                    string s = e.Value.ToString();
-                    if (s == TrangThaiDonVe.DaThanhToan) e.Value = "Đã thanh toán";
-                    else if (s == TrangThaiDonVe.DaHuy) e.Value = "Đã hủy";
-                    else if (s == TrangThaiDonVe.DaDoi) e.Value = "Đã đổi";
-                    e.FormattingApplied = true;
-                }
-            }
-        }
-
         private void dgvChiTietVe_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            string colName = dgvChiTietVe.Columns[e.ColumnIndex].Name;
+            if (e.RowIndex < 0 || e.RowIndex >= dgvChiTietVe.Rows.Count || colMaGheHienThi == null || e.ColumnIndex != colMaGheHienThi.Index) return;
 
-            if (colName == "colTrangThaiVe")
+            float scale = DeviceDpi / 96f;
+            e.Handled = true;
+            Graphics g = e.Graphics;
+            Rectangle bounds = e.CellBounds;
+            bool isSelected = (e.State & DataGridViewElementStates.Selected) != 0;
+
+            Color bg = isSelected ? Color.FromArgb(236, 253, 245) : Color.White;
+            using (Brush b = new SolidBrush(bg))
             {
-                string status = e.Value?.ToString() ?? "";
-                Color bg = Color.FromArgb(241, 245, 249);
-                Color fg = Color.FromArgb(71, 85, 105);
-                string text = status;
+                g.FillRectangle(b, bounds);
+            }
 
-                if (status == TrangThaiChiTietVe.HopLe)
-                {
-                    bg = Color.FromArgb(209, 250, 229);
-                    fg = Color.FromArgb(6, 95, 70);
-                    text = "Hợp lệ";
-                }
-                else if (status == TrangThaiChiTietVe.DaHuy)
-                {
-                    bg = Color.FromArgb(254, 226, 226);
-                    fg = Color.FromArgb(153, 27, 27);
-                    text = "Đã hủy";
-                }
+            using (Pen p = new Pen(Color.FromArgb(241, 245, 249)))
+            {
+                g.DrawLine(p, bounds.Left, bounds.Bottom - 1, bounds.Right, bounds.Bottom - 1);
+            }
 
-                ManagementGridRenderer.PaintStatus(dgvChiTietVe, e, text, bg, fg);
+            if (isSelected)
+            {
+                using (Brush b = new SolidBrush(Color.FromArgb(16, 185, 129)))
+                {
+                    g.FillRectangle(b, bounds.Left, bounds.Top, ScalePixels(3, scale), bounds.Height);
+                }
+            }
+
+            var row = dgvChiTietVe.Rows[e.RowIndex];
+            string maGhe = row.Cells["colMaGheHienThi"].Value?.ToString() ?? "";
+            string hangVe = row.Cells["colHangVe"].Value?.ToString() ?? "";
+            string tenKV = row.Cells["colTenKV"].Value?.ToString() ?? "";
+            string trangThai = row.Cells["colTrangThaiVe"].Value?.ToString() ?? "";
+            string maVeCode = row.Cells["colMaVeCode"].Value?.ToString() ?? "";
+            decimal giaVe = 0m;
+            if (row.Cells["colGiaVe"].Value != null && row.Cells["colGiaVe"].Value != DBNull.Value)
+                decimal.TryParse(row.Cells["colGiaVe"].Value.ToString(), out giaVe);
+
+            int padLeft = bounds.Left + ScalePixels(20, scale);
+            int padRight = bounds.Right - ScalePixels(20, scale);
+            int cy = bounds.Top + bounds.Height / 2;
+
+            int rightReserved = ScalePixels(115, scale);
+            if (trangThai == TrangThaiChiTietVe.DaHuy)
+            {
+                using (Font badgeFont = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+                {
+                    string badgeText = "Đã hủy";
+                    Size badgeSize = TextRenderer.MeasureText(badgeText, badgeFont);
+                    int bw = badgeSize.Width + ScalePixels(20, scale);
+                    int bh = badgeSize.Height + ScalePixels(8, scale);
+                    Rectangle br = new Rectangle(padRight - bw, cy - bh / 2, bw, bh);
+                    ManagementGridRenderer.FillRoundedRectangle(g, br, 3, Color.FromArgb(254, 226, 226));
+                    TextRenderer.DrawText(g, badgeText, badgeFont, br, Color.FromArgb(153, 27, 27),
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+                    rightReserved = bw + ScalePixels(12, scale);
+                }
+            }
+            else
+            {
+                using (Font priceFont = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+                {
+                    string priceStr = string.Format("{0:N0}đ", giaVe);
+                    Size priceSize = TextRenderer.MeasureText(priceStr, priceFont);
+                    Rectangle pr = new Rectangle(padRight - priceSize.Width, cy - priceSize.Height / 2, priceSize.Width, priceSize.Height);
+                    TextRenderer.DrawText(g, priceStr, priceFont, pr, Color.FromArgb(15, 23, 42), TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                    rightReserved = priceSize.Width + ScalePixels(12, scale);
+                }
+            }
+
+            Color bulletColor = trangThai == TrangThaiChiTietVe.HopLe ? Color.FromArgb(16, 185, 129) : Color.FromArgb(239, 68, 68);
+            using (Brush bb = new SolidBrush(bulletColor))
+            {
+                g.FillEllipse(bb, padLeft, cy - ScalePixels(4, scale), ScalePixels(8, scale), ScalePixels(8, scale));
+            }
+
+            int textLeft = padLeft + ScalePixels(18, scale);
+            int availableTextWidth = Math.Max(10, (padRight - rightReserved) - textLeft);
+
+            // Line 1: Ghế ngồi + Hạng vé (Khu vực)
+            using (Font seatFont = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+            using (Font subFont = new Font("Segoe UI", 9f, FontStyle.Regular))
+            {
+                Size seatSize = TextRenderer.MeasureText(maGhe, seatFont);
+                int line1Y = bounds.Top + ScalePixels(10, scale);
+                Rectangle seatRect = new Rectangle(textLeft, line1Y, seatSize.Width, seatSize.Height);
+                TextRenderer.DrawText(g, maGhe, seatFont, seatRect, Color.FromArgb(15, 23, 42), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+
+                string infoStr = !string.IsNullOrEmpty(tenKV) ? string.Format(" · {0} ({1})", hangVe, tenKV) : string.Format(" · {0}", hangVe);
+                int infoLeft = seatRect.Right;
+                int maxInfoW = Math.Max(10, (padRight - rightReserved) - infoLeft);
+                Rectangle infoRect = new Rectangle(infoLeft, line1Y, maxInfoW, seatSize.Height);
+                TextRenderer.DrawText(g, infoStr, subFont, infoRect, Color.FromArgb(71, 85, 105), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+
+            // Line 2: Mã tra cứu vé (MaVeCode)
+            if (!string.IsNullOrEmpty(maVeCode))
+            {
+                using (Font codeFont = new Font("Segoe UI", 8.5f, FontStyle.Regular))
+                {
+                    int line2Y = bounds.Top + ScalePixels(32, scale);
+                    string codeStr = string.Format("Mã tra cứu: {0}", maVeCode);
+                    Rectangle codeRect = new Rectangle(textLeft, line2Y, availableTextWidth, codeFont.Height + ScalePixels(2, scale));
+                    TextRenderer.DrawText(g, codeStr, codeFont, codeRect, Color.FromArgb(71, 85, 105), TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+                }
             }
         }
-
-        private void dgvChiTietVe_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            string colName = dgvChiTietVe.Columns[e.ColumnIndex].Name;
-
-            if (colName == "colMaCT" && e.Value != null && e.Value != DBNull.Value)
-            {
-                e.Value = "#" + e.Value.ToString();
-                e.FormattingApplied = true;
-            }
-            else if (colName == "colTrangThaiVe")
-            {
-                if (e.Value != null)
-                {
-                    string s = e.Value.ToString();
-                    if (s == TrangThaiChiTietVe.HopLe) e.Value = "Hợp lệ";
-                    else if (s == TrangThaiChiTietVe.DaHuy) e.Value = "Đã hủy";
-                    e.FormattingApplied = true;
-                }
-            }
-        }
-
         private async void FrmQuanLyDonVe_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.F5)
@@ -805,6 +956,24 @@ namespace QuanLySuKienVaBanVe.GUI
                 await LoadDanhSachDonVeAsync();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
+            }
+            else if (e.Control && e.KeyCode == Keys.C)
+            {
+                if (dgvChiTietVe.Focused && dgvChiTietVe.CurrentRow != null && btnCopyMaVe != null)
+                {
+                    btnCopyMaVe_Click(btnCopyMaVe, EventArgs.Empty);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            }
+            else if (e.Control && e.KeyCode == Keys.P)
+            {
+                if (btnInVe != null && btnInVe.Enabled)
+                {
+                    btnInVe.PerformClick();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
             }
             else if (e.Control && e.KeyCode == Keys.F)
             {
@@ -818,6 +987,46 @@ namespace QuanLySuKienVaBanVe.GUI
                 txtTimKiem.Clear();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
+            }
+        }
+
+        private void dgvDonVe_Paint(object sender, PaintEventArgs e)
+        {
+            if (dgvDonVe.Rows.Count == 0 && !loading)
+            {
+                VeEmptyState(dgvDonVe, e.Graphics,
+                    "Không tìm thấy đơn vé nào",
+                    "Thử tra cứu mã đơn (#...), tên khách, SĐT hoặc chọn lại bộ lọc trạng thái");
+            }
+        }
+
+        private void dgvChiTietVe_Paint(object sender, PaintEventArgs e)
+        {
+            if (dgvChiTietVe.Rows.Count == 0 && !loadingDetail)
+            {
+                VeEmptyState(dgvChiTietVe, e.Graphics,
+                    "Không có vé nào trong đơn này",
+                    "Chọn một đơn vé có vé hợp lệ trong danh sách để xem chi tiết");
+            }
+        }
+
+        private static void VeEmptyState(DataGridView dgv, Graphics g, string mainText, string subText)
+        {
+            using (Font fontMain = new Font("Segoe UI", 10.5f, FontStyle.Bold))
+            using (Font fontSub = new Font("Segoe UI", 9f, FontStyle.Regular))
+            using (Brush brushMain = new SolidBrush(Color.FromArgb(100, 116, 139)))
+            using (Brush brushSub = new SolidBrush(Color.FromArgb(148, 163, 184)))
+            using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+            {
+                int topOffset = dgv.ColumnHeadersVisible ? dgv.ColumnHeadersHeight : 0;
+                Rectangle area = new Rectangle(0, topOffset, dgv.ClientSize.Width, Math.Max(0, dgv.ClientSize.Height - topOffset));
+                if (area.Height < 40) return;
+
+                Rectangle rectMain = new Rectangle(area.Left, area.Top + area.Height / 2 - 20, area.Width, 22);
+                Rectangle rectSub = new Rectangle(area.Left, area.Top + area.Height / 2 + 4, area.Width, 20);
+
+                g.DrawString(mainText, fontMain, brushMain, rectMain, sf);
+                g.DrawString(subText, fontSub, brushSub, rectSub, sf);
             }
         }
     }
