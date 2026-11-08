@@ -93,15 +93,24 @@ namespace QuanLySuKienVaBanVe.GUI
             if (brandLogoSource == null)
             {
                 string duongDan = System.IO.Path.Combine(Application.StartupPath, @"Resources\Ticket\logoEventTicket.png");
-                if (!System.IO.File.Exists(duongDan)) return;
-                try
+                if (System.IO.File.Exists(duongDan))
                 {
-                    byte[] bytes = System.IO.File.ReadAllBytes(duongDan);
-                    using (System.IO.MemoryStream ms = new System.IO.MemoryStream(bytes))
-                    using (Image tam = Image.FromStream(ms))
-                        brandLogoSource = new Bitmap(tam);
+                    try
+                    {
+                        byte[] bytes = System.IO.File.ReadAllBytes(duongDan);
+                        using (System.IO.MemoryStream ms = new System.IO.MemoryStream(bytes))
+                        using (Image tam = Image.FromStream(ms))
+                            brandLogoSource = new Bitmap(tam);
+                    }
+                    catch { brandLogoSource = null; }
                 }
-                catch { return; }
+
+                if (brandLogoSource == null)
+                {
+                    lblLogo.Image = null;
+                    lblLogo.Text = "EventTicket";
+                    return;
+                }
             }
 
             int w = lblLogo.Width, h = lblLogo.Height;
@@ -123,6 +132,7 @@ namespace QuanLySuKienVaBanVe.GUI
 
             Image cu = brandLogo;
             brandLogo = moi;
+            lblLogo.Text = "";
             lblLogo.Image = moi;
             if (cu != null) cu.Dispose();
         }
@@ -417,6 +427,22 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             base.OnFormClosing(e);
         }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            base.OnFormClosed(e);
+            if (brandLogo != null)
+            {
+                brandLogo.Dispose();
+                brandLogo = null;
+            }
+            if (brandLogoSource != null)
+            {
+                brandLogoSource.Dispose();
+                brandLogoSource = null;
+            }
+        }
+
         private void btnDangXuat_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?", "Xác nhận đăng xuất",
