@@ -40,9 +40,7 @@ jobs:
           nuget-version: '6.x'
 
       - name: Restore NuGet packages
-        run: |
-          nuget restore QuanLySuKienVaBanVe.sln -PackagesDirectory packages -Source https://api.nuget.org/v3/index.json -NonInteractive
-          nuget restore UnitTests/packages.config -PackagesDirectory UnitTests/packages -Source https://api.nuget.org/v3/index.json -NonInteractive
+        run: nuget restore QuanLySuKienVaBanVe.sln -PackagesDirectory packages -Source https://api.nuget.org/v3/index.json -NonInteractive
 
       - name: Build Release
         run: >-

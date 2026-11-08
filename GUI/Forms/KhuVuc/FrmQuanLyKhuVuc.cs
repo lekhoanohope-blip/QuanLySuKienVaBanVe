@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -62,9 +62,9 @@ namespace QuanLySuKienVaBanVe.GUI
                 button.FocusedColor = Color.FromArgb(30, 64, 175);
             }
             pnlRightInfo.MinimumSize = new Size(UiPx(340), 0);
-            pnlRightHeader.BringToFront();
-            pnlRightActions.BringToFront();
-            pnlRightBody.SendToBack();
+            pnlRightHeader.SendToBack();
+            pnlRightActions.SendToBack();
+            pnlRightBody.BringToFront();
             pnlRightHeader.BackColor = Color.White;
             pnlRightActions.BackColor = Color.White;
             pnlRightBody.BackColor = Color.White;

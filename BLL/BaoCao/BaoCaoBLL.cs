@@ -29,7 +29,7 @@ namespace QuanLySuKienVaBanVe.BLL
     /// </summary>
     public static class BaoCaoBLL
     {
-        public static void ChuanHoaNgay(ref DateTime tuNgay, ref DateTime denNgay)
+        internal static void ChuanHoaNgay(ref DateTime tuNgay, ref DateTime denNgay)
         {
             if (tuNgay.Date > denNgay.Date)
             {
@@ -46,7 +46,7 @@ namespace QuanLySuKienVaBanVe.BLL
             return "ngay";
         }
 
-        public static decimal? TinhTangTruong(decimal hienTai, decimal truoc)
+        internal static decimal? TinhTangTruong(decimal hienTai, decimal truoc)
         {
             if (truoc == 0m) return null;
             return (hienTai - truoc) / truoc * 100m;

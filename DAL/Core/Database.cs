@@ -16,6 +16,9 @@ namespace QuanLySuKienVaBanVe.DAL
         /// <summary>Thiết lập chuỗi kết nối động (hỗ trợ kiểm thử tự động và chuyển môi trường).</summary>
         public static void SetConnectionString(string connStr) => _connStr = connStr;
 
+        /// <summary>Chuỗi kết nối cơ sở dữ liệu hiện hành.</summary>
+        public static string ConnectionString => ConnStr;
+
         private static string ConnStr
         {
             get
