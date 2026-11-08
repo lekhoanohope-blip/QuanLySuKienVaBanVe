@@ -73,6 +73,13 @@
     <Compile Include="GUI\Forms\DonVe\FrmInVe.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="GUI\Forms\DonVe\FrmInVeGdi.cs" />
+    <Compile Include="GUI\Forms\DonVe\NutBoGoc.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="GUI\Forms\DonVe\SurfaceXemTruoc.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GUI\Forms\BanVe\FrmBanVe.cs">
       <SubType>Form</SubType>
     </Compile>

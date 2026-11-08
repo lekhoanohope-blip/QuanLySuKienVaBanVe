@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using Microsoft.Win32;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using QuanLySuKienVaBanVe.DTO;
@@ -16,12 +17,41 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
 
         public static string ThuMucMacDinh
         {
-            get
+            get { return LayDownloads(); }
+        }
+
+        private static string LayDownloads()
+        {
+            try
             {
-                return Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    "EventTicket", "VeIn");
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"))
+                {
+                    if (key != null)
+                    {
+                        object raw = key.GetValue("{374DE290-123F-4565-9164-39C4925E467B}");
+                        if (raw != null)
+                        {
+                            string path = Environment.ExpandEnvironmentVariables(raw.ToString());
+                            if (!string.IsNullOrWhiteSpace(path)) return path.Trim();
+                        }
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("LayDownloads: " + ex.Message);
+            }
+
+            string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (!string.IsNullOrWhiteSpace(profile))
+                return Path.Combine(profile, "Downloads");
+
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrWhiteSpace(docs))
+                return Path.Combine(docs, "Downloads");
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads");
         }
 
         public static string LayTenFile(ThongTinInVeDTO ve)
