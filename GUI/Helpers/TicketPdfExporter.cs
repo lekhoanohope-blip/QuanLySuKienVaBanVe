@@ -33,7 +33,7 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
                         if (raw != null)
                         {
                             string path = Environment.ExpandEnvironmentVariables(raw.ToString());
-                            if (!string.IsNullOrEmpty(path.Trim())) return path.Trim();
+                            if (!string.IsNullOrWhiteSpace(path)) return path.Trim();
                         }
                     }
                 }
@@ -43,7 +43,15 @@ namespace QuanLySuKienVaBanVe.GUI.Helpers
                 System.Diagnostics.Debug.WriteLine("LayDownloads: " + ex.Message);
             }
 
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (!string.IsNullOrWhiteSpace(profile))
+                return Path.Combine(profile, "Downloads");
+
+            string docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!string.IsNullOrWhiteSpace(docs))
+                return Path.Combine(docs, "Downloads");
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Downloads");
         }
 
         public static string LayTenFile(ThongTinInVeDTO ve)

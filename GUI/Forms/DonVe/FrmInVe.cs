@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using QuanLySuKienVaBanVe.BLL;
 using QuanLySuKienVaBanVe.DTO;
 using QuanLySuKienVaBanVe.GUI.Helpers;
+using static QuanLySuKienVaBanVe.GUI.FrmInVeGdi;
 
 namespace QuanLySuKienVaBanVe.GUI
 {
@@ -19,7 +20,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private int _indexInPrint;
 
         private PrintDocument _printDoc;
-        private Icon _hieuUng;
+        private Icon _formIcon;
 
         private Panel pnlHeader;
         private Panel pnlPathBar;
@@ -48,36 +49,7 @@ namespace QuanLySuKienVaBanVe.GUI
         private const int ChenLe = 16;
         private const int CaoHeader = 104;
         private const int CaoPathBar = 66;
-        private const int CaoNut = 38;
         private const string NhanBrand = "EventTicket - Hệ thống quản lý sự kiện";
-
-        private static readonly Color MatNen = Color.FromArgb(244, 246, 251);
-        private static readonly Color MauThe = Color.White;
-        private static readonly Color MauStatus = Color.FromArgb(248, 250, 253);
-        private static readonly Color MauVien = Color.FromArgb(225, 230, 240);
-        private static readonly Color MauChu = Color.FromArgb(30, 41, 59);
-        private static readonly Color MauPhu = Color.FromArgb(100, 116, 139);
-        private static readonly Color MauXanh = Color.FromArgb(29, 78, 216);
-        private static readonly Color MauXanhNhat = Color.FromArgb(37, 99, 235);
-        private static readonly Color MauChip = Color.FromArgb(233, 240, 254);
-        private static readonly Color MauChipVien = Color.FromArgb(191, 214, 251);
-        private static readonly Color[] DanMau = new Color[]
-        {
-            Color.FromArgb(26, 58, 160),
-            Color.FromArgb(53, 95, 220),
-            Color.FromArgb(163, 176, 240)
-        };
-        private static readonly float[] DanViTri = new float[] { 0f, 0.48f, 1f };
-
-        private static readonly Font FntTieuDe = new Font("Segoe UI", 20f, FontStyle.Bold);
-        private static readonly Font FntDon = new Font("Segoe UI", 9.5f, FontStyle.Regular);
-        private static readonly Font FntBrand = new Font("Segoe UI", 10.5f, FontStyle.Bold);
-        private static readonly Font FntNut = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-        private static readonly Font FntNhan = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-        private static readonly Font FntDuongDan = new Font("Segoe UI", 9.5f, FontStyle.Regular);
-        private static readonly Font FntChip = new Font("Segoe UI", 8.25f, FontStyle.Bold);
-        private static readonly Font FntRong = new Font("Segoe UI", 12f, FontStyle.Bold);
-        private static readonly Font FntTrangThai = new Font("Segoe UI", 9f, FontStyle.Regular);
 
         #endregion
 
@@ -148,7 +120,7 @@ namespace QuanLySuKienVaBanVe.GUI
             ClientSize = new Size(1180, 660);
             StartPosition = FormStartPosition.CenterParent;
             DoubleBuffered = true;
-            CaoBieuTuongCuaSo();
+            TaoBieuTuongCuaSo();
 
             TaoHeader();
             TaoPathBar();
@@ -221,8 +193,10 @@ namespace QuanLySuKienVaBanVe.GUI
             {
                 Image = TaoIconThuMuc(22, MauXanhNhat),
                 SizeMode = PictureBoxSizeMode.AutoSize,
-                BackColor = MauThe
+                BackColor = MauThe,
+                Cursor = Cursors.Hand
             };
+            picThuMuc.Click += (s, e) => ChonThuMucLuu();
 
             lblPathLabel = new Label
             {
@@ -236,35 +210,57 @@ namespace QuanLySuKienVaBanVe.GUI
             txtThuMuc = new TextBox
             {
                 BorderStyle = BorderStyle.None,
-                ReadOnly = true,
-                TabStop = false,
+                ReadOnly = false,
+                TabStop = true,
                 BackColor = MauThe,
-                ForeColor = MauPhu,
+                ForeColor = MauChu,
                 Font = FntDuongDan,
                 Text = TicketPdfExporter.ThuMucMacDinh
             };
+            txtThuMuc.DoubleClick += (s, e) => ChonThuMucLuu();
 
             pnlLockChip = new Panel
             {
                 BackColor = MauThe,
-                Size = new Size(104, 26)
+                Size = new Size(112, 26),
+                Cursor = Cursors.Hand
             };
             pnlLockChip.Paint += VeChip;
+            pnlLockChip.MouseEnter += (s, e) => { _chipHovered = true; pnlLockChip.Invalidate(); };
+            pnlLockChip.MouseLeave += (s, e) => { _chipHovered = false; pnlLockChip.Invalidate(); };
+            pnlLockChip.Click += (s, e) => ChonThuMucLuu();
 
             picLock = new PictureBox
             {
-                Image = TaoIconO(14, MauXanhNhat, MauChip),
+                Image = TaoIconDuyet(14, MauXanhNhat),
                 SizeMode = PictureBoxSizeMode.AutoSize,
-                BackColor = MauChip
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand
             };
+            picLock.MouseEnter += (s, e) => { _chipHovered = true; pnlLockChip.Invalidate(); };
+            picLock.MouseLeave += (s, e) => { _chipHovered = false; pnlLockChip.Invalidate(); };
+            picLock.Click += (s, e) => ChonThuMucLuu();
+
             lblLock = new Label
             {
-                Text = "Cố định",
+                Text = "Thay đổi",
                 AutoSize = true,
                 Font = FntChip,
                 ForeColor = MauXanhNhat,
-                BackColor = MauChip
+                BackColor = Color.Transparent,
+                Cursor = Cursors.Hand
             };
+            lblLock.MouseEnter += (s, e) => { _chipHovered = true; pnlLockChip.Invalidate(); };
+            lblLock.MouseLeave += (s, e) => { _chipHovered = false; pnlLockChip.Invalidate(); };
+            lblLock.Click += (s, e) => ChonThuMucLuu();
+
+            ToolTip tip = new ToolTip();
+            tip.SetToolTip(pnlLockChip, "Nhấn để chọn thư mục lưu file PDF khác");
+            tip.SetToolTip(picLock, "Nhấn để chọn thư mục lưu file PDF khác");
+            tip.SetToolTip(lblLock, "Nhấn để chọn thư mục lưu file PDF khác");
+            tip.SetToolTip(picThuMuc, "Nhấn để chọn thư mục lưu file PDF khác");
+            tip.SetToolTip(txtThuMuc, "Nhấp đúp chuột để chọn thư mục lưu file PDF");
+
             pnlLockChip.Controls.Add(picLock);
             pnlLockChip.Controls.Add(lblLock);
 
@@ -344,12 +340,14 @@ namespace QuanLySuKienVaBanVe.GUI
             picThuMuc.Location = new Point(16, (h - picThuMuc.Height) / 2);
             lblPathLabel.Location = new Point(picThuMuc.Right + 10, (h - lblPathLabel.Height) / 2);
 
-            bool vung = w - 14 - pnlLockChip.Width - 320 > lblPathLabel.Right;
+            bool vung = w - 14 - pnlLockChip.Width - 260 > lblPathLabel.Right;
             pnlLockChip.Visible = vung;
             if (vung)
             {
                 pnlLockChip.Location = new Point(w - 14 - pnlLockChip.Width, (h - pnlLockChip.Height) / 2);
-                picLock.Location = new Point(10, (pnlLockChip.Height - picLock.Height) / 2);
+                int tongW = picLock.Width + 6 + lblLock.PreferredWidth;
+                int startX = Math.Max(8, (pnlLockChip.Width - tongW) / 2);
+                picLock.Location = new Point(startX, (pnlLockChip.Height - picLock.Height) / 2);
                 lblLock.Location = new Point(picLock.Right + 6, (pnlLockChip.Height - lblLock.Height) / 2);
             }
 
@@ -365,7 +363,26 @@ namespace QuanLySuKienVaBanVe.GUI
             txtThuMuc.Width = Math.Max(80, phai - trai);
         }
 
-        private void CaoBieuTuongCuaSo()
+        private void ChonThuMucLuu()
+        {
+            using (FolderBrowserDialog dlg = new FolderBrowserDialog())
+            {
+                dlg.Description = "Chọn thư mục để lưu các file vé PDF:";
+                string hienTai = (txtThuMuc.Text ?? string.Empty).Trim();
+                if (System.IO.Directory.Exists(hienTai))
+                    dlg.SelectedPath = hienTai;
+                else
+                    dlg.SelectedPath = TicketPdfExporter.ThuMucMacDinh;
+
+                if (dlg.ShowDialog(this) == DialogResult.OK && !string.IsNullOrWhiteSpace(dlg.SelectedPath))
+                {
+                    txtThuMuc.Text = dlg.SelectedPath.Trim();
+                    lblStatus.Text = string.Format("Đã chọn thư mục lưu PDF: {0}", txtThuMuc.Text);
+                }
+            }
+        }
+
+        private void TaoBieuTuongCuaSo()
         {
             try
             {
@@ -400,8 +417,8 @@ namespace QuanLySuKienVaBanVe.GUI
                     {
                         using (Icon goc = Icon.FromHandle(handle))
                         {
-                            _hieuUng = (Icon)goc.Clone();
-                            Icon = _hieuUng;
+                            _formIcon = (Icon)goc.Clone();
+                            Icon = _formIcon;
                         }
                     }
                     finally
@@ -412,7 +429,7 @@ namespace QuanLySuKienVaBanVe.GUI
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("CaoBieuTuongCuaSo: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("TaoBieuTuongCuaSo: " + ex.Message);
             }
         }
 
@@ -422,88 +439,6 @@ namespace QuanLySuKienVaBanVe.GUI
         #endregion
 
         #region Header & Card Painting
-        private static LinearGradientBrush TaoBrushDan(Rectangle bounds)
-        {
-            LinearGradientBrush brush = new LinearGradientBrush(bounds, DanMau[0], DanMau[DanMau.Length - 1],
-                LinearGradientMode.Horizontal);
-            ColorBlend nen = new ColorBlend();
-            nen.Colors = DanMau;
-            nen.Positions = DanViTri;
-            brush.InterpolationColors = nen;
-            return brush;
-        }
-
-        private static GraphicsPath TaoPathBoGoc(RectangleF rc, float banKinh)
-        {
-            GraphicsPath path = new GraphicsPath();
-            float d = Math.Min(banKinh * 2f, Math.Min(rc.Width, rc.Height));
-            if (d <= 0.5f)
-            {
-                path.AddRectangle(rc);
-                return path;
-            }
-            path.AddArc(rc.X, rc.Y, d, d, 180f, 90f);
-            path.AddArc(rc.Right - d, rc.Y, d, d, 270f, 90f);
-            path.AddArc(rc.Right - d, rc.Bottom - d, d, d, 0f, 90f);
-            path.AddArc(rc.X, rc.Bottom - d, d, d, 90f, 90f);
-            path.CloseFigure();
-            return path;
-        }
-
-        private static GraphicsPath TaoSao(float tamX, float tamY, float rNgoai, float rTrong)
-        {
-            GraphicsPath path = new GraphicsPath();
-            PointF[] dinh = new PointF[10];
-            for (int i = 0; i < 10; i++)
-            {
-                double goc = -Math.PI / 2d + i * Math.PI / 5d;
-                float r = (i % 2 == 0) ? rNgoai : rTrong;
-                dinh[i] = new PointF(tamX + (float)(r * Math.Cos(goc)), tamY + (float)(r * Math.Sin(goc)));
-            }
-            path.AddPolygon(dinh);
-            return path;
-        }
-
-        private static Size DoChu(string text, Font font, Graphics g)
-        {
-            if (string.IsNullOrEmpty(text)) return Size.Empty;
-            return TextRenderer.MeasureText(g, text, font, Size.Empty, TextFormatFlags.NoPrefix);
-        }
-
-        private static PointF Diem(float k, float x, float y)
-        {
-            return new PointF(x * k, y * k);
-        }
-
-        private static void VeBieuTuongVe(Graphics g, RectangleF rc, Color mau, Color mauCat, float net)
-        {
-            using (GraphicsPath path = TaoPathBoGoc(rc, Math.Min(rc.Height * 0.26f, rc.Width * 0.05f)))
-            using (Pen pen = new Pen(mau, net))
-            {
-                pen.LineJoin = LineJoin.Round;
-                g.DrawPath(pen, path);
-            }
-
-            float het = net * 2.4f;
-            using (SolidBrush cat = new SolidBrush(mauCat))
-            {
-                g.FillEllipse(cat, rc.X - het / 2f, rc.Y + rc.Height / 2f - het / 2f, het, het);
-                g.FillEllipse(cat, rc.Right - het / 2f, rc.Y + rc.Height / 2f - het / 2f, het, het);
-            }
-
-            float xTai = rc.X + rc.Width * 0.68f;
-            using (Pen pen = new Pen(mau, net * 0.85f))
-            {
-                pen.DashStyle = DashStyle.Dash;
-                pen.DashPattern = new float[] { 2.4f, 2.2f };
-                g.DrawLine(pen, xTai, rc.Y + net * 2.4f, xTai, rc.Bottom - net * 2.4f);
-            }
-
-            using (SolidBrush b = new SolidBrush(mau))
-            using (GraphicsPath sao = TaoSao(rc.X + rc.Width * 0.26f, rc.Y + rc.Height / 2f, net * 3.6f, net * 1.5f))
-                g.FillPath(b, sao);
-        }
-
         private static void VeHuyHieuVe(Graphics g, Rectangle rc)
         {
             using (GraphicsPath path = TaoPathBoGoc(rc, 16f))
@@ -623,6 +558,8 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
+        private bool _chipHovered;
+
         private void VeChip(object sender, PaintEventArgs e)
         {
             RectangleF rc = new RectangleF(0.5f, 0.5f, pnlLockChip.ClientSize.Width - 1f,
@@ -630,8 +567,10 @@ namespace QuanLySuKienVaBanVe.GUI
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using (GraphicsPath path = TaoPathBoGoc(rc, 8f))
             {
-                using (SolidBrush b = new SolidBrush(MauChip)) e.Graphics.FillPath(b, path);
-                using (Pen p = new Pen(MauChipVien)) e.Graphics.DrawPath(p, path);
+                Color bg = _chipHovered ? Color.FromArgb(220, 235, 255) : MauChip;
+                Color border = _chipHovered ? MauXanh : MauChipVien;
+                using (SolidBrush b = new SolidBrush(bg)) e.Graphics.FillPath(b, path);
+                using (Pen p = new Pen(border)) e.Graphics.DrawPath(p, path);
             }
         }
 
@@ -735,7 +674,7 @@ namespace QuanLySuKienVaBanVe.GUI
             return anh;
         }
 
-        private static Bitmap TaoIconO(int size, Color mau, Color mauNen)
+        private static Bitmap TaoIconDuyet(int size, Color mau)
         {
             Bitmap anh = new Bitmap(size, size);
             using (Graphics g = Graphics.FromImage(anh))
@@ -743,19 +682,16 @@ namespace QuanLySuKienVaBanVe.GUI
                 g.Clear(Color.Transparent);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 float k = size / 24f;
-                using (Pen p = new Pen(mau, 2f * k))
-                using (SolidBrush b = new SolidBrush(mau))
-                using (SolidBrush lo = new SolidBrush(mauNen))
+                using (Pen p = new Pen(mau, 1.8f * k))
                 {
+                    p.LineJoin = LineJoin.Round;
                     p.StartCap = LineCap.Round;
                     p.EndCap = LineCap.Round;
-                    g.DrawArc(p, 7.2f * k, 3.4f * k, 9.6f * k, 10f * k, 180f, 180f);
-                    g.DrawLine(p, 7.2f * k, 8.4f * k, 7.2f * k, 11.6f * k);
-                    g.DrawLine(p, 16.8f * k, 8.4f * k, 16.8f * k, 11.6f * k);
-
-                    RectangleF than = new RectangleF(4.6f * k, 11.4f * k, 14.8f * k, 9.6f * k);
-                    using (GraphicsPath path = TaoPathBoGoc(than, 2.2f * k)) g.FillPath(b, path);
-                    g.FillEllipse(lo, 11.1f * k, 14.6f * k, 1.8f * k, 1.8f * k);
+                    g.DrawLines(p, new PointF[] {
+                        Diem(k, 3f, 6.5f), Diem(k, 9f, 6.5f), Diem(k, 11f, 9.5f),
+                        Diem(k, 21f, 9.5f), Diem(k, 21f, 19.5f), Diem(k, 3f, 19.5f), Diem(k, 3f, 6.5f)
+                    });
+                    g.DrawLine(p, 3f * k, 12f * k, 21f * k, 12f * k);
                 }
             }
             return anh;
@@ -965,8 +901,12 @@ namespace QuanLySuKienVaBanVe.GUI
         {
             if (_danhSachVe.Count == 0) return;
 
-            string thuMuc = TicketPdfExporter.ThuMucMacDinh;
-            txtThuMuc.Text = thuMuc;
+            string thuMuc = (txtThuMuc.Text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(thuMuc))
+            {
+                thuMuc = TicketPdfExporter.ThuMucMacDinh;
+                txtThuMuc.Text = thuMuc;
+            }
 
             try
             {
@@ -976,9 +916,24 @@ namespace QuanLySuKienVaBanVe.GUI
                     : string.Join(Environment.NewLine, files.ToArray());
 
                 lblStatus.Text = string.Format("Đã xuất {0} file PDF vào {1}", files.Count, thuMuc);
-                MessageBox.Show(this,
-                    "Xuất PDF thành công (" + files.Count + " file, 300 DPI):\n\n" + noiDung,
-                    "Xuất vé PDF", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                DialogResult dr = MessageBox.Show(this,
+                    "Xuất PDF thành công (" + files.Count + " file, 300 DPI):\n\n" + noiDung +
+                    "\n\nBạn có muốn mở thư mục chứa file PDF vừa xuất không?",
+                    "Xuất vé PDF", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                if (dr == DialogResult.Yes && System.IO.Directory.Exists(thuMuc))
+                {
+                    try
+                    {
+                        if (files.Count > 0 && System.IO.File.Exists(files[0]))
+                            System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + files[0] + "\"");
+                        else
+                            System.Diagnostics.Process.Start("explorer.exe", "\"" + thuMuc + "\"");
+                    }
+                    catch (Exception exMo)
+                    {
+                        System.Diagnostics.Debug.WriteLine("MoThuMuc: " + exMo.Message);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -987,17 +942,28 @@ namespace QuanLySuKienVaBanVe.GUI
             }
         }
 
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            DungNapAnh();
+            GoBoLocBanhXe();
+            base.OnFormClosed(e);
+        }
+
+        private void GoBoLocBanhXe()
+        {
+            if (_locBanhXe != null)
+            {
+                Application.RemoveMessageFilter(_locBanhXe);
+                _locBanhXe = null;
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 DungNapAnh();
-
-                if (_locBanhXe != null)
-                {
-                    Application.RemoveMessageFilter(_locBanhXe);
-                    _locBanhXe = null;
-                }
+                GoBoLocBanhXe();
 
                 foreach (Bitmap anh in _anhGoc)
                     if (anh != null) anh.Dispose();
@@ -1010,547 +976,15 @@ namespace QuanLySuKienVaBanVe.GUI
                 if (picLock != null && picLock.Image != null) picLock.Image.Dispose();
 
                 if (_printDoc != null) { _printDoc.Dispose(); _printDoc = null; }
-                if (_hieuUng != null)
+                if (_formIcon != null)
                 {
                     Icon = null;
-                    _hieuUng.Dispose();
-                    _hieuUng = null;
+                    _formIcon.Dispose();
+                    _formIcon = null;
                 }
             }
             base.Dispose(disposing);
         }
         #endregion
-
-        private sealed class NutBoGoc : Button
-        {
-            public Bitmap BieuTuong;
-
-            private readonly bool _chinh;
-            private bool _gac;
-            private bool _nhan;
-
-            public NutBoGoc(string text, int width, bool chinh)
-            {
-                _chinh = chinh;
-                Text = text;
-                Size = new Size(width, CaoNut);
-                Font = FntNut;
-                FlatStyle = FlatStyle.Flat;
-                FlatAppearance.BorderSize = 0;
-                Cursor = Cursors.Hand;
-                BackColor = MatNen;
-
-                SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                    ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
-                    ControlStyles.Selectable, true);
-
-                MouseEnter += (s, e) => { _gac = true; Invalidate(); };
-                MouseLeave += (s, e) => { _gac = false; _nhan = false; Invalidate(); };
-                MouseDown += (s, e) => { _nhan = true; Invalidate(); };
-                MouseUp += (s, e) => { _nhan = false; Invalidate(); };
-                GotFocus += (s, e) => Invalidate();
-                LostFocus += (s, e) => Invalidate();
-                EnabledChanged += (s, e) => Invalidate();
-            }
-
-            private Color MauNen()
-            {
-                if (!Enabled) return _chinh ? Color.FromArgb(110, 255, 255, 255) : Color.FromArgb(232, 238, 246);
-                if (_nhan) return _chinh ? Color.FromArgb(15, 47, 137) : Color.FromArgb(222, 232, 248);
-                if (_gac) return _chinh ? Color.FromArgb(21, 60, 175) : Color.FromArgb(238, 244, 255);
-                return _chinh ? MauXanh : Color.White;
-            }
-
-            private Color MauChu()
-            {
-                if (!Enabled) return _chinh ? Color.FromArgb(198, 255, 255, 255) : Color.FromArgb(148, 163, 184);
-                return _chinh ? Color.White : Color.FromArgb(30, 64, 175);
-            }
-
-            protected override void OnPaint(PaintEventArgs e)
-            {
-                Graphics g = e.Graphics;
-                Rectangle rc = ClientRectangle;
-
-                Control cha = Parent;
-                if (cha != null && cha.ClientSize.Width > 0 && cha.ClientSize.Height > 0)
-                {
-                    Rectangle nen = new Rectangle(-Left, -Top, cha.ClientSize.Width, cha.ClientSize.Height);
-                    using (LinearGradientBrush dan = TaoBrushDan(nen))
-                        g.FillRectangle(dan, rc);
-                }
-                else
-                {
-                    g.Clear(MatNen);
-                }
-
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                RectangleF khuon = new RectangleF(0.6f, 0.6f, Width - 1.2f, Height - 1.2f);
-                using (GraphicsPath path = TaoPathBoGoc(khuon, 9f))
-                {
-                    using (SolidBrush b = new SolidBrush(MauNen())) g.FillPath(b, path);
-                    using (Pen p = new Pen(_chinh ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(203, 213, 225)))
-                        g.DrawPath(p, path);
-                }
-
-                Color chu = MauChu();
-                Size kt = DoChu(Text, FntNut, g);
-                int iconW = BieuTuong != null ? 18 : 0;
-                int khe = BieuTuong != null ? 8 : 0;
-                int x = (Width - (iconW + khe + kt.Width)) / 2;
-
-                if (BieuTuong != null)
-                {
-                    Rectangle o = new Rectangle(x, (Height - iconW) / 2, iconW, iconW);
-                    if (Enabled)
-                    {
-                        g.DrawImage(BieuTuong, o);
-                    }
-                    else
-                    {
-                        using (ImageAttributes attr = new ImageAttributes())
-                        {
-                            ColorMatrix lop = new ColorMatrix();
-                            lop.Matrix33 = 0.55f;
-                            attr.SetColorMatrix(lop);
-                            g.DrawImage(BieuTuong, o, 0, 0, BieuTuong.Width, BieuTuong.Height,
-                                GraphicsUnit.Pixel, attr);
-                        }
-                    }
-                }
-
-                TextRenderer.DrawText(g, Text, FntNut,
-                    new Rectangle(x + iconW + khe, 0, kt.Width + 10, Height), chu,
-                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPrefix);
-            }
-        }
-
-        private sealed class SurfaceXemTruoc : Control
-        {
-            private const int Kenh = 16;
-            private const int Khe = 18;
-            private const int Dem = 8;
-            private const int MaxRong = 1180;
-            private const int KheLuot = 14;
-
-            private List<Bitmap> _anhGoc = new List<Bitmap>();
-            private readonly List<Bitmap> _anhLop = new List<Bitmap>();
-            private string _thongBao = "";
-            private int _scrollY;
-            private int _maxScroll;
-            private int _contentH;
-            private int _rongAnh;
-            private int _caoAnh;
-            private int _rongThe;
-            private int _rongAnhLuu;
-            private readonly Timer _dongHo;
-            private readonly Timer _henLop;
-            private Rectangle _nut = Rectangle.Empty;
-            private int _mucTieu;
-            private bool _keo;
-            private bool _gac;
-            private int _keoY;
-            private int _keoScroll;
-
-            public SurfaceXemTruoc()
-            {
-                SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                    ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-                BackColor = MatNen;
-                TabStop = false;
-
-                _dongHo = new Timer { Interval = 12 };
-                _dongHo.Tick += ChayBuoc;
-
-                _henLop = new Timer { Interval = 90 };
-                _henLop.Tick += TaiLop;
-            }
-
-            public void CapNhat(List<Bitmap> anhGoc, string thongBao)
-            {
-                DungDong();
-                _scrollY = 0;
-                _mucTieu = 0;
-                _anhGoc = anhGoc;
-                _thongBao = thongBao;
-                SapXep();
-            }
-
-            public void XacNhatNoiDung()
-            {
-                SapXep();
-            }
-
-            public void XoayBanh(int delta)
-            {
-                if (_maxScroll <= 0) return;
-                int buoc = Math.Max(90, ClientSize.Height / 5);
-                DatMucTieu(_mucTieu + (delta < 0 ? buoc : -buoc), true);
-            }
-
-            protected override void OnResize(EventArgs e)
-            {
-                base.OnResize(e);
-                SapXep();
-            }
-
-            private void SapXep()
-            {
-                int viewport = Math.Max(160, ClientSize.Height);
-                int w = Math.Max(300, ClientSize.Width - Kenh * 2);
-                DatKichThuoc(w);
-                if (ChieuCao() > viewport)
-                {
-                    int het = Math.Max(300, w - KheLuot);
-                    if (het < w)
-                    {
-                        w = het;
-                        DatKichThuoc(w);
-                    }
-                }
-
-                _rongThe = w;
-                _contentH = Math.Max(ChieuCao(), viewport);
-                _maxScroll = Math.Max(0, ChieuCao() - viewport);
-                TaiAnhLop();
-                if (_scrollY > _maxScroll) _scrollY = _maxScroll;
-                if (_mucTieu > _maxScroll) _mucTieu = _maxScroll;
-                Invalidate();
-            }
-
-            private void DatKichThuoc(int w)
-            {
-                int trong = w - Kenh * 2 - Dem * 2;
-                if (trong > MaxRong) trong = MaxRong;
-                if (trong < 240) trong = 240;
-                _rongAnh = trong;
-                _caoAnh = (int)Math.Round(trong * TicketRenderer.DesignH / TicketRenderer.DesignW);
-            }
-
-            private int ChieuCao()
-            {
-                int n = _anhGoc.Count;
-                if (n == 0) return Kenh * 2 + 260;
-                return Kenh * 2 + Dem * 2 + n * _caoAnh + (n - 1) * Khe;
-            }
-
-            private void TaiAnhLop()
-            {
-                if (_rongAnh <= 0) return;
-                if (_rongAnh == _rongAnhLuu && _anhLop.Count == _anhGoc.Count) return;
-
-                if (_anhLop.Count != _anhGoc.Count)
-                {
-                    if (_rongAnh == _rongAnhLuu)
-                    {
-                        for (int i = _anhLop.Count; i < _anhGoc.Count; i++)
-                            _anhLop.Add(PhongAnh(_anhGoc[i], _rongAnh, _caoAnh));
-                        return;
-                    }
-                    TaiLopAnh();
-                    return;
-                }
-                if (Math.Abs(_rongAnh - _rongAnhLuu) < 10) return;
-
-                _henLop.Stop();
-                _henLop.Start();
-            }
-
-            private void TaiLop(object sender, EventArgs e)
-            {
-                TaiLopAnh();
-            }
-
-            private void TaiLopAnh()
-            {
-                _henLop.Stop();
-                _rongAnhLuu = _rongAnh;
-
-                foreach (Bitmap cu in _anhLop) if (cu != null) cu.Dispose();
-                _anhLop.Clear();
-
-                for (int i = 0; i < _anhGoc.Count; i++)
-                    _anhLop.Add(PhongAnh(_anhGoc[i], _rongAnh, _caoAnh));
-
-                Invalidate();
-            }
-
-            private static Bitmap PhongAnh(Bitmap goc, int w, int h)
-            {
-                Bitmap kq = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
-                using (Graphics g = Graphics.FromImage(kq))
-                using (ImageAttributes attr = new ImageAttributes())
-                {
-                    attr.SetWrapMode(WrapMode.TileFlipXY);
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    g.DrawImage(goc, new Rectangle(0, 0, w, h), 0, 0, goc.Width, goc.Height,
-                        GraphicsUnit.Pixel, attr);
-                }
-                return kq;
-            }
-
-            protected override void OnPaint(PaintEventArgs e)
-            {
-                Graphics g = e.Graphics;
-                int viewport = ClientSize.Height;
-                g.Clear(MatNen);
-
-                float x = Kenh;
-                float y = Kenh - _scrollY;
-                float w = _rongThe - 1f;
-                float h = _contentH - Kenh * 2f;
-
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = TaoPathBoGoc(new RectangleF(x, y, w, h), 18f))
-                {
-                    using (SolidBrush b = new SolidBrush(MauThe)) g.FillPath(b, path);
-                    using (Pen p = new Pen(MauVien)) g.DrawPath(p, path);
-                }
-
-                g.SmoothingMode = SmoothingMode.None;
-                g.PixelOffsetMode = PixelOffsetMode.Half;
-
-                for (int i = 0; i < _anhLop.Count; i++)
-                {
-                    Bitmap anh = _anhLop[i];
-                    int vy = Kenh + Dem + i * (_caoAnh + Khe) - _scrollY;
-                    if (vy + _caoAnh < 0 || vy > viewport) continue;
-
-                    int vx = Kenh + (_rongThe - _rongAnh) / 2;
-                    if (anh.Width == _rongAnh && anh.Height == _caoAnh)
-                    {
-                        g.InterpolationMode = InterpolationMode.NearestNeighbor;
-                        g.DrawImageUnscaled(anh, vx, vy);
-                    }
-                    else
-                    {
-                        g.InterpolationMode = InterpolationMode.Bilinear;
-                        g.DrawImage(anh, new Rectangle(vx, vy, _rongAnh, _caoAnh));
-                    }
-                }
-
-                if (_anhGoc.Count == 0) VeTrangThaiRong(g, viewport);
-                VeThanhLuot(g, viewport);
-            }
-
-            private void VeTrangThaiRong(Graphics g, int viewport)
-            {
-                if (string.IsNullOrEmpty(_thongBao)) return;
-
-                Size kt = DoChu(_thongBao, FntRong, g);
-                int iconR = 132;
-                int iconC = 78;
-                int caoThe = Math.Max(_contentH, viewport) - Kenh * 2;
-                int y = (int)(Kenh - _scrollY + (caoThe - (iconC + 22 + kt.Height)) / 2f);
-                int san = Kenh + 24 - _scrollY;
-                if (y < san) y = san;
-
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                VeBieuTuongVe(g, new RectangleF(Kenh + (_rongThe - iconR) / 2f, y, iconR, iconC),
-                    Color.FromArgb(186, 210, 246), MauThe, 5f);
-                g.SmoothingMode = SmoothingMode.None;
-
-                TextRenderer.DrawText(g, _thongBao, FntRong,
-                    new Point(Kenh + (_rongThe - kt.Width) / 2, y + iconC + 22),
-                    Color.FromArgb(148, 163, 184), TextFormatFlags.NoPrefix);
-            }
-
-            private void VeThanhLuot(Graphics g, int viewport)
-            {
-                if (_maxScroll <= 0)
-                {
-                    _nut = Rectangle.Empty;
-                    return;
-                }
-
-                int x = ClientSize.Width - KheLuot + 4;
-                int yT = Kenh;
-                int caoTrack = viewport - Kenh * 2;
-                if (caoTrack < 40)
-                {
-                    _nut = Rectangle.Empty;
-                    return;
-                }
-
-                int caoNut = Math.Max(48, (int)((long)caoTrack * viewport / Math.Max(1, _contentH)));
-                if (caoNut > caoTrack) caoNut = caoTrack;
-                int yNut = yT + (int)((long)(caoTrack - caoNut) * _scrollY / _maxScroll);
-                _nut = new Rectangle(x, yNut, 6, caoNut);
-
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath nen = TaoPathBoGoc(new RectangleF(x, yT, 6, caoTrack), 3f))
-                using (SolidBrush bNen = new SolidBrush(Color.FromArgb(236, 239, 246)))
-                    g.FillPath(bNen, nen);
-
-                using (GraphicsPath duong = TaoPathBoGoc(
-                    new RectangleF(_nut.X, _nut.Y, _nut.Width, _nut.Height), 3f))
-                using (SolidBrush bNut = new SolidBrush(
-                    _keo || _gac ? Color.FromArgb(148, 163, 184) : Color.FromArgb(191, 203, 218)))
-                    g.FillPath(bNut, duong);
-
-                g.SmoothingMode = SmoothingMode.None;
-            }
-
-            private Rectangle VungNut()
-            {
-                if (_nut.IsEmpty) return Rectangle.Empty;
-                return new Rectangle(_nut.X - 5, _nut.Y - 3, _nut.Width + 10, _nut.Height + 6);
-            }
-
-            private void DatMucTieu(int v, bool tuTu)
-            {
-                v = Math.Max(0, Math.Min(_maxScroll, v));
-                _mucTieu = v;
-
-                if (!tuTu)
-                {
-                    DungDong();
-                    if (v == _scrollY) return;
-                    _scrollY = v;
-                    Invalidate();
-                    return;
-                }
-
-                if (v == _scrollY)
-                {
-                    DungDong();
-                    return;
-                }
-                if (!_dongHo.Enabled) _dongHo.Start();
-            }
-
-            private void DungDong()
-            {
-                if (_dongHo.Enabled) _dongHo.Stop();
-            }
-
-            private void ChayBuoc(object sender, EventArgs e)
-            {
-                int con = _mucTieu - _scrollY;
-                if (con == 0)
-                {
-                    DungDong();
-                    return;
-                }
-
-                int dai = Math.Abs(con);
-                int buoc = (int)Math.Ceiling(dai * 0.34);
-                if (buoc < 2) buoc = 2;
-                if (buoc > dai) buoc = dai;
-
-                _scrollY += con > 0 ? buoc : -buoc;
-                Invalidate();
-
-                if (_scrollY == _mucTieu) DungDong();
-            }
-
-            protected override void OnMouseDown(MouseEventArgs e)
-            {
-                base.OnMouseDown(e);
-                if (_maxScroll <= 0) return;
-
-                if (VungNut().Contains(e.Location))
-                {
-                    DungDong();
-                    _keo = true;
-                    _keoY = e.Y;
-                    _keoScroll = _scrollY;
-                    Capture = true;
-                    Invalidate();
-                    return;
-                }
-
-                int viewport = ClientSize.Height;
-                if (e.Y < _nut.Top) DatMucTieu(_mucTieu - viewport + 60, true);
-                else if (e.Y > _nut.Bottom) DatMucTieu(_mucTieu + viewport - 60, true);
-            }
-
-            protected override void OnMouseMove(MouseEventArgs e)
-            {
-                base.OnMouseMove(e);
-
-                if (_keo)
-                {
-                    int caoTrack = Math.Max(1, ClientSize.Height - Kenh * 2);
-                    int vuong = Math.Max(1, caoTrack - _nut.Height);
-                    DatMucTieu(_keoScroll + (int)((long)(e.Y - _keoY) * _maxScroll / vuong), false);
-                    return;
-                }
-
-                bool gac = VungNut().Contains(e.Location);
-                if (gac != _gac)
-                {
-                    _gac = gac;
-                    Cursor = gac ? Cursors.Hand : Cursors.Default;
-                    Invalidate();
-                }
-            }
-
-            protected override void OnMouseUp(MouseEventArgs e)
-            {
-                base.OnMouseUp(e);
-                if (!_keo) return;
-                _keo = false;
-                Capture = false;
-                Invalidate();
-            }
-
-            protected override void OnMouseLeave(EventArgs e)
-            {
-                base.OnMouseLeave(e);
-                if (!_gac) return;
-                _gac = false;
-                Cursor = Cursors.Default;
-                Invalidate();
-            }
-
-            protected override void OnMouseWheel(MouseEventArgs e)
-            {
-                base.OnMouseWheel(e);
-                XoayBanh(e.Delta);
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-                if (disposing)
-                {
-                    _dongHo.Stop();
-                    _dongHo.Tick -= ChayBuoc;
-                    _dongHo.Dispose();
-
-                    _henLop.Stop();
-                    _henLop.Tick -= TaiLop;
-                    _henLop.Dispose();
-
-                    foreach (Bitmap anh in _anhLop) if (anh != null) anh.Dispose();
-                    _anhLop.Clear();
-                    _anhGoc = new List<Bitmap>();
-                }
-                base.Dispose(disposing);
-            }
-        }
-
-        private sealed class LocBanhXe : IMessageFilter
-        {
-            private const int WM_MOUSEWHEEL = 0x020A;
-            private readonly SurfaceXemTruoc _surface;
-
-            public LocBanhXe(SurfaceXemTruoc surface)
-            {
-                _surface = surface;
-            }
-
-            public bool PreFilterMessage(ref Message m)
-            {
-                if (m.Msg != WM_MOUSEWHEEL || _surface == null || !_surface.IsHandleCreated) return false;
-
-                Point goc = _surface.PointToClient(Cursor.Position);
-                if (!_surface.ClientRectangle.Contains(goc)) return false;
-
-                _surface.XoayBanh((short)((m.WParam.ToInt64() >> 16) & 0xFFFF));
-                return true;
-            }
-        }
     }
 }
