@@ -269,15 +269,16 @@ namespace QuanLySuKienVaBanVe.GUI
             // 
             // lblLogo
             // 
-            this.lblLogo.AutoSize = true;
+            this.lblLogo.AutoSize = false;
             this.lblLogo.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
             this.lblLogo.ForeColor = System.Drawing.Color.White;
+            this.lblLogo.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.lblLogo.Location = new System.Drawing.Point(72, 40);
             this.lblLogo.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblLogo.Name = "lblLogo";
-            this.lblLogo.Size = new System.Drawing.Size(182, 41);
+            this.lblLogo.Size = new System.Drawing.Size(182, 32);
             this.lblLogo.TabIndex = 0;
-            this.lblLogo.Text = "EventTicket";
+            this.lblLogo.Text = "";
             // 
             // picCrowd
             // 
