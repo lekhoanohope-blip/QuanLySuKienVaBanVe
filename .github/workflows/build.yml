@@ -40,11 +40,7 @@ jobs:
           nuget-version: '6.x'
 
       - name: Restore NuGet packages
-        run: >-
-          nuget restore QuanLySuKienVaBanVe.sln
-          -PackagesDirectory packages
-          -Source https://api.nuget.org/v3/index.json
-          -NonInteractive
+        run: nuget restore QuanLySuKienVaBanVe.sln -PackagesDirectory packages -Source https://api.nuget.org/v3/index.json -NonInteractive
 
       - name: Build Release
         run: >-
@@ -55,3 +51,20 @@ jobs:
           '/p:Platform=Any CPU'
           /verbosity:minimal
           /nologo
+
+      - name: Run Unit Tests
+        run: dotnet test UnitTests/bin/Release/QuanLySuKienVaBanVe.UnitTests.dll --verbosity normal
+
+      - name: Include Database Scripts in Release
+        run: |
+          if (Test-Path database) {
+            Copy-Item -Recurse -Force database bin/Release/database
+          }
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuanLySuKienVaBanVe-Release
+          path: bin/Release/
+          if-no-files-found: error
+          retention-days: 30

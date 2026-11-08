@@ -49,10 +49,10 @@ Hàm mở form xem trước, không trả về ngoại lệ ra ngoài: lỗi CSD
 
 Trong SSMS, mở và thực thi theo thứ tự:
 
-1. `database/create_database.sql`
-2. `database/migration_add_columns.sql`
-3. `database/migrate_tv3_donve.sql`
-4. `database/sample_data.sql` (dữ liệu mẫu) + `database/dashboard_demo_data.sql` (đơn vé demo)
+1. `database/01_Schema.sql`
+2. `database/02_SeedData.sql` (dữ liệu mẫu chuẩn)
+3. *(Tuỳ chọn)* `database/03_DemoDashboard.sql` (dữ liệu mở rộng cho Dashboard)
+4. *(Nếu nâng cấp từ CSDL cũ)* Chạy lần lượt các script trong `database/migrations/01..03`
 
 Kiểm tra `App.config` → `connectionString` trúng instance máy bạn, ví dụ
 `Data Source=.;Initial Catalog=QuanLySuKienVaBanVe;Integrated Security=True;Encrypt=False`.
@@ -121,7 +121,7 @@ EventTicket_mave_[số_mã_vé].pdf
 Nếu `MaCT` chưa có, hàm lấy chuỗi số liền cuối của `MaVeCode` (ví dụ `SK19-SD50-A1-4691` → `4691`),
 rồi cuối cùng fallback về `MaDon`. Chuỗi được làm sạch ký tự cấm của Windows nên không bao giờ lỗi path.
 
-Kiểm chứng với dữ liệu thật trong `dashboard_demo_data.sql`:
+Kiểm chứng với dữ liệu thật trong `database/03_DemoDashboard.sql`:
 
 | MaDon | MaCT | MaVeCode | File PDF sinh ra |
 |:---:|:---:|:---|:---|

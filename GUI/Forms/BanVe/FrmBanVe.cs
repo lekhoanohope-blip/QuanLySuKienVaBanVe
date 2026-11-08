@@ -1,0 +1,1159 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Guna.UI2.WinForms;
+using QuanLySuKienVaBanVe.BLL;
+using QuanLySuKienVaBanVe.DTO;
+using QuanLySuKienVaBanVe.GUI.Helpers;
+
+namespace QuanLySuKienVaBanVe.GUI
+{
+    public partial class FrmBanVe : Form
+    {
+        private Panel seatMapWrapper;
+        private int _currentMaSK = 0;
+        private int _currentMaSuat = 0;
+        private int _currentLoaiSoDo = 1;
+        private DataTable _dtKhuVucCurrent = null;
+
+        private Guna2Button _selectedZoneButton = null;
+        private Guna2Button _searchMatchedButton = null;
+
+        // Quản lý giữ ghế tạm thời
+        private readonly List<int> _currentlyHeldSeatIds = new List<int>();
+        private Guid _currentMaPhienGiu = Guid.Empty;
+
+        // Lưu thông tin đơn vừa thanh toán để in vé
+        private int _lastPaidMaDon = 0;
+        private List<string> _lastPaidMaVeCodes = new List<string>();
+
+        // Tooltip dùng chung để tránh rò rỉ GDI Handle
+        private readonly ToolTip _sharedToolTip = new ToolTip();
+
+        // Polling cập nhật trạng thái ghế thời gian thực (P2)
+        private readonly Timer _pollTimer = new Timer();
+        private bool _isPolling = false;
+        private bool _isModalOpen = false;
+
+        // Lưu ánh xạ button trên sơ đồ
+        private readonly Dictionary<Guna2Button, ZoneButtonMeta> _zoneMetaMap
+            = new Dictionary<Guna2Button, ZoneButtonMeta>();
+
+        private class ZoneButtonMeta
+        {
+            public ZoneDefinition Definition { get; set; }
+            public DataRow DataRow { get; set; }
+            public Color BaseColor { get; set; }
+        }
+
+        private class ZoneDefinition
+        {
+            public string Code { get; set; }
+            public string DisplayName { get; set; }
+            public string Category { get; set; }
+            public Rectangle Bounds { get; set; }
+        }
+
+        public FrmBanVe()
+        {
+            InitializeComponent();
+            this.DoubleBuffered = true;
+
+            this.Load += FrmBanVe_Load;
+            this.SizeChanged += FrmBanVe_SizeChanged;
+            this.FormClosing += FrmBanVe_FormClosing;
+            this.Activated += FrmBanVe_Activated;
+            pnlMainBody.SizeChanged += (s, e) => ResponsiveLayout();
+            pnlSeatMapCanvas.Resize += (s, e) => CenterSeatMap();
+            flpPriceList.ClientSizeChanged += (s, e) => AdjustPriceListRowWidths();
+            pnlTop.SizeChanged += (s, e) => LayoutTopFilterBar();
+
+            cboSuKien.SelectedIndexChanged += cboSuKien_SelectedIndexChanged;
+            cboSuatDien.SelectedIndexChanged += cboSuatDien_SelectedIndexChanged;
+
+            txtTimKiem.TextChanged += txtTimKiem_TextChanged;
+            txtTimKiem.KeyDown += txtTimKiem_KeyDown;
+
+            // Thiết lập chu kỳ cập nhật dữ liệu tự động 3 giây (P2)
+            _pollTimer.Interval = 3000;
+            _pollTimer.Tick += PollTimer_Tick;
+        }
+
+        private void FrmBanVe_Load(object sender, EventArgs e)
+        {
+            LoadIcons();
+            LayoutTopFilterBar();
+            ResponsiveLayout();
+            LoadDanhSachSuKien();
+            _pollTimer.Start();
+        }
+
+        private void LayoutTopFilterBar()
+        {
+            if (pnlTop == null || cboSuKien == null || cboSuatDien == null || lblSuKien == null || lblSuatDien == null) return;
+            txtTimKiem.Visible = false;
+
+            int paddingLeft = ManagementUi.Px(this, 24);
+            int paddingRight = ManagementUi.Px(this, 24);
+            int gap = 16;
+            int smallGap = 8;
+            int availableWidth = pnlTop.ClientSize.Width - paddingLeft - paddingRight;
+            if (availableWidth <= 100) return;
+
+            int labelsWidth = lblSuKien.PreferredWidth + lblSuatDien.PreferredWidth + smallGap * 2;
+            int totalComboWidth = Math.Max(100, availableWidth - labelsWidth - gap);
+
+            int comboSKWidth = (int)Math.Round(totalComboWidth * 0.44);
+            int comboSDWidth = totalComboWidth - comboSKWidth;
+
+            int y = ManagementUi.Px(this, 65);
+            int h = ManagementUi.Px(this, 34);
+
+            lblSuKien.Location = new Point(paddingLeft, y + (h - lblSuKien.Height) / 2);
+            cboSuKien.SetBounds(lblSuKien.Right + smallGap, y, comboSKWidth, h);
+
+            lblSuatDien.Location = new Point(cboSuKien.Right + gap, y + (h - lblSuatDien.Height) / 2);
+            cboSuatDien.SetBounds(lblSuatDien.Right + smallGap, y, comboSDWidth, h);
+
+            AdjustComboDropDownWidth(cboSuKien);
+            AdjustComboDropDownWidth(cboSuatDien);
+        }
+
+        private void AdjustComboDropDownWidth(ComboBox cbo)
+        {
+            if (cbo == null || cbo.Items.Count == 0) return;
+            int maxW = cbo.Width;
+            using (Graphics g = cbo.CreateGraphics())
+            {
+                for (int i = 0; i < cbo.Items.Count; i++)
+                {
+                    string txt = cbo.GetItemText(cbo.Items[i]);
+                    int w = (int)g.MeasureString(txt, cbo.Font).Width + 40;
+                    if (w > maxW) maxW = w;
+                }
+            }
+            cbo.DropDownWidth = maxW;
+        }
+
+        private void FrmBanVe_Activated(object sender, EventArgs e)
+        {
+            if (_currentMaSuat > 0 && !_isModalOpen && !_isPolling)
+            {
+                PollTimer_Tick(this, EventArgs.Empty);
+            }
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (!this.IsDisposed && _pollTimer != null)
+            {
+                if (this.Visible)
+                {
+                    if (!_pollTimer.Enabled)
+                    {
+                        _pollTimer.Start();
+                    }
+                    if (_currentMaSuat > 0 && !_isModalOpen && !_isPolling)
+                    {
+                        PollTimer_Tick(this, EventArgs.Empty);
+                    }
+                }
+                else
+                {
+                    _pollTimer.Stop();
+                }
+            }
+        }
+
+        private void LoadIcons()
+        {
+            try
+            {
+                if (pbEventTimeIcon != null) pbEventTimeIcon.Image = IconHelper.GetIcon("icon_calendar.png");
+                if (pbEventLocIcon != null) pbEventLocIcon.Image = IconHelper.GetIcon("icon_location.png");
+            }
+            catch { }
+        }
+
+        private void FrmBanVe_SizeChanged(object sender, EventArgs e)
+        {
+            ResponsiveLayout();
+        }
+
+        private void FrmBanVe_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            _pollTimer?.Stop();
+            _pollTimer?.Dispose();
+            _sharedToolTip?.Dispose();
+
+            // Tự động giải phóng ghế nếu form bị đóng
+            if (_currentlyHeldSeatIds.Count > 0)
+            {
+                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
+                _currentlyHeldSeatIds.Clear();
+                _currentMaPhienGiu = Guid.Empty;
+            }
+        }
+
+        private void ResponsiveLayout()
+        {
+            if (pnlMainBody.ClientSize.Width <= 0) return;
+
+            int padding = 16;
+            int gap = 16;
+            int totalW = pnlMainBody.ClientSize.Width - (padding * 2);
+            int totalH = pnlMainBody.ClientSize.Height - (padding * 2);
+
+            int rightW = 480;
+            if (totalW < 1100) rightW = 440;
+            if (totalW < 950) rightW = 390;
+            int leftW = totalW - rightW - gap;
+
+            if (leftW > 280)
+            {
+                pnlMainBody.AutoScroll = false;
+                pnlSeatMapContainer.SetBounds(padding, padding, leftW, totalH);
+                pnlRightAction.SetBounds(padding + leftW + gap, padding, rightW, totalH);
+            }
+            else
+            {
+                // Khi cửa sổ quá nhỏ (<= 750px tổng rộng), xếp chồng dọc để tránh kẹt layout
+                pnlMainBody.AutoScroll = true;
+                int cardH = Math.Max(320, totalH / 2);
+                pnlSeatMapContainer.SetBounds(padding, padding, totalW, cardH);
+                pnlRightAction.SetBounds(padding, padding + cardH + gap, totalW, cardH);
+            }
+
+            CenterSeatMap();
+            AdjustPriceListRowWidths();
+        }
+
+        #region 1. Cascade Loading: Sự kiện -> Suất diễn
+        private void LoadDanhSachSuKien()
+        {
+            try
+            {
+                DataTable dtSK = SuKienBLL.LayDanhSach();
+
+                cboSuKien.SelectedIndexChanged -= cboSuKien_SelectedIndexChanged;
+                cboSuKien.DisplayMember = "TenSK";
+                cboSuKien.ValueMember = "MaSK";
+                cboSuKien.DataSource = dtSK;
+                cboSuKien.SelectedIndexChanged += cboSuKien_SelectedIndexChanged;
+
+                if (dtSK != null && dtSK.Rows.Count > 0)
+                {
+                    cboSuKien.SelectedIndex = 0;
+                    cboSuKien_SelectedIndexChanged(cboSuKien, EventArgs.Empty);
+                }
+                else
+                {
+                    ClearSeatMap();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải danh sách sự kiện: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void cboSuKien_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // Giải phóng ghế đang giữ nếu đổi sự kiện
+            if (_currentlyHeldSeatIds.Count > 0)
+            {
+                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
+                _currentlyHeldSeatIds.Clear();
+                _currentMaPhienGiu = Guid.Empty;
+            }
+
+            if (cboSuKien.SelectedValue != null && int.TryParse(cboSuKien.SelectedValue.ToString(), out int maSK))
+            {
+                _currentMaSK = maSK;
+                lblEventTitle.Text = cboSuKien.Text;
+                LoadSuatDienTheoSuKien(maSK);
+            }
+            else
+            {
+                _currentMaSK = 0;
+                cboSuatDien.DataSource = null;
+                ClearSeatMap();
+            }
+        }
+
+        private void LoadSuatDienTheoSuKien(int maSK)
+        {
+            try
+            {
+                DataTable dtSuat = SuatDienBLL.LayDanhSachTheoSuKien(maSK);
+
+                if (dtSuat != null && !dtSuat.Columns.Contains("MoTaHienThi"))
+                {
+                    dtSuat.Columns.Add("MoTaHienThi", typeof(string));
+                    foreach (DataRow r in dtSuat.Rows)
+                    {
+                        DateTime tg = r["ThoiGianBatDau"] != DBNull.Value ? Convert.ToDateTime(r["ThoiGianBatDau"]) : DateTime.Now;
+                        string diaDiem = r["DiaDiem"]?.ToString() ?? "";
+                        string trangThai = r["TrangThai"]?.ToString() ?? "";
+                        string statusSuffix = "";
+                        if (tg <= DateTime.Now)
+                        {
+                            statusSuffix = " (Đã qua)";
+                        }
+                        else if (trangThai == "DongBanVe")
+                        {
+                            statusSuffix = " (Đóng bán)";
+                        }
+                        else if (trangThai == "MoCuaBanVe")
+                        {
+                            statusSuffix = " (Mở bán)";
+                        }
+                        r["MoTaHienThi"] = $"{tg:dd/MM/yyyy HH:mm} · {diaDiem}{statusSuffix}";
+                    }
+                }
+
+                cboSuatDien.SelectedIndexChanged -= cboSuatDien_SelectedIndexChanged;
+                cboSuatDien.DisplayMember = "MoTaHienThi";
+                cboSuatDien.ValueMember = "MaSuat";
+                cboSuatDien.DataSource = dtSuat;
+                cboSuatDien.SelectedIndexChanged += cboSuatDien_SelectedIndexChanged;
+                AdjustComboDropDownWidth(cboSuatDien);
+
+                if (dtSuat != null && dtSuat.Rows.Count > 0)
+                {
+                    // Ưu tiên chọn suất diễn mở bán và chưa qua giờ diễn để tránh lỗi chọn ghế (bug.md)
+                    int targetIndex = 0;
+                    for (int i = 0; i < dtSuat.Rows.Count; i++)
+                    {
+                        DataRow r = dtSuat.Rows[i];
+                        string trangThai = r["TrangThai"]?.ToString() ?? "";
+                        DateTime tg = r["ThoiGianBatDau"] != DBNull.Value ? Convert.ToDateTime(r["ThoiGianBatDau"]) : DateTime.MinValue;
+                        if (trangThai == "MoCuaBanVe" && tg > DateTime.Now)
+                        {
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+
+                    cboSuatDien.SelectedIndex = targetIndex;
+                    ReadCurrentSuatInfo();
+                }
+                else
+                {
+                    _currentMaSuat = 0;
+                    ClearSeatMap();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi tải suất diễn: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void cboSuatDien_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_currentlyHeldSeatIds.Count > 0)
+            {
+                GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
+                _currentlyHeldSeatIds.Clear();
+                _currentMaPhienGiu = Guid.Empty;
+            }
+
+            ReadCurrentSuatInfo();
+        }
+
+        private void ReadCurrentSuatInfo()
+        {
+            if (cboSuatDien.SelectedItem is DataRowView drv)
+            {
+                _currentMaSuat = Convert.ToInt32(drv["MaSuat"]);
+                _currentLoaiSoDo = drv.Row.Table.Columns.Contains("LoaiSoDo") && drv["LoaiSoDo"] != DBNull.Value
+                    ? Convert.ToInt32(drv["LoaiSoDo"]) : 1;
+
+                DateTime tg = drv.Row.Table.Columns.Contains("ThoiGianBatDau") && drv["ThoiGianBatDau"] != DBNull.Value
+                    ? Convert.ToDateTime(drv["ThoiGianBatDau"]) : DateTime.Now;
+                string diaDiem = drv.Row.Table.Columns.Contains("DiaDiem") ? drv["DiaDiem"]?.ToString() : "";
+
+                lblEventTime.Text = $"{tg:HH:mm} - {tg.AddHours(2.5):HH:mm}, {tg:dd} Tháng {tg:MM, yyyy}";
+                lblEventLocation.Text = string.IsNullOrWhiteSpace(diaDiem) ? "Địa điểm sự kiện" : diaDiem;
+
+                LoadKhuVucVaVe();
+            }
+        }
+        #endregion
+
+        #region 3. Load Khu vực & Vẽ Sơ đồ Seatmap & Bảng giá chỉ đọc
+        private void LoadKhuVucVaVe()
+        {
+            if (_currentMaSuat <= 0) return;
+
+            _dtKhuVucCurrent = KhuVucBLL.LayDanhSachTheoSuat(_currentMaSuat);
+
+            RenderPriceList(_dtKhuVucCurrent);
+
+            DrawSeatMap(_currentLoaiSoDo, _dtKhuVucCurrent);
+        }
+
+        private void RenderPriceList(DataTable dt)
+        {
+            flpPriceList.SuspendLayout();
+            while (flpPriceList.Controls.Count > 0)
+            {
+                Control c = flpPriceList.Controls[0];
+                flpPriceList.Controls.RemoveAt(0);
+                c.Dispose();
+            }
+
+            flpPriceList.AutoScroll = false;
+            flpPriceList.HorizontalScroll.Maximum = 0;
+            flpPriceList.HorizontalScroll.Visible = false;
+            flpPriceList.HorizontalScroll.Enabled = false;
+            flpPriceList.AutoScroll = true;
+
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                int itemW = Math.Max(320, flpPriceList.ClientSize.Width - 6);
+
+                foreach (DataRow r in dt.Rows)
+                {
+                    string maVung = r["MaVung"]?.ToString() ?? "";
+                    string tenKV = r["TenKV"]?.ToString() ?? "";
+                    decimal gia = Convert.ToDecimal(r["GiaVe"]);
+                    int conLai = r.Table.Columns.Contains("ConLai") ? Convert.ToInt32(r["ConLai"]) : 0;
+                    bool choPhep = !r.Table.Columns.Contains("ChoPhepBanVe") || Convert.ToBoolean(r["ChoPhepBanVe"]);
+
+                    string hexColor = r.Table.Columns.Contains("MauSac") && r["MauSac"] != DBNull.Value ? r["MauSac"].ToString() : "";
+                    Color zoneColor = GetSafeZoneColor(hexColor, maVung);
+
+                    Panel pnlRow = new Panel
+                    {
+                        Width = itemW,
+                        Height = 36,
+                        Margin = new Padding(0, 0, 0, 6),
+                        BackColor = Color.White,
+                        Tag = Convert.ToInt32(r["MaKV"]),
+                        AccessibleName = $"{maVung} {tenKV}"
+                    };
+
+                    Guna2Panel pnlSwatch = new Guna2Panel
+                    {
+                        Location = new Point(4, 8),
+                        Size = new Size(24, 18),
+                        BorderRadius = 4,
+                        FillColor = zoneColor,
+                        BorderThickness = 0
+                    };
+
+                    Label lblPrice = new Label
+                    {
+                        Dock = DockStyle.Right,
+                        Width = 140,
+                        Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                        TextAlign = ContentAlignment.MiddleRight,
+                        Padding = new Padding(0, 0, 8, 0)
+                    };
+
+                    if (!choPhep || conLai <= 0)
+                    {
+                        lblPrice.Text = "Hết vé";
+                        lblPrice.ForeColor = Color.FromArgb(239, 68, 68);
+                    }
+                    else
+                    {
+                        lblPrice.Text = $"{gia:N0} đ";
+                        lblPrice.ForeColor = Color.FromArgb(45, 194, 117);
+                    }
+
+                    Label lblName = new Label
+                    {
+                        Location = new Point(34, 6),
+                        Size = new Size(Math.Max(120, itemW - 34 - 140 - 12), 24),
+                        Text = tenKV,
+                        Font = new Font("Segoe UI Semibold", 9.5F),
+                        ForeColor = Color.FromArgb(51, 65, 85),
+                        TextAlign = ContentAlignment.MiddleLeft,
+                        AutoEllipsis = true
+                    };
+
+                    pnlRow.Controls.Add(lblPrice);
+                    pnlRow.Controls.Add(lblName);
+                    pnlRow.Controls.Add(pnlSwatch);
+
+                    flpPriceList.Controls.Add(pnlRow);
+                }
+            }
+
+            flpPriceList.ResumeLayout();
+        }
+
+        private static Color GetSafeZoneColor(string hexColor, string maVung)
+        {
+            return ZoneColorHelper.Resolve(hexColor, maVung);
+        }
+
+        private void AdjustPriceListRowWidths()
+        {
+            if (flpPriceList == null || flpPriceList.Controls.Count == 0) return;
+            int newW = Math.Max(320, flpPriceList.ClientSize.Width - 6);
+            foreach (Control c in flpPriceList.Controls)
+            {
+                if (c is Panel pnlRow && pnlRow.Tag is int)
+                {
+                    pnlRow.Width = newW;
+                    foreach (Control child in pnlRow.Controls)
+                    {
+                        if (child is Label lbl && child.Dock != DockStyle.Right && child.Location.X > 20)
+                        {
+                            lbl.Width = Math.Max(120, newW - 34 - 140 - 12);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ClearSeatMap()
+        {
+            if (seatMapWrapper != null)
+            {
+                while (seatMapWrapper.Controls.Count > 0)
+                {
+                    Control c = seatMapWrapper.Controls[0];
+                    seatMapWrapper.Controls.RemoveAt(0);
+                    c.Dispose();
+                }
+            }
+            _zoneMetaMap.Clear();
+            _selectedZoneButton = null;
+            _searchMatchedButton = null;
+            _sharedToolTip.RemoveAll();
+
+            while (flpPriceList.Controls.Count > 0)
+            {
+                Control c = flpPriceList.Controls[0];
+                flpPriceList.Controls.RemoveAt(0);
+                c.Dispose();
+            }
+        }
+
+        private DataRow TimKhuVucChoVung(ZoneDefinition zone, DataTable dtKhuVuc, HashSet<int> daKhop)
+        {
+            if (dtKhuVuc == null || zone == null) return null;
+
+            // Ưu tiên 1: Khớp chính xác theo MaVung đã cấu hình
+            foreach (DataRow r in dtKhuVuc.Rows)
+            {
+                int id = r.Table.Columns.Contains("MaKV") && r["MaKV"] != DBNull.Value ? Convert.ToInt32(r["MaKV"]) : 0;
+                if (daKhop != null && daKhop.Contains(id)) continue;
+
+                string dbMaVung = r.Table.Columns.Contains("MaVung") ? r["MaVung"]?.ToString()?.Trim() ?? "" : "";
+                if (!string.IsNullOrEmpty(dbMaVung) && dbMaVung.Equals(zone.Code, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (daKhop != null && id > 0) daKhop.Add(id);
+                    return r;
+                }
+            }
+
+            // Ưu tiên 2: CHỈ dự phòng theo tên KHI MaVung trong DB đang rỗng/null
+            foreach (DataRow r in dtKhuVuc.Rows)
+            {
+                int id = r.Table.Columns.Contains("MaKV") && r["MaKV"] != DBNull.Value ? Convert.ToInt32(r["MaKV"]) : 0;
+                if (daKhop != null && daKhop.Contains(id)) continue;
+
+                string dbMaVung = r.Table.Columns.Contains("MaVung") ? r["MaVung"]?.ToString()?.Trim() ?? "" : "";
+                if (!string.IsNullOrEmpty(dbMaVung))
+                {
+                    continue;
+                }
+
+                string ten = r.Table.Columns.Contains("TenKV") ? r["TenKV"]?.ToString() ?? "" : "";
+                if (!string.IsNullOrWhiteSpace(ten) &&
+                    (ten.IndexOf(zone.DisplayName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     ten.IndexOf(zone.Code, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    if (daKhop != null && id > 0) daKhop.Add(id);
+                    return r;
+                }
+            }
+
+            return null;
+        }
+
+        private void DrawSeatMap(int loaiSoDo, DataTable dtKhuVuc)
+        {
+            if (seatMapWrapper == null)
+            {
+                seatMapWrapper = new Panel { BackColor = Color.White };
+                pnlSeatMapCanvas.Controls.Add(seatMapWrapper);
+            }
+
+            while (seatMapWrapper.Controls.Count > 0)
+            {
+                Control c = seatMapWrapper.Controls[0];
+                seatMapWrapper.Controls.RemoveAt(0);
+                c.Dispose();
+            }
+            _zoneMetaMap.Clear();
+            _selectedZoneButton = null;
+            _searchMatchedButton = null;
+            _sharedToolTip.RemoveAll();
+
+            List<ZoneDefinition> definitions = GetZoneDefinitions(loaiSoDo);
+
+            // 1. Vẽ các khối sân khấu & lối đi trang trí
+            DrawStagesAndCatwalks(loaiSoDo);
+
+            // 2. Thêm các Button khu vực có thể tương tác
+            HashSet<int> matchedMaKVs = new HashSet<int>();
+            foreach (var zone in definitions)
+            {
+                DataRow matchedRow = TimKhuVucChoVung(zone, dtKhuVuc, matchedMaKVs);
+
+                float fontSize = zone.Bounds.Width < 80 ? 8.5F : 9.5F;
+                Guna2Button btn = new Guna2Button
+                {
+                    Location = zone.Bounds.Location,
+                    Size = zone.Bounds.Size,
+                    BorderRadius = 6,
+                    Font = new Font("Segoe UI", fontSize, FontStyle.Bold),
+                    Tag = zone.Code,
+                    Cursor = Cursors.Hand
+                };
+
+                string hexColor = matchedRow != null && matchedRow.Table.Columns.Contains("MauSac") && matchedRow["MauSac"] != DBNull.Value ? matchedRow["MauSac"].ToString() : "";
+                Color baseColor = GetSafeZoneColor(hexColor, zone.Code);
+
+                if (matchedRow != null)
+                {
+                    decimal gia = Convert.ToDecimal(matchedRow["GiaVe"]);
+                    int conLai = matchedRow.Table.Columns.Contains("ConLai") ? Convert.ToInt32(matchedRow["ConLai"]) : 0;
+                    bool choPhep = !matchedRow.Table.Columns.Contains("ChoPhepBanVe") || Convert.ToBoolean(matchedRow["ChoPhepBanVe"]);
+
+                    btn.FillColor = (!choPhep || conLai <= 0) ? Color.FromArgb(148, 163, 184) : baseColor;
+                    btn.ForeColor = Color.White;
+                    btn.BorderColor = Color.Transparent;
+                    btn.BorderThickness = 0;
+
+                    // Chỉ hiển thị tên vùng, nếu hết vé thì hiển thị HẾT VÉ (chuẩn Ticketbox)
+                    btn.Text = (conLai > 0 && choPhep) ? zone.DisplayName : $"{zone.DisplayName}\nHẾT VÉ";
+
+                    _sharedToolTip.SetToolTip(btn, $"Khu vực: {zone.DisplayName}\nĐơn giá: {gia:N0} đ\nCòn trống: {conLai} vé\nBấm vào để chọn vé");
+
+                    if (!choPhep || conLai <= 0)
+                    {
+                        btn.Cursor = Cursors.No;
+                    }
+                }
+                else
+                {
+                    btn.FillColor = Color.FromArgb(241, 245, 249);
+                    btn.ForeColor = Color.FromArgb(100, 116, 139);
+                    btn.BorderColor = Color.FromArgb(203, 213, 225);
+                    btn.BorderThickness = 1;
+                    btn.Text = $"{zone.DisplayName}";
+                }
+
+                btn.Click += ZoneButton_Click;
+                seatMapWrapper.Controls.Add(btn);
+
+                _zoneMetaMap[btn] = new ZoneButtonMeta
+                {
+                    Definition = zone,
+                    DataRow = matchedRow,
+                    BaseColor = baseColor
+                };
+            }
+
+            ComputeWrapperSize();
+            CenterSeatMap();
+        }
+
+        private void DrawStagesAndCatwalks(int loaiSoDo)
+        {
+            Color clrStage = Color.FromArgb(226, 232, 240);
+            Color clrText = Color.FromArgb(71, 85, 105);
+
+            if (loaiSoDo == 1) // Sơ đồ chữ T
+            {
+                AddBlock(93, 39, 413, 80, "SÂN KHẤU (STAGE)", clrStage, clrText);
+                AddBlock(256, 120, 80, 215, "LỐI ĐI", clrStage, clrText);
+                AddBlock(128, 335, 329, 65, "SÂN KHẤU PHỤ", clrStage, clrText);
+            }
+            else if (loaiSoDo == 2) // Sơ đồ hình chữ nhật
+            {
+                AddBlock(130, 30, 400, 60, "SÂN KHẤU CHÍNH", clrStage, clrText);
+            }
+            else // Sơ đồ lưới
+            {
+                AddBlock(150, 10, 400, 60, "SÂN KHẤU CHÍNH", clrStage, clrText);
+            }
+        }
+
+        private void AddBlock(int x, int y, int w, int h, string text, Color fill, Color fore)
+        {
+            Label lbl = new Label
+            {
+                Location = new Point(x, y),
+                Size = new Size(w, h),
+                BackColor = fill,
+                ForeColor = fore,
+                Text = text,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                BorderStyle = BorderStyle.None
+            };
+            seatMapWrapper.Controls.Add(lbl);
+        }
+
+        private List<ZoneDefinition> GetZoneDefinitions(int loaiSoDo)
+        {
+            var list = new List<ZoneDefinition>();
+            if (loaiSoDo == 1) // Sơ đồ chữ T
+            {
+                list.Add(new ZoneDefinition { Code = "VIP_A", DisplayName = "VIP A", Category = "VIP", Bounds = new Rectangle(93, 160, 142, 129) });
+                list.Add(new ZoneDefinition { Code = "VIP_B", DisplayName = "VIP B", Category = "VIP", Bounds = new Rectangle(362, 160, 132, 129) });
+                list.Add(new ZoneDefinition { Code = "GA_A", DisplayName = "GA A", Category = "Phổ thông", Bounds = new Rectangle(17, 96, 70, 278) });
+                list.Add(new ZoneDefinition { Code = "GA_B", DisplayName = "GA B", Category = "Phổ thông", Bounds = new Rectangle(514, 96, 70, 278) });
+                list.Add(new ZoneDefinition { Code = "CAT", DisplayName = "CAT", Category = "Thường", Bounds = new Rectangle(69, 410, 464, 66) });
+            }
+            else if (loaiSoDo == 2) // Sơ đồ hình chữ nhật
+            {
+                list.Add(new ZoneDefinition { Code = "GA_A", DisplayName = "GA A", Category = "Phổ thông", Bounds = new Rectangle(40, 120, 80, 60) });
+                list.Add(new ZoneDefinition { Code = "VIP_B", DisplayName = "VIP B", Category = "VIP", Bounds = new Rectangle(140, 120, 80, 60) });
+                list.Add(new ZoneDefinition { Code = "VIP_A", DisplayName = "VIP A", Category = "VIP", Bounds = new Rectangle(240, 120, 180, 60) });
+                list.Add(new ZoneDefinition { Code = "VIP_C", DisplayName = "VIP C", Category = "VIP", Bounds = new Rectangle(440, 120, 80, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_B", DisplayName = "GA B", Category = "Phổ thông", Bounds = new Rectangle(540, 120, 80, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_C", DisplayName = "GA C", Category = "Phổ thông", Bounds = new Rectangle(40, 200, 180, 70) });
+                list.Add(new ZoneDefinition { Code = "VIP_D", DisplayName = "VIP D", Category = "VIP", Bounds = new Rectangle(240, 200, 180, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_D", DisplayName = "GA D", Category = "Phổ thông", Bounds = new Rectangle(440, 200, 180, 70) });
+                list.Add(new ZoneDefinition { Code = "CAT_B", DisplayName = "CAT B", Category = "Thường", Bounds = new Rectangle(40, 290, 170, 80) });
+                list.Add(new ZoneDefinition { Code = "GA_E", DisplayName = "GA E", Category = "Phổ thông", Bounds = new Rectangle(240, 280, 180, 60) });
+                list.Add(new ZoneDefinition { Code = "CAT_C", DisplayName = "CAT C", Category = "Thường", Bounds = new Rectangle(440, 290, 170, 80) });
+                list.Add(new ZoneDefinition { Code = "CAT_A", DisplayName = "CAT A", Category = "Thường", Bounds = new Rectangle(240, 360, 180, 40) });
+            }
+            else // Sơ đồ lưới
+            {
+                list.Add(new ZoneDefinition { Code = "VIP_A", DisplayName = "VIP A", Category = "VIP", Bounds = new Rectangle(150, 90, 90, 35) });
+                list.Add(new ZoneDefinition { Code = "VIP_B", DisplayName = "VIP B", Category = "VIP", Bounds = new Rectangle(250, 90, 90, 35) });
+                list.Add(new ZoneDefinition { Code = "VIP_C", DisplayName = "VIP C", Category = "VIP", Bounds = new Rectangle(350, 90, 90, 35) });
+                list.Add(new ZoneDefinition { Code = "VIP_D", DisplayName = "VIP D", Category = "VIP", Bounds = new Rectangle(450, 90, 90, 35) });
+
+                list.Add(new ZoneDefinition { Code = "GA_A", DisplayName = "GA A", Category = "Phổ thông", Bounds = new Rectangle(150, 140, 90, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_B", DisplayName = "GA B", Category = "Phổ thông", Bounds = new Rectangle(250, 140, 90, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_C", DisplayName = "GA C", Category = "Phổ thông", Bounds = new Rectangle(350, 140, 90, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_D", DisplayName = "GA D", Category = "Phổ thông", Bounds = new Rectangle(450, 140, 90, 60) });
+
+                list.Add(new ZoneDefinition { Code = "GA_E", DisplayName = "GA E", Category = "Phổ thông", Bounds = new Rectangle(150, 220, 90, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_F", DisplayName = "GA F", Category = "Phổ thông", Bounds = new Rectangle(250, 220, 90, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_G", DisplayName = "GA G", Category = "Phổ thông", Bounds = new Rectangle(350, 220, 90, 60) });
+                list.Add(new ZoneDefinition { Code = "GA_H", DisplayName = "GA H", Category = "Phổ thông", Bounds = new Rectangle(450, 220, 90, 60) });
+
+                list.Add(new ZoneDefinition { Code = "CAT_C", DisplayName = "CAT C", Category = "Thường", Bounds = new Rectangle(20, 90, 100, 190) });
+                list.Add(new ZoneDefinition { Code = "CAT_D", DisplayName = "CAT D", Category = "Thường", Bounds = new Rectangle(580, 90, 100, 190) });
+                list.Add(new ZoneDefinition { Code = "CAT_A", DisplayName = "CAT A", Category = "Thường", Bounds = new Rectangle(150, 300, 190, 70) });
+                list.Add(new ZoneDefinition { Code = "CAT_B", DisplayName = "CAT B", Category = "Thường", Bounds = new Rectangle(360, 300, 190, 70) });
+            }
+            return list;
+        }
+
+        private void ComputeWrapperSize()
+        {
+            int maxX = 680, maxY = 500;
+            foreach (Control c in seatMapWrapper.Controls)
+            {
+                if (c.Right > maxX) maxX = c.Right;
+                if (c.Bottom > maxY) maxY = c.Bottom;
+            }
+            seatMapWrapper.Size = new Size(maxX + 20, maxY + 20);
+        }
+
+        private void CenterSeatMap()
+        {
+            if (seatMapWrapper == null || pnlSeatMapCanvas == null) return;
+            int offsetX = Math.Max(0, (pnlSeatMapCanvas.ClientSize.Width - seatMapWrapper.Width) / 2);
+            int offsetY = Math.Max(0, (pnlSeatMapCanvas.ClientSize.Height - seatMapWrapper.Height) / 2);
+            seatMapWrapper.Location = new Point(offsetX, offsetY);
+        }
+        #endregion
+
+        #region 4. Polling thời gian thực & Cập nhật trạng thái tại chỗ (P2)
+        private async void PollTimer_Tick(object sender, EventArgs e)
+        {
+            if (_isPolling || _isModalOpen || _currentMaSuat <= 0) return;
+            if (Form.ActiveForm == null) return; // Chỉ cập nhật khi cửa sổ ứng dụng đang kích hoạt
+
+            _isPolling = true;
+            try
+            {
+                int maSuat = _currentMaSuat;
+                DataTable dtNew = await Task.Run(() => KhuVucBLL.LayDanhSachTheoSuat(maSuat));
+                if (!IsDisposed && !Disposing && maSuat == _currentMaSuat && dtNew != null && !_isModalOpen)
+                {
+                    UpdateZoneStatesInPlace(dtNew);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[FrmBanVe.PollTimer_Tick] Lỗi polling: " + ex.Message);
+            }
+            finally
+            {
+                _isPolling = false;
+            }
+        }
+
+        private void UpdateZoneStatesInPlace(DataTable dt)
+        {
+            if (dt == null) return;
+            _dtKhuVucCurrent = dt;
+
+            HashSet<int> matchedMaKVs = new HashSet<int>();
+            foreach (var kvp in _zoneMetaMap)
+            {
+                Guna2Button btn = kvp.Key;
+                ZoneButtonMeta meta = kvp.Value;
+                DataRow matchedRow = TimKhuVucChoVung(meta.Definition, dt, matchedMaKVs);
+
+                meta.DataRow = matchedRow;
+                if (matchedRow != null)
+                {
+                    decimal gia = Convert.ToDecimal(matchedRow["GiaVe"]);
+                    int conLai = matchedRow.Table.Columns.Contains("ConLai") ? Convert.ToInt32(matchedRow["ConLai"]) : 0;
+                    bool choPhep = !matchedRow.Table.Columns.Contains("ChoPhepBanVe") || Convert.ToBoolean(matchedRow["ChoPhepBanVe"]);
+
+                    btn.FillColor = (!choPhep || conLai <= 0) ? Color.FromArgb(148, 163, 184) : meta.BaseColor;
+                    btn.Text = (conLai > 0 && choPhep) ? meta.Definition.DisplayName : $"{meta.Definition.DisplayName}\nHẾT VÉ";
+                    btn.Cursor = (!choPhep || conLai <= 0) ? Cursors.No : Cursors.Hand;
+                    _sharedToolTip.SetToolTip(btn, $"Khu vực: {meta.Definition.DisplayName}\nĐơn giá: {gia:N0} đ\nCòn trống: {conLai} vé\nBấm vào để chọn vé");
+                }
+            }
+
+            // Cập nhật giá vé trên flpPriceList mà không tạo lại control để tránh nhấp nháy UI
+            foreach (Control c in flpPriceList.Controls)
+            {
+                if (c is Panel pnlRow && pnlRow.Tag is int)
+                {
+                    int maKV = (int)pnlRow.Tag;
+                    DataRow matched = dt.AsEnumerable().FirstOrDefault(r => Convert.ToInt32(r["MaKV"]) == maKV);
+                    if (matched != null)
+                    {
+                        decimal gia = Convert.ToDecimal(matched["GiaVe"]);
+                        int conLai = matched.Table.Columns.Contains("ConLai") ? Convert.ToInt32(matched["ConLai"]) : 0;
+                        bool choPhep = !matched.Table.Columns.Contains("ChoPhepBanVe") || Convert.ToBoolean(matched["ChoPhepBanVe"]);
+                        foreach (Control child in pnlRow.Controls)
+                        {
+                            if (child is Label lbl && lbl.Dock == DockStyle.Right)
+                            {
+                                if (!choPhep || conLai <= 0)
+                                {
+                                    lbl.Text = "Hết vé";
+                                    lbl.ForeColor = Color.FromArgb(239, 68, 68);
+                                }
+                                else
+                                {
+                                    lbl.Text = $"{gia:N0} đ";
+                                    lbl.ForeColor = Color.FromArgb(45, 194, 117);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region 5. Chọn Khu vực -> Popup Số lượng (FrmChonSoLuongVe) -> Thanh toán
+        private void ZoneButton_Click(object sender, EventArgs e)
+        {
+            if (!(sender is Guna2Button clickedBtn)) return;
+            if (!_zoneMetaMap.ContainsKey(clickedBtn)) return;
+
+            ZoneButtonMeta meta = _zoneMetaMap[clickedBtn];
+
+            if (meta.DataRow == null)
+            {
+                MessageBox.Show("Khu vực này chưa được mở bán!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int maKV = Convert.ToInt32(meta.DataRow["MaKV"]);
+
+            // Kiểm tra số lượng ghế trống thực tế tức thời từ DB (sau khi đã giải phóng quá hạn) (P2)
+            int conLaiThucTe = KhuVucBLL.LayConLaiTheoKhuVuc(maKV);
+            bool choPhep = !meta.DataRow.Table.Columns.Contains("ChoPhepBanVe") || Convert.ToBoolean(meta.DataRow["ChoPhepBanVe"]);
+
+            if (!choPhep)
+            {
+                MessageBox.Show("Khu vực này hiện đang đóng bán vé!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (conLaiThucTe <= 0)
+            {
+                MessageBox.Show("Khu vực này hiện đã hết vé trống!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                clickedBtn.BorderThickness = 0;
+                _selectedZoneButton = null;
+                LoadKhuVucVaVe();
+                return;
+            }
+
+            int conLai = conLaiThucTe;
+
+            // Làm nổi bật viền xanh lá của nút được click
+            if (_selectedZoneButton != null && _selectedZoneButton != clickedBtn)
+            {
+                _selectedZoneButton.BorderThickness = 0;
+            }
+
+            _selectedZoneButton = clickedBtn;
+            clickedBtn.BorderColor = Color.FromArgb(16, 185, 129);
+            clickedBtn.BorderThickness = 3;
+
+            string tenKV = meta.DataRow["TenKV"]?.ToString() ?? meta.Definition.DisplayName;
+            string hangVe = meta.DataRow["HangVe"]?.ToString() ?? meta.Definition.Category;
+            decimal giaVe = Convert.ToDecimal(meta.DataRow["GiaVe"]);
+            int tongSoGhe = meta.DataRow.Table.Columns.Contains("TongSoGhe") ? Convert.ToInt32(meta.DataRow["TongSoGhe"]) : 0;
+            int daBan = meta.DataRow.Table.Columns.Contains("DaBan") ? Convert.ToInt32(meta.DataRow["DaBan"]) : 0;
+
+            _isModalOpen = true;
+
+            try
+            {
+                // Bước 2: Mở modal overlay mờ chỉ trong phần center khung trong (bỏ sidebar, header)
+                Form topForm = this.FindForm() ?? this;
+                using (Form overlay = new Form())
+                {
+                    overlay.StartPosition = FormStartPosition.Manual;
+                    overlay.FormBorderStyle = FormBorderStyle.None;
+                    overlay.BackColor = Color.Black;
+                    overlay.Opacity = 0.50;
+                    overlay.ShowInTaskbar = false;
+                    Point centerScreenPt = pnlMainBody.PointToScreen(Point.Empty);
+                    overlay.Bounds = new Rectangle(centerScreenPt, pnlMainBody.ClientSize);
+                    overlay.Show(topForm);
+
+                    using (FrmChonSoLuongVe frmPopup = new FrmChonSoLuongVe(tenKV, giaVe, conLai, Math.Min(conLai, 10)))
+                    {
+                        DialogResult drPopup = frmPopup.ShowDialog(overlay);
+                        overlay.Close();
+
+                        if (drPopup != DialogResult.OK)
+                        {
+                            // Người dùng bấm "Chọn khu vực khác" hoặc bấm X
+                            clickedBtn.BorderThickness = 0;
+                            _selectedZoneButton = null;
+                            return;
+                        }
+
+                        int soLuongChon = frmPopup.SelectedQuantity;
+
+                        // Giải phóng các ghế cũ đang giữ nếu có
+                        if (_currentlyHeldSeatIds.Count > 0)
+                        {
+                            GheBLL.GiaiPhongDanhSachGhe(_currentlyHeldSeatIds, _currentMaPhienGiu);
+                            _currentlyHeldSeatIds.Clear();
+                            _currentMaPhienGiu = Guid.Empty;
+                        }
+
+                        // Thực thi phân bổ và giữ ghế tự động theo quy tắc:
+                        // "Thanh toán càng sớm, ghế càng gần sân khấu"
+                        List<GheDTO> dsGheGiu;
+                        string errGiuGhe;
+                        Guid maPhienGiu;
+                        bool okGiuGhe = GheBLL.GiuGheTuDongTheoKhuVuc(maKV, soLuongChon, out dsGheGiu, out maPhienGiu, out errGiuGhe);
+
+                        if (!okGiuGhe || dsGheGiu == null || dsGheGiu.Count < soLuongChon)
+                        {
+                            MessageBox.Show("Không thể giữ vé: " + errGiuGhe, "Lỗi giữ vé", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            clickedBtn.BorderThickness = 0;
+                            _selectedZoneButton = null;
+                            LoadKhuVucVaVe();
+                            return;
+                        }
+
+                        // Lưu danh sách ID ghế và mã phiên vừa giữ thành công
+                        _currentMaPhienGiu = maPhienGiu;
+                        _currentlyHeldSeatIds.Clear();
+                        _currentlyHeldSeatIds.AddRange(dsGheGiu.Select(g => g.MaGhe));
+
+                        // Lấy thời gian giữ ghế chính xác từ SQL Server (P2)
+                        int remainSeconds = GheBLL.LayGiayConLaiGiu(_currentlyHeldSeatIds, _currentMaPhienGiu);
+
+                        // Bước 3: Đóng gói DTO và mở FrmThanhToan
+                        ThongTinDatVeDTO dto = new ThongTinDatVeDTO
+                        {
+                            MaSK = _currentMaSK,
+                            TenSK = cboSuKien.Text,
+                            MaSuat = _currentMaSuat,
+                            ThoiGianBatDau = DateTime.Now,
+                            DiaDiem = lblEventLocation.Text,
+                            LoaiSoDo = _currentLoaiSoDo,
+                            MaKV = maKV,
+                            MaVung = meta.Definition.Code,
+                            TenKV = tenKV,
+                            HangVe = hangVe,
+                            GiaVe = giaVe,
+                            TongSoGhe = tongSoGhe,
+                            DaBan = daBan,
+                            ConLai = conLai,
+                            SoLuong = soLuongChon,
+                            DanhSachMaGhe = _currentlyHeldSeatIds.ToList(),
+                            DanhSachGhe = dsGheGiu.Select(g => g.MaGheHienThi).ToList(),
+                            SoGiayConLai = remainSeconds > 0 ? remainSeconds : 600,
+                            MaPhienGiu = _currentMaPhienGiu,
+                            TongTienDaXacNhan = giaVe * soLuongChon
+                        };
+
+                        if (cboSuatDien.SelectedItem is DataRowView drv)
+                        {
+                            if (drv.Row.Table.Columns.Contains("ThoiGianBatDau") && drv["ThoiGianBatDau"] != DBNull.Value)
+                                dto.ThoiGianBatDau = Convert.ToDateTime(drv["ThoiGianBatDau"]);
+                            if (drv.Row.Table.Columns.Contains("DiaDiem") && drv["DiaDiem"] != DBNull.Value)
+                                dto.DiaDiem = drv["DiaDiem"].ToString();
+                        }
+
+                        using (FrmThanhToan frmTT = new FrmThanhToan(dto))
+                        {
+                            DialogResult drTT = frmTT.ShowDialog(this);
+                            if (drTT == DialogResult.OK)
+                            {
+                                _currentlyHeldSeatIds.Clear();
+                                _currentMaPhienGiu = Guid.Empty;
+                                _lastPaidMaDon = dto.MaDonPhatHanh;
+                                _lastPaidMaVeCodes = dto.DanhSachMaVeCode;
+
+                                pnlBottomAction.Visible = true;
+                                btnInVe.Visible = true;
+                                btnInVe.Enabled = true;
+
+                                LoadKhuVucVaVe();
+                            }
+                            else
+                            {
+                                // Người dùng bấm "Chọn lại vé" / Hết giờ / Hủy (FrmThanhToan đã xử lý giải phóng ghế)
+                                _currentlyHeldSeatIds.Clear();
+                                _currentMaPhienGiu = Guid.Empty;
+
+                                clickedBtn.BorderThickness = 0;
+                                _selectedZoneButton = null;
+
+                                LoadKhuVucVaVe();
+                            }
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _isModalOpen = false;
+            }
+        }
+        #endregion
+
+        #region 6. Tìm kiếm nhanh khu vực (Đánh dấu highlight, không tự mở popup - P2)
+        private void txtTimKiem_TextChanged(object sender, EventArgs e)
+        {
+            ApplySearchHighlight();
+        }
+
+        private void txtTimKiem_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                if (_searchMatchedButton != null)
+                {
+                    ZoneButton_Click(_searchMatchedButton, EventArgs.Empty);
+                }
+            }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                e.SuppressKeyPress = true;
+                txtTimKiem.Clear();
+                ApplySearchHighlight();
+            }
+        }
+
+        private void ApplySearchHighlight()
+        {
+            string keyword = txtTimKiem.Text.Trim();
+            _searchMatchedButton = null;
+
+            foreach (var kvp in _zoneMetaMap)
+            {
+                Guna2Button btn = kvp.Key;
+                if (btn == _selectedZoneButton) continue;
+
+                string name = kvp.Value.Definition.DisplayName;
+                string code = kvp.Value.Definition.Code;
+
+                bool isMatch = !string.IsNullOrEmpty(keyword) &&
+                    (name.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     code.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0);
+
+                if (isMatch)
+                {
+                    btn.BorderColor = Color.FromArgb(16, 185, 129);
+                    btn.BorderThickness = 3;
+                    if (_searchMatchedButton == null)
+                    {
+                        _searchMatchedButton = btn;
+                    }
+                }
+                else
+                {
+                    btn.BorderColor = Color.Transparent;
+                    btn.BorderThickness = 0;
+                }
+            }
+
+            // Highlight dòng giá vé tương ứng bên cột phải
+            foreach (Control c in flpPriceList.Controls)
+            {
+                if (c is Panel pnlRow && pnlRow.Tag is int)
+                {
+                    string rowZone = pnlRow.AccessibleName ?? "";
+                    if (string.IsNullOrEmpty(keyword))
+                    {
+                        pnlRow.BackColor = Color.White;
+                    }
+                    else if (rowZone.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        pnlRow.BackColor = Color.FromArgb(236, 253, 245);
+                    }
+                    else
+                    {
+                        pnlRow.BackColor = Color.White;
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region 7. In vé vừa đặt (FrmInVe - phân hệ TV3)
+        private void btnInVe_Click(object sender, EventArgs e)
+        {
+            if (_lastPaidMaDon <= 0)
+            {
+                MessageBox.Show("Chưa có đơn vé nào vừa thanh toán trong phiên bán này.\n" +
+                    "Hãy chọn khu vực và hoàn tất thanh toán trước khi in vé.",
+                    "Chưa có vé để in", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                FrmInVe.InDanhSachVe(_lastPaidMaDon, this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không mở được màn hình in vé: " + ex.Message,
+                    "Lỗi in vé", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        #endregion
+    }
+}
