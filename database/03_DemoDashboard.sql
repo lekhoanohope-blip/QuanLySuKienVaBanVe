@@ -90,8 +90,8 @@ BEGIN TRY
         SET @EventId = CONVERT(INT, SCOPE_IDENTITY());
 
         SET @Venue = CASE @EventNo % 5
-            WHEN 0 THEN N'Hội trường A - HCMUE (280 An Dương Vương, Q.5)'
-            WHEN 1 THEN N'Hội trường B - HCMUE (222 Lê Văn Sỹ, Q.3)'
+            WHEN 0 THEN N'Hội trường A - HCMUE'
+            WHEN 1 THEN N'Hội trường B - HCMUE'
             WHEN 2 THEN N'Nhà Văn hóa Sinh viên TP.HCM'
             WHEN 3 THEN N'Trung tâm Hội nghị Riverside Palace'
             ELSE N'Sân khấu ngoài trời - Khu đô thị Thủ Thiêm' END;

@@ -132,41 +132,41 @@ IF @MaSK1 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.SuatDien WHERE MaSK = @M
 BEGIN
     INSERT INTO dbo.SuatDien (MaSK, ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, LoaiSoDo, TrangThai) VALUES
         -- Đêm 1 & Đêm 2 tại Nhà thi đấu Phú Thọ (Sơ đồ 1: Sân khấu Chữ T Catwalk)
-        (@MaSK1, DATEADD(MINUTE, 19*60+30, DATEADD(DAY, 7, @BaseDate)), DATEADD(MINUTE, 22*60+30, DATEADD(DAY, 7, @BaseDate)), N'Nhà thi đấu Phú Thọ (219 Lý Thường Kiệt, Q.11, TP.HCM)', 1, N'MoCuaBanVe'),
-        (@MaSK1, DATEADD(MINUTE, 19*60+30, DATEADD(DAY, 8, @BaseDate)), DATEADD(MINUTE, 22*60+30, DATEADD(DAY, 8, @BaseDate)), N'Nhà thi đấu Phú Thọ (219 Lý Thường Kiệt, Q.11, TP.HCM)', 1, N'MoCuaBanVe');
+        (@MaSK1, DATEADD(MINUTE, 19*60+30, DATEADD(DAY, 7, @BaseDate)), DATEADD(MINUTE, 22*60+30, DATEADD(DAY, 7, @BaseDate)), N'Nhà thi đấu Phú Thọ', 1, N'MoCuaBanVe'),
+        (@MaSK1, DATEADD(MINUTE, 19*60+30, DATEADD(DAY, 8, @BaseDate)), DATEADD(MINUTE, 22*60+30, DATEADD(DAY, 8, @BaseDate)), N'Nhà thi đấu Phú Thọ', 1, N'MoCuaBanVe');
 END
 
 IF @MaSK2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.SuatDien WHERE MaSK = @MaSK2)
 BEGIN
     INSERT INTO dbo.SuatDien (MaSK, ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, LoaiSoDo, TrangThai) VALUES
         -- 3 đêm đại nhạc hội (Sơ đồ 2: Hình chữ nhật Arena 12 phân khu)
-        (@MaSK2, DATEADD(HOUR, 19, DATEADD(DAY, 14, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 14, @BaseDate)), N'Khu đô thị Vạn Phúc City (TP. Thủ Đức, TP.HCM)', 2, N'MoCuaBanVe'),
-        (@MaSK2, DATEADD(HOUR, 19, DATEADD(DAY, 15, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 15, @BaseDate)), N'Khu đô thị Vạn Phúc City (TP. Thủ Đức, TP.HCM)', 2, N'MoCuaBanVe'),
-        (@MaSK2, DATEADD(HOUR, 19, DATEADD(DAY, 21, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 21, @BaseDate)), N'Sân vận động Quốc gia Mỹ Đình (Nam Từ Liêm, Hà Nội)', 2, N'DongBanVe');
+        (@MaSK2, DATEADD(HOUR, 19, DATEADD(DAY, 14, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 14, @BaseDate)), N'Khu đô thị Vạn Phúc City', 2, N'MoCuaBanVe'),
+        (@MaSK2, DATEADD(HOUR, 19, DATEADD(DAY, 15, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 15, @BaseDate)), N'Khu đô thị Vạn Phúc City', 2, N'MoCuaBanVe'),
+        (@MaSK2, DATEADD(HOUR, 19, DATEADD(DAY, 21, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 21, @BaseDate)), N'Sân vận động Quốc gia Mỹ Đình', 2, N'DongBanVe');
 END
 
 IF @MaSK3 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.SuatDien WHERE MaSK = @MaSK3)
 BEGIN
     INSERT INTO dbo.SuatDien (MaSK, ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, LoaiSoDo, TrangThai) VALUES
         -- Hòa nhạc thính phòng (Sơ đồ 3: Lưới khán phòng Nhà hát 16 phân khu)
-        (@MaSK3, DATEADD(MINUTE, -30, GETDATE()), DATEADD(MINUTE, 150, GETDATE()), N'Nhà hát Thành phố (07 Công Trường Lam Sơn, Q.1, TP.HCM)', 3, N'DangDien'),
-        (@MaSK3, DATEADD(MINUTE, 19*60+30, DATEADD(DAY, 5, @BaseDate)), DATEADD(MINUTE, 22*60, DATEADD(DAY, 5, @BaseDate)), N'Nhà hát Thành phố (07 Công Trường Lam Sơn, Q.1, TP.HCM)', 3, N'MoCuaBanVe');
+        (@MaSK3, DATEADD(MINUTE, -30, GETDATE()), DATEADD(MINUTE, 150, GETDATE()), N'Nhà hát Thành phố', 3, N'DangDien'),
+        (@MaSK3, DATEADD(MINUTE, 19*60+30, DATEADD(DAY, 5, @BaseDate)), DATEADD(MINUTE, 22*60, DATEADD(DAY, 5, @BaseDate)), N'Nhà hát Thành phố', 3, N'MoCuaBanVe');
 END
 
 IF @MaSK4 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.SuatDien WHERE MaSK = @MaSK4)
 BEGIN
     INSERT INTO dbo.SuatDien (MaSK, ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, LoaiSoDo, TrangThai) VALUES
         -- Suất chiều & suất tối cùng ngày (Sơ đồ 1: Chữ T)
-        (@MaSK4, DATEADD(HOUR, 15, DATEADD(DAY, 10, @BaseDate)), DATEADD(HOUR, 18, DATEADD(DAY, 10, @BaseDate)), N'Nhà hát Bến Thành (06 Mạc Đĩnh Chi, Q.1, TP.HCM)', 1, N'MoCuaBanVe'),
-        (@MaSK4, DATEADD(HOUR, 20, DATEADD(DAY, 10, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 10, @BaseDate)), N'Nhà hát Bến Thành (06 Mạc Đĩnh Chi, Q.1, TP.HCM)', 1, N'MoCuaBanVe');
+        (@MaSK4, DATEADD(HOUR, 15, DATEADD(DAY, 10, @BaseDate)), DATEADD(HOUR, 18, DATEADD(DAY, 10, @BaseDate)), N'Nhà hát Bến Thành', 1, N'MoCuaBanVe'),
+        (@MaSK4, DATEADD(HOUR, 20, DATEADD(DAY, 10, @BaseDate)), DATEADD(HOUR, 23, DATEADD(DAY, 10, @BaseDate)), N'Nhà hát Bến Thành', 1, N'MoCuaBanVe');
 END
 
 IF @MaSK5 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM dbo.SuatDien WHERE MaSK = @MaSK5)
 BEGIN
     INSERT INTO dbo.SuatDien (MaSK, ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, LoaiSoDo, TrangThai) VALUES
         -- Phiên sáng & phiên chiều đã diễn ra (Sơ đồ 2: Hội trường lớn)
-        (@MaSK5, DATEADD(MINUTE, 8*60+30,  DATEADD(DAY, -5, @BaseDate)), DATEADD(HOUR, 12, DATEADD(DAY, -5, @BaseDate)), N'Hội trường A - ĐH Sư phạm TP.HCM (280 An Dương Vương, Q.5)', 2, N'DaKetThuc'),
-        (@MaSK5, DATEADD(MINUTE, 13*60+30, DATEADD(DAY, -4, @BaseDate)), DATEADD(MINUTE, 17*60+30, DATEADD(DAY, -4, @BaseDate)), N'Hội trường A - ĐH Sư phạm TP.HCM (280 An Dương Vương, Q.5)', 2, N'DaKetThuc');
+        (@MaSK5, DATEADD(MINUTE, 8*60+30,  DATEADD(DAY, -5, @BaseDate)), DATEADD(HOUR, 12, DATEADD(DAY, -5, @BaseDate)), N'Hội trường A - ĐH Sư phạm TP.HCM', 2, N'DaKetThuc'),
+        (@MaSK5, DATEADD(MINUTE, 13*60+30, DATEADD(DAY, -4, @BaseDate)), DATEADD(MINUTE, 17*60+30, DATEADD(DAY, -4, @BaseDate)), N'Hội trường A - ĐH Sư phạm TP.HCM', 2, N'DaKetThuc');
 END
 
 -- ----------------------------------------------------------------------------
@@ -178,11 +178,11 @@ INSERT INTO dbo.KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhep
 SELECT sd.MaSuat, z.MaVung, z.TenKV, z.HangVe, z.GiaVe, z.TongSoGhe, 1, z.MauSac
 FROM dbo.SuatDien sd
 CROSS JOIN (VALUES
-    ('VIP_A', N'SVIP A - Cò Bay (Cận Catwalk Trái)',   N'VIP',       1200000, 30, '#D97706'),
-    ('VIP_B', N'SVIP B - Cò Bay (Cận Catwalk Phải)',   N'VIP',       1200000, 30, '#D97706'),
-    ('GA_A',  N'Fanzone GA A - Đứng Cánh Trái',        N'Phổ thông',  650000, 40, '#0284C7'),
-    ('GA_B',  N'Fanzone GA B - Đứng Cánh Phải',        N'Phổ thông',  650000, 40, '#0284C7'),
-    ('CAT',   N'Khán Đài Thanh Âm (Standard Seating)', N'Thường',     350000, 50, '#059669')
+    ('VIP_A', N'SVIP A - Cò Bay Cánh Trái',    N'VIP',       1200000, 30, '#D97706'),
+    ('VIP_B', N'SVIP B - Cò Bay Cánh Phải',    N'VIP',       1200000, 30, '#D97706'),
+    ('GA_A',  N'Fanzone GA A - Đứng Cánh Trái', N'Phổ thông',  650000, 40, '#0284C7'),
+    ('GA_B',  N'Fanzone GA B - Đứng Cánh Phải', N'Phổ thông',  650000, 40, '#0284C7'),
+    ('CAT',   N'Khán Đài Thanh Âm',             N'Thường',     350000, 50, '#059669')
 ) AS z (MaVung, TenKV, HangVe, GiaVe, TongSoGhe, MauSac)
 WHERE sd.MaSK = @MaSK1
   AND NOT EXISTS (SELECT 1 FROM dbo.KhuVuc kv WHERE kv.MaSuat = sd.MaSuat AND kv.MaVung = z.MaVung);
@@ -193,18 +193,18 @@ SELECT sd.MaSuat, z.MaVung, z.TenKV, z.HangVe, z.GiaVe, z.TongSoGhe,
        CASE WHEN sd.TrangThai = N'DongBanVe' THEN 0 ELSE 1 END, z.MauSac
 FROM dbo.SuatDien sd
 CROSS JOIN (VALUES
-    ('VIP_A', N'Sky Lounge VVIP (Trực Diện Sân Khấu)', N'VIP',       2500000, 30, '#DC2626'),
+    ('VIP_A', N'Sky Lounge VVIP',                      N'VIP',       2500000, 30, '#DC2626'),
     ('VIP_B', N'VIP B - Say Hi Zone Trái',             N'VIP',       1800000, 20, '#D97706'),
     ('VIP_C', N'VIP C - Say Hi Zone Phải',             N'VIP',       1800000, 20, '#D97706'),
     ('VIP_D', N'VIP D - Premier Trung Tâm',            N'VIP',       1500000, 30, '#9333EA'),
-    ('GA_A',  N'Fanzone GA A (Sát Sân Khấu Trái)',     N'Phổ thông', 1100000, 30, '#0284C7'),
-    ('GA_B',  N'Fanzone GA B (Sát Sân Khấu Phải)',     N'Phổ thông', 1100000, 30, '#0284C7'),
+    ('GA_A',  N'Fanzone GA A - Sát Sân Khấu Trái',     N'Phổ thông', 1100000, 30, '#0284C7'),
+    ('GA_B',  N'Fanzone GA B - Sát Sân Khấu Phải',     N'Phổ thông', 1100000, 30, '#0284C7'),
     ('GA_C',  N'Standing GA C - Khu Trái',             N'Phổ thông',  850000, 40, '#0D9488'),
     ('GA_D',  N'Standing GA D - Khu Phải',             N'Phổ thông',  850000, 40, '#0D9488'),
     ('GA_E',  N'Standing GA E - Khu Giữa',             N'Phổ thông',  850000, 30, '#0D9488'),
-    ('CAT_B', N'Khán Đài Ngồi CAT B (Cánh Trái)',      N'Thường',     550000, 30, '#4F46E5'),
-    ('CAT_C', N'Khán Đài Ngồi CAT C (Cánh Phải)',      N'Thường',     550000, 30, '#4F46E5'),
-    ('CAT_A', N'Khán Đài Xa CAT A (Phía Sau)',         N'Thường',     400000, 30, '#64748B')
+    ('CAT_B', N'Khán Đài CAT B - Cánh Trái',           N'Thường',     550000, 30, '#4F46E5'),
+    ('CAT_C', N'Khán Đài CAT C - Cánh Phải',           N'Thường',     550000, 30, '#4F46E5'),
+    ('CAT_A', N'Khán Đài CAT A - Phía Sau',            N'Thường',     400000, 30, '#64748B')
 ) AS z (MaVung, TenKV, HangVe, GiaVe, TongSoGhe, MauSac)
 WHERE sd.MaSK = @MaSK2
   AND NOT EXISTS (SELECT 1 FROM dbo.KhuVuc kv WHERE kv.MaSuat = sd.MaSuat AND kv.MaVung = z.MaVung);
@@ -214,10 +214,10 @@ INSERT INTO dbo.KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhep
 SELECT sd.MaSuat, z.MaVung, z.TenKV, z.HangVe, z.GiaVe, z.TongSoGhe, 1, z.MauSac
 FROM dbo.SuatDien sd
 CROSS JOIN (VALUES
-    ('VIP_B', N'Diamond Orchestra B (Trung Tâm)',      N'VIP',       1500000, 20, '#DC2626'),
-    ('VIP_C', N'Diamond Orchestra C (Trung Tâm)',      N'VIP',       1500000, 20, '#DC2626'),
-    ('VIP_A', N'Gold Orchestra A (Cánh Trái)',         N'VIP',       1200000, 20, '#D97706'),
-    ('VIP_D', N'Gold Orchestra D (Cánh Phải)',         N'VIP',       1200000, 20, '#D97706'),
+    ('VIP_B', N'Diamond Orchestra B - Trung Tâm',      N'VIP',       1500000, 20, '#DC2626'),
+    ('VIP_C', N'Diamond Orchestra C - Trung Tâm',      N'VIP',       1500000, 20, '#DC2626'),
+    ('VIP_A', N'Gold Orchestra A - Cánh Trái',         N'VIP',       1200000, 20, '#D97706'),
+    ('VIP_D', N'Gold Orchestra D - Cánh Phải',         N'VIP',       1200000, 20, '#D97706'),
     ('GA_A',  N'Stalls Hạng Nhất - Khu A',             N'Phổ thông',  850000, 20, '#0284C7'),
     ('GA_B',  N'Stalls Hạng Nhất - Khu B',             N'Phổ thông',  850000, 20, '#0284C7'),
     ('GA_C',  N'Stalls Hạng Nhất - Khu C',             N'Phổ thông',  850000, 20, '#0284C7'),
@@ -226,10 +226,10 @@ CROSS JOIN (VALUES
     ('GA_F',  N'Parterre Trung Tâm - Khu F',           N'Phổ thông',  650000, 20, '#0D9488'),
     ('GA_G',  N'Parterre Trung Tâm - Khu G',           N'Phổ thông',  650000, 20, '#0D9488'),
     ('GA_H',  N'Parterre Trung Tâm - Khu H',           N'Phổ thông',  650000, 20, '#0D9488'),
-    ('CAT_C', N'Lô Ban Công Trái (Opera Box L)',       N'Thường',     450000, 20, '#7C3AED'),
-    ('CAT_D', N'Lô Ban Công Phải (Opera Box R)',       N'Thường',     450000, 20, '#7C3AED'),
-    ('CAT_A', N'Lầu 2 Khán Đài A (Upper Circle)',      N'Thường',     300000, 30, '#475569'),
-    ('CAT_B', N'Lầu 2 Khán Đài B (Upper Circle)',      N'Thường',     300000, 30, '#475569')
+    ('CAT_C', N'Lô Ban Công Trái',                     N'Thường',     450000, 20, '#7C3AED'),
+    ('CAT_D', N'Lô Ban Công Phải',                     N'Thường',     450000, 20, '#7C3AED'),
+    ('CAT_A', N'Khán Đài Lầu 2 A',                     N'Thường',     300000, 30, '#475569'),
+    ('CAT_B', N'Khán Đài Lầu 2 B',                     N'Thường',     300000, 30, '#475569')
 ) AS z (MaVung, TenKV, HangVe, GiaVe, TongSoGhe, MauSac)
 WHERE sd.MaSK = @MaSK3
   AND NOT EXISTS (SELECT 1 FROM dbo.KhuVuc kv WHERE kv.MaSuat = sd.MaSuat AND kv.MaVung = z.MaVung);
@@ -239,11 +239,11 @@ INSERT INTO dbo.KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhep
 SELECT sd.MaSuat, z.MaVung, z.TenKV, z.HangVe, z.GiaVe, z.TongSoGhe, 1, z.MauSac
 FROM dbo.SuatDien sd
 CROSS JOIN (VALUES
-    ('VIP_A', N'Ghế Hoàng Gia VIP A (Trái)',           N'VIP',        700000, 20, '#E11D48'),
-    ('VIP_B', N'Ghế Hoàng Gia VIP B (Phải)',           N'VIP',        700000, 20, '#E11D48'),
-    ('GA_A',  N'Khán Phòng Gia Đình A (Cánh Trái)',    N'Phổ thông',  450000, 30, '#2563EB'),
-    ('GA_B',  N'Khán Phòng Gia Đình B (Cánh Phải)',    N'Phổ thông',  450000, 30, '#2563EB'),
-    ('CAT',   N'Ban Công Thiếu Nhi (Lầu 1)',           N'Thường',     250000, 40, '#8B5CF6')
+    ('VIP_A', N'Ghế Hoàng Gia VIP A - Trái',           N'VIP',        700000, 20, '#E11D48'),
+    ('VIP_B', N'Ghế Hoàng Gia VIP B - Phải',           N'VIP',        700000, 20, '#E11D48'),
+    ('GA_A',  N'Khán Phòng Gia Đình A - Cánh Trái',    N'Phổ thông',  450000, 30, '#2563EB'),
+    ('GA_B',  N'Khán Phòng Gia Đình B - Cánh Phải',    N'Phổ thông',  450000, 30, '#2563EB'),
+    ('CAT',   N'Ban Công Thiếu Nhi - Lầu 1',           N'Thường',     250000, 40, '#8B5CF6')
 ) AS z (MaVung, TenKV, HangVe, GiaVe, TongSoGhe, MauSac)
 WHERE sd.MaSK = @MaSK4
   AND NOT EXISTS (SELECT 1 FROM dbo.KhuVuc kv WHERE kv.MaSuat = sd.MaSuat AND kv.MaVung = z.MaVung);
@@ -253,9 +253,9 @@ INSERT INTO dbo.KhuVuc (MaSuat, MaVung, TenKV, HangVe, GiaVe, TongSoGhe, ChoPhep
 SELECT sd.MaSuat, z.MaVung, z.TenKV, z.HangVe, z.GiaVe, z.TongSoGhe, 0, z.MauSac
 FROM dbo.SuatDien sd
 CROSS JOIN (VALUES
-    ('VIP_A', N'Speaker & Delegate VIP (Hàng Đầu)',    N'VIP',        900000, 20, '#D97706'),
-    ('VIP_B', N'Business Pass B (Cánh Trái)',          N'VIP',        700000, 20, '#CA8A04'),
-    ('VIP_C', N'Business Pass C (Cánh Phải)',          N'VIP',        700000, 20, '#CA8A04'),
+    ('VIP_A', N'Speaker & Delegate VIP',               N'VIP',        900000, 20, '#D97706'),
+    ('VIP_B', N'Business Pass B - Cánh Trái',          N'VIP',        700000, 20, '#CA8A04'),
+    ('VIP_C', N'Business Pass C - Cánh Phải',          N'VIP',        700000, 20, '#CA8A04'),
     ('GA_C',  N'Developer Pass - Khu Trái',            N'Phổ thông',  400000, 30, '#0284C7'),
     ('GA_E',  N'Developer Pass - Khu Giữa',            N'Phổ thông',  400000, 30, '#0284C7'),
     ('GA_D',  N'Developer Pass - Khu Phải',            N'Phổ thông',  400000, 30, '#0284C7'),

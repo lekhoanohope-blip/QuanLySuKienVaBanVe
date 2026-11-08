@@ -10,7 +10,7 @@
 
 ## MỤC LỤC
 1. [Giới thiệu & Huy hiệu dự án](#1-giới-thiệu--huy-hiệu-dự-án)
-2. [Tổng quan các màn hình chức năng](#2-tổng-quan-các-màn-hình-chức-năng)
+2. [Tổng quan các màn hình chức năng (Screenshots)](#2-tổng-quan-các-màn-hình-chức-năng-screenshots)
 3. [Tính năng nghiệp vụ & Điểm nhấn kỹ thuật](#3-tính-năng-nghiệp-vụ--điểm-nhấn-kỹ-thuật)
 4. [Kiến trúc hệ thống & Cấu trúc thư mục](#4-kiến-trúc-hệ-thống--cấu-trúc-thư-mục)
 5. [Yêu cầu môi trường (Prerequisites)](#5-yêu-cầu-môi-trường-prerequisites)
@@ -38,36 +38,56 @@ Hệ thống **Quản lý sự kiện và bán vé** là ứng dụng desktop x�
 
 ---
 
-## 2. Tổng quan các màn hình chức năng
+## 2. Tổng quan các màn hình chức năng (Screenshots)
 
-### Bài toán nghiệp vụ
-Trong công tác tổ chức sự kiện và bán vé tại quầy, ứng dụng tập trung giải quyết các nhu cầu:
-- **Quản lý sơ đồ phân khu theo loại hình sân khấu:** Hỗ trợ 3 mẫu bố cục sân khấu (`LoaiSoDo`: Chữ T/Catwalk, Hình chữ nhật/Arena, và Lưới/Nhà hát).
-- **Giữ chỗ tạm thời và hạn chế bán trùng ghế:** Giữ ghế trong 10 phút khi nhân viên đang thao tác thanh toán và kiểm tra khóa dòng trong giao dịch SQL.
-- **Quản lý vòng đời đơn vé (Bán vé - Đổi vé - Hủy vé):** Kiểm tra điều kiện thời gian trước giờ diễn (hủy trước $\ge$ 24 giờ, đổi trước $\ge$ 12 giờ), tính toán chênh lệch giá vé và lưu vết đơn vé gốc (`MaDonGoc`).
-- **Phát hành vé in & PDF:** Tạo phôi vé đồ họa có mã vé định danh (`MaVeCode`) và mã vạch Code 128 phục vụ kiểm soát vé.
+### 2.1. Phân hệ Bán vé tại quầy (POS), Giữ chỗ & Thanh toán
 
-### Danh mục các Form trong hệ thống
+| Sơ đồ phân khu bán vé (`FrmBanVe`) | Hộp thoại chọn nhanh số lượng vé (`FrmChonSoLuongVe`) |
+| :---: | :---: |
+| ![Sơ đồ phân khu bán vé](docs/screenshots/02_ban_ve_so_do.png) | ![Chọn nhanh số lượng vé](docs/screenshots/03_chon_ve.png) |
+| *Hiển thị trực quan các phân khu theo màu sắc, bảng giá và số ghế trống thời gian thực* | *Nhập số lượng vé theo phân khu, hệ thống tự động chọn và giữ tạm các ghế khả dụng* |
 
-> *Ghi chú: Thư mục `docs/screenshots/` được tạo sẵn để lưu ảnh chụp màn hình phục vụ báo cáo.*
+| Xác nhận thanh toán đa phương thức (`FrmThanhToan`) | Xem trước phôi vé in & Barcode Code 128 (`FrmInVe`) |
+| :---: | :---: |
+| ![Xác nhận thanh toán](docs/screenshots/03_thanh_toan.png) | ![Phôi vé in và mã vạch](docs/screenshots/06_in_ve_preview.png) |
+| *Ghi nhận thanh toán Tiền mặt, VietQR, Thẻ ATM/Visa và liên kết thông tin khách hàng* | *Phôi vé đồ họa 210x90mm kèm cuống vé xé rời và mã vạch Code 128* |
 
-| Phân hệ | Tên Form / Lớp | Chức năng thực tế trong ứng dụng |
-| :--- | :--- | :--- |
-| **Đăng nhập & Điều hướng** | `FrmDangNhap.cs` | Xác thực tài khoản với mật khẩu băm SHA-256, kiểm tra trạng thái khóa và khởi tạo phiên làm việc (`PhienDangNhap`) theo vai trò `QuanLy` hoặc `NhanVien`. |
-| **Cửa sổ chính** | `FrmMain.cs` | Khung điều hướng chính của ứng dụng: nhúng các Form chức năng con vào vùng `pnlDesktop` (`TopLevel = false`, `Dock = DockStyle.Fill`), kết hợp lưu đệm Form (`_formCache`) khi chuyển tab và ẩn/hiện menu theo phân quyền. |
-| **Bán vé tại quầy** | `FrmBanVe.cs` | Lọc sự kiện và suất diễn đang mở bán, vẽ sơ đồ phân khu theo `LoaiSoDo`, hiển thị bảng giá cùng số lượng ghế trống theo thời gian thực và đếm ngược phiên giữ ghế. |
-| **Chọn số lượng vé** | `FrmChonSoLuongVe.cs` | Hộp thoại nhập số lượng vé cần mua khi nhấp vào một phân khu trên `FrmBanVe`; hệ thống tự động cấp và giữ tạm các ghế trống trong khu vực đó. |
-| **Thanh toán đơn vé** | `FrmThanhToan.cs` | Nhập/tra cứu thông tin khách hàng theo SĐT, chọn phương thức thanh toán ghi nhận vào hệ thống (Tiền mặt, Chuyển khoản VietQR, Thẻ ATM/Visa) và xác nhận phát hành vé. |
-| **Quản lý đơn vé** | `FrmQuanLyDonVe.cs` | Giao diện 2 cột (Master-Detail) tra cứu danh sách đơn vé theo mã đơn, tên khách, SĐT hoặc trạng thái (`DaThanhToan`, `DaDoi`, `DaHuy`), xem danh sách vé con và mở chức năng in/đổi/hủy vé. |
-| **Đổi vé** | `FrmDoiVe.cs` | Chọn vé hợp lệ cần đổi, chọn phân khu và ghế mới còn trống, tự động tính chênh lệch giá vé ($\Delta$) và thực hiện giao dịch đổi vé. |
-| **Xem trước & In vé** | `FrmInVe.cs` | Xem trước phôi vé kích thước 210x90mm (thân vé + cuống vé có mã vạch Code 128), hỗ trợ in qua hộp thoại máy in Windows hoặc xuất ra tệp PDF. |
-| **Sự kiện** | `FrmQuanLySuKien.cs`<br>`FrmChiTietSuKien.cs` | Quản lý danh mục sự kiện (tìm kiếm không dấu, thêm, sửa, xóa có kiểm tra ràng buộc suất diễn) và cập nhật trạng thái sự kiện. |
-| **Suất diễn** | `FrmQuanLySuatDien.cs`<br>`FrmChiTietSuatDien.cs` | Lên lịch biểu diễn, chọn địa điểm, cấu hình loại sơ đồ sân khấu, điều hướng nhanh sang cấu hình phân khu và xuất/in danh sách khách tham dự (`InDanhSachKhach.cs`). |
-| **Phân khu & Giá vé** | `FrmQuanLyKhuVuc.cs` | Cấu hình các khu vực trên sơ đồ sân khấu (mã vùng, tên khu vực, hạng vé `VIP` / `Phổ thông` / `Thường`, đơn giá, màu sắc hiển thị, sức chứa) và tự động sinh danh sách ghế trong CSDL. |
-| **Khách hàng** | `FrmKhachHang.cs`<br>`FrmChiTietKhachHang.cs` | Tra cứu khách hàng theo tên (có dấu/không dấu), SĐT, email hoặc mã KH; thêm mới, chỉnh sửa và xóa khách hàng (chặn xóa nếu khách đã có đơn vé). |
-| **Báo cáo & Thống kê** | `FrmBaoCao.cs` | Hiển thị 3 thẻ KPI (Tổng doanh thu, Vé đã bán, Tỷ lệ lấp đầy kèm % tăng trưởng so với kỳ trước), biểu đồ đường doanh thu theo ngày/tháng/năm, biểu đồ tròn cơ cấu hạng vé và xuất báo cáo Excel (`.xlsx`). |
-| **Tài khoản & Nhân sự** | `FrmNhanVien.cs` | Quản lý danh sách tài khoản hệ thống, tìm kiếm, cấp tài khoản mới, đặt lại mật khẩu, khóa/mở khóa và xóa tài khoản chưa phát sinh dữ liệu. |
-| **Các Form khung / Cài đặt** | `FrmCaiDat.cs`<br>`FrmTaiKhoan.cs`<br>`FrmNhatKy.cs`<br>`FrmQuanLyTaiKhoan.cs` | Các Form khung/cài đặt cơ bản. Riêng dữ liệu nhật ký thao tác được ghi tự động vào bảng `dbo.NhatKy` ở tầng CSDL khi bán/đổi/hủy vé, còn `FrmNhatKy.cs` trên giao diện hiện là Form khung chờ mở rộng. |
+---
+
+### 2.2. Quản lý Đơn vé & Nghiệp vụ Đổi / Hủy vé
+
+| Quản lý đơn vé 2 cột Master-Detail (`FrmQuanLyDonVe`) | Nghiệp vụ Đổi vé & Tính chênh lệch giá (`FrmDoiVe`) |
+| :---: | :---: |
+| ![Quản lý đơn vé](docs/screenshots/04_quan_ly_don_ve.png) | ![Nghiệp vụ đổi vé](docs/screenshots/05_doi_ve.png) |
+| *Tra cứu đơn vé theo mã đơn, khách hàng, ngày đặt và trạng thái (`DaThanhToan`, `DaDoi`, `DaHuy`)* | *Kiểm tra điều kiện trước 12h, chọn ghế mới và tự động tính phụ thu / hoàn tiền* |
+
+---
+
+### 2.3. Quản trị Sự kiện, Suất diễn & Phân khu
+
+| Quản lý danh mục Sự kiện (`FrmQuanLySuKien`) | Quản lý lịch Suất diễn (`FrmQuanLySuatDien`) |
+| :---: | :---: |
+| ![Quản lý sự kiện](docs/screenshots/07_quan_ly_su_kien.png) | ![Quản lý suất diễn](docs/screenshots/08_quan_ly_suat_dien.png) |
+| *Danh mục sự kiện, tìm kiếm không dấu, cập nhật trạng thái và ràng buộc xóa* | *Lên lịch diễn, chọn loại sơ đồ sân khấu (Catwalk, Arena, Grid), in danh sách khách* |
+
+| Cấu hình Phân khu & Bảng giá vé (`FrmQuanLyKhuVuc`) | Báo cáo Doanh thu & Tỷ lệ lấp đầy (`FrmBaoCao`) |
+| :---: | :---: |
+| ![Cấu hình phân khu](docs/screenshots/08_quan_ly_khu_vuc.png) | ![Báo cáo thống kê](docs/screenshots/11_bao_cao_thong_ke.png) |
+| *Cấu hình mã vùng, hạng vé, đơn giá, màu sắc và tự động sinh ma trận ghế* | *3 thẻ KPI tăng trưởng, biểu đồ xu hướng doanh thu và cơ cấu hạng vé* |
+
+---
+
+### 2.4. Quản lý Khách hàng & Tài khoản người dùng
+
+| Quản lý hồ sơ Khách hàng (`FrmKhachHang`) | Quản lý Tài khoản & Nhân sự (`FrmNhanVien`) |
+| :---: | :---: |
+| ![Quản lý khách hàng](docs/screenshots/09_quan_ly_khach_hang.png) | ![Quản lý tài khoản](docs/screenshots/10_quan_ly_tai_khoan.png) |
+| *Tìm kiếm đa trường (tên có dấu/không dấu, SĐT, email), thêm, sửa và kiểm tra đơn vé* | *Cấp phát tài khoản nhân viên, đặt lại mật khẩu và khóa/mở khóa tài khoản* |
+
+| Xác thực Đăng nhập hệ thống (`FrmDangNhap`) | |
+| :---: | :---: |
+| ![Đăng nhập hệ thống](docs/screenshots/01_dang_nhap.png) | |
+| *Xác thực đăng nhập bảo mật với mật khẩu băm một chiều SHA-256 và phân quyền* | |
 
 ---
 
@@ -247,9 +267,9 @@ QuanLySuKienVaBanVe/
 │       ├── 02_AddOrderConstraints.sql       # Bổ sung khóa ngoại MaDonGoc và chỉ mục lọc UQ_ChiTietVe_Ghe_HopLe
 │       └── 03_AddSeatHoldAndZoneColor.sql   # Bổ sung MaPhienGiu, chỉ mục IX_Ghe_MaPhienGiu và chuẩn hóa màu sắc/MaVung
 │
-├── docs/                                    # Tài liệu hướng dẫn
+├── docs/                                    # Tài liệu hướng dẫn & Ảnh minh họa
 │   ├── huong-dan-in-ve.md                   # Mô tả cấu trúc phôi vé và cách sử dụng module in vé
-│   └── screenshots/                         # Thư mục lưu trữ ảnh chụp giao diện (.gitkeep)
+│   └── screenshots/                         # Chứa toàn bộ ảnh chụp màn hình giao diện thực tế và kết quả test
 │
 ├── DTO/                                     # Đối tượng truyền dữ liệu (Data Transfer Objects)
 │   ├── BanVe/                               # ChiTietVeDTO, DonVeDTO, ThanhToanDTO, ThongTinDatVeDTO
@@ -420,6 +440,11 @@ Dự án tích hợp project **`UnitTests`** sử dụng **MSTest v2.2.10** gồ
 
 > **Giới hạn phạm vi kiểm thử hiện tại:**
 > - Bộ 36 unit tests trên kiểm tra logic thuần (in-memory validation & tính toán), **chưa kiểm thử tự động các luồng phụ thuộc trực tiếp vào SQL Server** (như giao dịch giữ ghế/thanh toán thực tế, kiểm tra điều kiện thời gian hủy vé 24h / đổi vé 12h từ dữ liệu DB, giải phóng ghế quá hạn 10 phút, truy vấn doanh thu/tỷ lệ lấp đầy bằng SQL) cũng như **bố cục hiển thị các Form**. Các luồng này hiện được kiểm thử chức năng trực tiếp trên ứng dụng với bộ dữ liệu `02_SeedData.sql`.
+
+#### Kết quả thực thi kiểm thử trên Visual Studio Test Explorer:
+Toàn bộ **36 ca kiểm thử** đều vượt qua thành công (**Passed 36/36**) trên Test Explorer của Visual Studio:
+
+![Kết quả kiểm thử 36 unit tests trên Visual Studio Test Explorer](docs/screenshots/test.png)
 
 #### Điều kiện và cách chạy Unit Tests từ dòng lệnh:
 1. Đảm bảo đã chạy `nuget restore` cho Solution và biên dịch dự án ở cấu hình `Release` (hoặc `Debug`).
